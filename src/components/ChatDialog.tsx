@@ -528,35 +528,43 @@ export function ChatDialog({
       </Dialog>
 
       {/* Lightbox for viewing files */}
-      {lightboxUrl && (
-        <div 
-          className="fixed inset-0 z-[100] bg-background/95 flex items-center justify-center p-4"
-          onClick={closeLightbox}
-        >
-          <button
-            onClick={closeLightbox}
-            className="absolute top-4 right-4 p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors"
-          >
-            <X className="h-6 w-6" />
-          </button>
-          <div className="max-w-full max-h-full" onClick={(e) => e.stopPropagation()}>
-            {lightboxType === 'image' ? (
-              <img
-                src={lightboxUrl}
-                alt="Full size"
-                className="max-w-full max-h-[90vh] object-contain rounded-lg"
-              />
-            ) : (
-              <video
-                src={lightboxUrl}
-                controls
-                autoPlay
-                className="max-w-full max-h-[90vh] rounded-lg"
-              />
-            )}
+      <Dialog
+        open={!!lightboxUrl}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) closeLightbox();
+        }}
+      >
+        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden">
+          <div className="relative bg-background">
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={closeLightbox}
+              className="absolute right-2 top-2 z-10"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+
+            <div className="max-h-[80vh] w-full">
+              {lightboxUrl &&
+                (lightboxType === 'image' ? (
+                  <img
+                    src={lightboxUrl}
+                    alt="Полный размер"
+                    className="w-full max-h-[80vh] object-contain"
+                  />
+                ) : (
+                  <video
+                    src={lightboxUrl}
+                    controls
+                    className="w-full max-h-[80vh]"
+                  />
+                ))}
+            </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
