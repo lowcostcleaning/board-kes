@@ -180,7 +180,7 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
             </div>
           </div>
 
-          {!disabled && order.status === 'pending' && (
+          {!disabled && (order.status === 'pending' || order.status === 'confirmed') && (
             <div className="pt-2 border-t border-border/50">
               <Button
                 variant="ghost"
