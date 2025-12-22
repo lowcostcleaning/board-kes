@@ -54,9 +54,7 @@ const ForgotPassword = () => {
     <div className="min-h-screen gradient-hero flex flex-col">
       <header className="p-6 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
-          </div>
+          <img src="/favicon.png" alt="Lowcost Cleaning" className="w-10 h-10 rounded-xl" />
           <span className="font-bold text-xl text-foreground">Lowcost Cleaning</span>
         </Link>
       </header>
