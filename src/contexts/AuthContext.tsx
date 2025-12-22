@@ -17,7 +17,12 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ error: Error | null }>;
-  register: (name: string, email: string, password: string, role: 'cleaner' | 'manager') => Promise<{ error: Error | null }>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    role: 'cleaner' | 'manager'
+  ) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
 }
 
@@ -41,7 +46,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = async (userId: string, userEmail?: string | null): Promise<UserProfile | null> => {
+  const fetchProfile = async (
+    userId: string,
+    userEmail?: string | null
+  ): Promise<UserProfile | null> => {
     const { data, error } = await supabase
       .from('profiles')
       .select('id, email, role')
@@ -49,11 +57,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       .maybeSingle();
 
     if (error) {
+      // Не логируем email/пароль; здесь безопасно.
       console.error('Error fetching profile:', error);
       return null;
     }
 
-    // If profile doesn't exist, create one with default role 'cleaner'
+    // Если профиля нет (пользователь создан раньше), создаём дефолтный.
     if (!data) {
       const { data: newProfile, error: insertError } = await supabase
         .from('profiles')
@@ -62,7 +71,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           email: userEmail || null,
           role: 'cleaner',
         })
-        .select()
+        .select('id, email, role')
         .single();
 
       if (insertError) {
@@ -86,21 +95,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
 
+      if (session?.user) {
+        setIsLoading(true);
         // Defer profile fetch with setTimeout to avoid deadlock
-        if (session?.user) {
-          setTimeout(() => {
-            fetchProfile(session.user.id, session.user.email).then(setProfile);
-          }, 0);
-        } else {
-          setProfile(null);
-        }
+        setTimeout(() => {
+          fetchProfile(session.user.id, session.user.email).then((p) => {
+            setProfile(p);
+            setIsLoading(false);
+          });
+        }, 0);
+      } else {
+        setProfile(null);
+        setIsLoading(false);
       }
-    );
+    });
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -108,6 +122,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(session?.user ?? null);
 
       if (session?.user) {
+        setIsLoading(true);
         fetchProfile(session.user.id, session.user.email).then((p) => {
           setProfile(p);
           setIsLoading(false);
@@ -129,7 +144,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return { error: error ? new Error(error.message) : null };
   };
 
-  const register = async (name: string, email: string, password: string, role: 'cleaner' | 'manager') => {
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+    role: 'cleaner' | 'manager'
+  ) => {
     const redirectUrl = `${window.location.origin}/`;
 
     const { data, error } = await supabase.auth.signUp({
@@ -148,7 +168,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return { error: new Error(error.message) };
     }
 
-    // Create profile entry if signup succeeded
     if (data.user) {
       const { error: profileError } = await supabase.from('profiles').insert({
         id: data.user.id,

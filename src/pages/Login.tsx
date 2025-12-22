@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, isAuthenticated, logout, profile, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -25,7 +25,7 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast({
         title: 'Ошибка',
@@ -35,35 +35,41 @@ const Login = () => {
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     const { error } = await login(email, password);
-    
+
     if (error) {
       toast({
         title: 'Ошибка',
         description: error.message,
         variant: 'destructive',
       });
-      setIsLoading(false);
-    } else {
-      toast({
-        title: 'Добро пожаловать!',
-        description: 'Вы успешно вошли в систему.',
-      });
+      setIsSubmitting(false);
+      return;
     }
+
+    toast({
+      title: 'Добро пожаловать!',
+      description: 'Вход выполнен. Загружаем профиль…',
+    });
+    setIsSubmitting(false);
   };
 
-  if (authLoading) {
+  // Если уже авторизован, но профиль ещё подгружается — показываем загрузку, а не форму.
+  if (authLoading || (isAuthenticated && !profile)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">Загружаем профиль…</p>
+          <Button variant="ghost" onClick={logout}>Выйти</Button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen gradient-hero flex flex-col">
-      {/* Header */}
       <header className="p-6 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
@@ -79,7 +85,6 @@ const Login = () => {
         )}
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 flex items-center justify-center px-6 py-12">
         <Card className="w-full max-w-md shadow-soft border-border/50 animate-slide-up">
           <CardHeader className="text-center">
@@ -112,13 +117,10 @@ const Login = () => {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Вход...' : 'Войти'}
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? 'Вход…' : 'Войти'}
               </Button>
-              <Link
-                to="/forgot-password"
-                className="text-sm text-primary hover:underline"
-              >
+              <Link to="/forgot-password" className="text-sm text-primary hover:underline">
                 Забыли пароль?
               </Link>
               <p className="text-sm text-muted-foreground text-center">
