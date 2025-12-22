@@ -134,6 +134,7 @@ export type Database = {
       objects: {
         Row: {
           apartment_number: string
+          apartment_type: string | null
           complex_name: string
           created_at: string
           id: string
@@ -142,6 +143,7 @@ export type Database = {
         }
         Insert: {
           apartment_number: string
+          apartment_type?: string | null
           complex_name: string
           created_at?: string
           id?: string
@@ -150,6 +152,7 @@ export type Database = {
         }
         Update: {
           apartment_number?: string
+          apartment_type?: string | null
           complex_name?: string
           created_at?: string
           id?: string
@@ -212,6 +215,9 @@ export type Database = {
           email: string | null
           id: string
           name: string | null
+          price_one_plus_one: number | null
+          price_studio: number | null
+          price_two_plus_one: number | null
           rating: number | null
           role: string
           status: string
@@ -222,6 +228,9 @@ export type Database = {
           email?: string | null
           id: string
           name?: string | null
+          price_one_plus_one?: number | null
+          price_studio?: number | null
+          price_two_plus_one?: number | null
           rating?: number | null
           role: string
           status?: string
@@ -232,6 +241,9 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string | null
+          price_one_plus_one?: number | null
+          price_studio?: number | null
+          price_two_plus_one?: number | null
           rating?: number | null
           role?: string
           status?: string
