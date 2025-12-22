@@ -16,6 +16,7 @@ interface AuthContextType {
   session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  profileError: string | null;
   login: (email: string, password: string) => Promise<{ error: Error | null }>;
   register: (
     name: string,
@@ -45,11 +46,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
-  const fetchProfile = async (
-    userId: string,
-    userEmail?: string | null
-  ): Promise<UserProfile | null> => {
+  // Fetch profile from Supabase profiles table
+  // profiles.id = auth.user.id, read profiles.role
+  const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
+    setProfileError(null);
+
     const { data, error } = await supabase
       .from('profiles')
       .select('id, email, role')
@@ -57,33 +60,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       .maybeSingle();
 
     if (error) {
-      // Не логируем email/пароль; здесь безопасно.
       console.error('Error fetching profile:', error);
+      setProfileError('Ошибка загрузки профиля. Попробуйте войти снова.');
       return null;
     }
 
-    // Если профиля нет (пользователь создан раньше), создаём дефолтный.
+    // If profile is missing, set error and return null
     if (!data) {
-      const { data: newProfile, error: insertError } = await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          email: userEmail || null,
-          role: 'cleaner',
-        })
-        .select('id, email, role')
-        .single();
+      setProfileError('Профиль не найден. Обратитесь к администратору.');
+      return null;
+    }
 
-      if (insertError) {
-        console.error('Error creating profile:', insertError);
-        return null;
-      }
-
-      return {
-        id: newProfile.id,
-        email: newProfile.email,
-        role: newProfile.role as UserRole,
-      };
+    // Validate role is one of allowed values
+    const validRoles: UserRole[] = ['cleaner', 'manager', 'admin'];
+    if (!validRoles.includes(data.role as UserRole)) {
+      setProfileError('Некорректная роль пользователя.');
+      return null;
     }
 
     return {
@@ -97,33 +89,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Set up auth state listener FIRST
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
 
-      if (session?.user) {
+      if (currentSession?.user) {
         setIsLoading(true);
+        setProfileError(null);
         // Defer profile fetch with setTimeout to avoid deadlock
         setTimeout(() => {
-          fetchProfile(session.user.id, session.user.email).then((p) => {
+          fetchProfile(currentSession.user.id).then((p) => {
             setProfile(p);
             setIsLoading(false);
           });
         }, 0);
       } else {
         setProfile(null);
+        setProfileError(null);
         setIsLoading(false);
       }
     });
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+      setSession(existingSession);
+      setUser(existingSession?.user ?? null);
 
-      if (session?.user) {
+      if (existingSession?.user) {
         setIsLoading(true);
-        fetchProfile(session.user.id, session.user.email).then((p) => {
+        fetchProfile(existingSession.user.id).then((p) => {
           setProfile(p);
           setIsLoading(false);
         });
@@ -136,6 +130,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (email: string, password: string) => {
+    setProfileError(null);
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -150,6 +145,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     password: string,
     role: 'cleaner' | 'manager'
   ) => {
+    setProfileError(null);
     const redirectUrl = `${window.location.origin}/`;
 
     const { data, error } = await supabase.auth.signUp({
@@ -168,16 +164,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return { error: new Error(error.message) };
     }
 
+    // Create profile in profiles table on registration
     if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
+      const { error: profileInsertError } = await supabase.from('profiles').insert({
         id: data.user.id,
         email,
         role,
       });
 
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
-        return { error: new Error(profileError.message) };
+      if (profileInsertError) {
+        console.error('Error creating profile:', profileInsertError);
+        return { error: new Error(profileInsertError.message) };
       }
     }
 
@@ -189,6 +186,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     setSession(null);
     setProfile(null);
+    setProfileError(null);
   };
 
   return (
@@ -199,6 +197,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         session,
         isAuthenticated: !!session,
         isLoading,
+        profileError,
         login,
         register,
         logout,

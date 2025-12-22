@@ -5,23 +5,37 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Sparkles, LogOut, ArrowLeft } from 'lucide-react';
+import { Sparkles, LogOut, ArrowLeft, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, isAuthenticated, logout, profile, isLoading: authLoading } = useAuth();
+  const { login, isAuthenticated, logout, profile, isLoading, profileError } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Redirect if already authenticated
+  // Redirect based on role from profiles table
   useEffect(() => {
-    if (!authLoading && isAuthenticated && profile) {
-      navigate(`/${profile.role}`, { replace: true });
+    if (!isLoading && isAuthenticated && profile) {
+      // Redirect based on profiles.role
+      switch (profile.role) {
+        case 'admin':
+          navigate('/admin', { replace: true });
+          break;
+        case 'manager':
+          navigate('/manager', { replace: true });
+          break;
+        case 'cleaner':
+          navigate('/cleaner', { replace: true });
+          break;
+        default:
+          navigate('/cleaner', { replace: true });
+      }
     }
-  }, [isAuthenticated, profile, authLoading, navigate]);
+  }, [isAuthenticated, profile, isLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +54,7 @@ const Login = () => {
 
     if (error) {
       toast({
-        title: 'Ошибка',
+        title: 'Ошибка входа',
         description: error.message,
         variant: 'destructive',
       });
@@ -49,20 +63,58 @@ const Login = () => {
     }
 
     toast({
-      title: 'Добро пожаловать!',
-      description: 'Вход выполнен. Загружаем профиль…',
+      title: 'Вход выполнен',
+      description: 'Загружаем профиль…',
     });
     setIsSubmitting(false);
   };
 
-  // Если уже авторизован, но профиль ещё подгружается — показываем загрузку, а не форму.
-  if (authLoading || (isAuthenticated && !profile)) {
+  // Show loading while checking auth or fetching profile
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">Загружаем профиль…</p>
-          <Button variant="ghost" onClick={logout}>Выйти</Button>
+          <p className="text-sm text-muted-foreground">Загрузка…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If authenticated but profile failed to load, show error with logout option
+  if (isAuthenticated && profileError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl text-destructive">Ошибка профиля</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{profileError}</AlertDescription>
+            </Alert>
+            <p className="text-sm text-muted-foreground text-center">
+              Попробуйте выйти и войти снова. Если проблема повторяется, обратитесь к администратору.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Button onClick={logout} className="w-full" variant="destructive">
+              Выйти
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
+  // If authenticated and profile loaded, redirect will happen via useEffect
+  if (isAuthenticated && profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">Перенаправление…</p>
         </div>
       </div>
     );
@@ -77,12 +129,6 @@ const Login = () => {
           </div>
           <span className="font-bold text-xl text-foreground">CleanFlow</span>
         </Link>
-        {isAuthenticated && (
-          <Button variant="ghost" size="sm" onClick={logout} className="gap-2">
-            <LogOut className="w-4 h-4" />
-            Выйти
-          </Button>
-        )}
       </header>
 
       <main className="flex-1 flex items-center justify-center px-6 py-12">
