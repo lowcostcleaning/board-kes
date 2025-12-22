@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut, User, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { EditProfileDialog } from '@/components/EditProfileDialog';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -18,7 +19,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
     navigate('/');
   };
 
-  const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Пользователь';
+  const displayName = (profile as any)?.name || user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Пользователь';
 
   return (
     <div className="min-h-screen gradient-hero">
@@ -40,6 +41,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
                 {profile?.role}
               </span>
             </div>
+            <EditProfileDialog />
             <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
               <LogOut className="w-4 h-4" />
               Выйти
