@@ -13,6 +13,7 @@ interface ReportFile {
   id: string;
   file_path: string;
   file_type: string;
+  signedUrl?: string;
 }
 
 interface Report {
@@ -67,9 +68,19 @@ export const ViewReportDialog = ({
 
         if (filesError) throw filesError;
 
+        // Generate signed URLs for each file (1 hour expiry)
+        const filesWithUrls = await Promise.all(
+          (filesData || []).map(async (file) => {
+            const { data } = await supabase.storage
+              .from('reports')
+              .createSignedUrl(file.file_path, 3600);
+            return { ...file, signedUrl: data?.signedUrl };
+          })
+        );
+
         setReport({
           ...reportData,
-          files: filesData || [],
+          files: filesWithUrls,
         });
       } catch (error) {
         console.error('Error fetching report:', error);
@@ -81,16 +92,11 @@ export const ViewReportDialog = ({
     fetchReport();
   }, [isOpen, orderId]);
 
-  const getPublicUrl = (filePath: string) => {
-    const { data } = supabase.storage
-      .from('reports')
-      .getPublicUrl(filePath);
-    return data.publicUrl;
-  };
-
-  const openLightbox = (filePath: string, type: string) => {
-    setLightboxUrl(getPublicUrl(filePath));
-    setLightboxType(type === 'image' ? 'image' : 'video');
+  const openLightbox = (url: string | undefined, type: string) => {
+    if (url) {
+      setLightboxUrl(url);
+      setLightboxType(type === 'image' ? 'image' : 'video');
+    }
   };
 
   const closeLightbox = () => {
@@ -145,12 +151,12 @@ export const ViewReportDialog = ({
                     {report.files.map((file) => (
                       <button
                         key={file.id}
-                        onClick={() => openLightbox(file.file_path, file.file_type)}
+                        onClick={() => openLightbox(file.signedUrl, file.file_type)}
                         className="relative aspect-square rounded-lg overflow-hidden bg-muted hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring"
                       >
-                        {file.file_type === 'image' ? (
+                        {file.file_type === 'image' && file.signedUrl ? (
                           <img
-                            src={getPublicUrl(file.file_path)}
+                            src={file.signedUrl}
                             alt="Report file"
                             className="w-full h-full object-cover"
                             loading="lazy"
