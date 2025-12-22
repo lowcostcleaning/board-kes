@@ -7,7 +7,8 @@ import { AddObjectDialog } from '@/components/AddObjectDialog';
 import { ObjectsList } from '@/components/ObjectsList';
 import { CreateOrderDialog } from '@/components/CreateOrderDialog';
 import { OrdersList } from '@/components/OrdersList';
-import { Building2, ShoppingCart } from 'lucide-react';
+import { ManagerChatList } from '@/components/ManagerChatList';
+import { Building2, ShoppingCart, MessageCircle } from 'lucide-react';
 
 const ManagerDashboard = () => {
   const { user, profile } = useAuth();
@@ -42,7 +43,7 @@ const ManagerDashboard = () => {
         </div>
 
         {/* Dashboard Cards */}
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <div style={{ animationDelay: '0.2s' }}>
             <DashboardCard 
               title="Объекты" 
@@ -77,6 +78,20 @@ const ManagerDashboard = () => {
                 <p className="text-sm text-muted-foreground">
                   Создавайте и управляйте заказами на уборку.
                 </p>
+              </div>
+            </DashboardCard>
+          </div>
+
+          <div style={{ animationDelay: '0.4s' }}>
+            <DashboardCard title="Сообщения" icon={MessageCircle}>
+              <div className="space-y-3">
+                {isApproved ? (
+                  <ManagerChatList />
+                ) : (
+                  <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
+                    Сообщения будут доступны после одобрения аккаунта.
+                  </p>
+                )}
               </div>
             </DashboardCard>
           </div>
