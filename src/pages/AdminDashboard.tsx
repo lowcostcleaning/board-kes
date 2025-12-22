@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { DashboardCard } from '@/components/DashboardCard';
@@ -7,37 +7,67 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Users, Shield, UserCheck, UserX, Brush, Briefcase } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
-// Mock users data - will be replaced with Supabase data later
-const mockUsers = [
-  { id: '1', name: 'John Doe', email: 'john@example.com', role: 'cleaner', status: 'pending' },
-  { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'manager', status: 'active' },
-  { id: '3', name: 'Bob Wilson', email: 'bob@example.com', role: 'cleaner', status: 'active' },
-];
+interface UserProfile {
+  id: string;
+  email: string | null;
+  role: string;
+  created_at: string | null;
+}
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
-  const [users, setUsers] = useState(mockUsers);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleRoleChange = (userId: string, newRole: string) => {
-    setUsers(users.map(u => 
-      u.id === userId ? { ...u, role: newRole } : u
-    ));
-    toast({
-      title: 'Role updated',
-      description: `User role has been changed to ${newRole}`,
-    });
+  const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Админ';
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось загрузить список пользователей',
+        variant: 'destructive',
+      });
+    } else {
+      setUsers(data || []);
+    }
+    setIsLoading(false);
   };
 
-  const handleStatusToggle = (userId: string) => {
-    setUsers(users.map(u => 
-      u.id === userId ? { ...u, status: u.status === 'active' ? 'pending' : 'active' } : u
-    ));
-    toast({
-      title: 'Status updated',
-      description: 'User status has been updated',
-    });
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role: newRole })
+      .eq('id', userId);
+
+    if (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось обновить роль',
+        variant: 'destructive',
+      });
+    } else {
+      setUsers(users.map(u => 
+        u.id === userId ? { ...u, role: newRole } : u
+      ));
+      toast({
+        title: 'Роль обновлена',
+        description: `Роль пользователя изменена на ${newRole}`,
+      });
+    }
   };
 
   const getRoleIcon = (role: string) => {
@@ -53,16 +83,29 @@ const AdminDashboard = () => {
     }
   };
 
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'cleaner':
+        return 'Клинер';
+      case 'manager':
+        return 'Менеджер';
+      case 'admin':
+        return 'Админ';
+      default:
+        return role;
+    }
+  };
+
   return (
-    <DashboardLayout title="Admin Dashboard">
+    <DashboardLayout title="Панель администратора">
       <div className="space-y-6">
         {/* Welcome Section */}
         <div className="animate-fade-in">
           <h1 className="text-2xl font-bold text-foreground mb-1">
-            Welcome, {user?.name}!
+            Добро пожаловать, {displayName}!
           </h1>
           <p className="text-muted-foreground">
-            Manage users and their roles from the admin panel.
+            Управляйте пользователями и их ролями.
           </p>
         </div>
 
@@ -75,33 +118,33 @@ const AdminDashboard = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{users.length}</p>
-                <p className="text-sm text-muted-foreground">Total Users</p>
+                <p className="text-sm text-muted-foreground">Всего пользователей</p>
               </div>
             </div>
           </div>
           <div className="p-4 rounded-lg bg-card border border-border shadow-card">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-status-active/15 flex items-center justify-center">
-                <UserCheck className="w-5 h-5 text-status-active" />
+                <Brush className="w-5 h-5 text-status-active" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">
-                  {users.filter(u => u.status === 'active').length}
+                  {users.filter(u => u.role === 'cleaner').length}
                 </p>
-                <p className="text-sm text-muted-foreground">Active</p>
+                <p className="text-sm text-muted-foreground">Клинеров</p>
               </div>
             </div>
           </div>
           <div className="p-4 rounded-lg bg-card border border-border shadow-card">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-status-pending/15 flex items-center justify-center">
-                <UserX className="w-5 h-5 text-status-pending" />
+                <Briefcase className="w-5 h-5 text-status-pending" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">
-                  {users.filter(u => u.status === 'pending').length}
+                  {users.filter(u => u.role === 'manager').length}
                 </p>
-                <p className="text-sm text-muted-foreground">Pending</p>
+                <p className="text-sm text-muted-foreground">Менеджеров</p>
               </div>
             </div>
           </div>
@@ -109,111 +152,110 @@ const AdminDashboard = () => {
 
         {/* Users List */}
         <div style={{ animationDelay: '0.2s' }}>
-          <DashboardCard title="Users" icon={Users}>
-            <div className="space-y-3">
-              {users.map((u) => (
-                <div
-                  key={u.id}
-                  className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/50"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
-                      <span className="text-sm font-medium text-accent-foreground">
-                        {u.name.charAt(0).toUpperCase()}
-                      </span>
+          <DashboardCard title="Пользователи" icon={Users}>
+            {isLoading ? (
+              <div className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : users.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center p-4">
+                Нет зарегистрированных пользователей
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {users.map((u) => (
+                  <div
+                    key={u.id}
+                    className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
+                        <span className="text-sm font-medium text-accent-foreground">
+                          {(u.email || 'U').charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{u.email}</p>
+                        <p className="text-sm text-muted-foreground">
+                          ID: {u.id.slice(0, 8)}...
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground">{u.name}</p>
-                      <p className="text-sm text-muted-foreground">{u.email}</p>
+                    <div className="flex items-center gap-3">
+                      <Select
+                        value={u.role}
+                        onValueChange={(value) => handleRoleChange(u.id, value)}
+                      >
+                        <SelectTrigger className="w-36">
+                          <SelectValue>
+                            <div className="flex items-center gap-2">
+                              {getRoleIcon(u.role)}
+                              <span>{getRoleLabel(u.role)}</span>
+                            </div>
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cleaner">
+                            <div className="flex items-center gap-2">
+                              <Brush className="w-3 h-3" />
+                              Клинер
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="manager">
+                            <div className="flex items-center gap-2">
+                              <Briefcase className="w-3 h-3" />
+                              Менеджер
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="admin">
+                            <div className="flex items-center gap-2">
+                              <Shield className="w-3 h-3" />
+                              Админ
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge
-                      variant={u.status === 'active' ? 'default' : 'secondary'}
-                      className={u.status === 'active' ? 'bg-status-active/15 text-status-active hover:bg-status-active/20' : 'bg-status-pending/15 text-status-pending hover:bg-status-pending/20'}
-                    >
-                      {u.status}
-                    </Badge>
-                    <Select
-                      value={u.role}
-                      onValueChange={(value) => handleRoleChange(u.id, value)}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue>
-                          <div className="flex items-center gap-2">
-                            {getRoleIcon(u.role)}
-                            <span className="capitalize">{u.role}</span>
-                          </div>
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cleaner">
-                          <div className="flex items-center gap-2">
-                            <Brush className="w-3 h-3" />
-                            Cleaner
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="manager">
-                          <div className="flex items-center gap-2">
-                            <Briefcase className="w-3 h-3" />
-                            Manager
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="admin">
-                          <div className="flex items-center gap-2">
-                            <Shield className="w-3 h-3" />
-                            Admin
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleStatusToggle(u.id)}
-                    >
-                      {u.status === 'active' ? 'Deactivate' : 'Activate'}
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </DashboardCard>
         </div>
 
         {/* Roles Management */}
         <div style={{ animationDelay: '0.3s' }}>
-          <DashboardCard title="Roles Management" icon={Shield}>
+          <DashboardCard title="Управление ролями" icon={Shield}>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Manage user roles and permissions. Admin role can only be assigned from this panel.
+                Управляйте ролями пользователей. Роль админа можно назначить только из этой панели.
               </p>
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
                     <Brush className="w-4 h-4 text-primary" />
-                    <span className="font-medium">Cleaner</span>
+                    <span className="font-medium">Клинер</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    View assigned cleanings and calendar
+                    Просмотр назначенных уборок и календаря
                   </p>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
                     <Briefcase className="w-4 h-4 text-primary" />
-                    <span className="font-medium">Manager</span>
+                    <span className="font-medium">Менеджер</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Manage objects and orders
+                    Управление объектами и заказами
                   </p>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
                     <Shield className="w-4 h-4 text-primary" />
-                    <span className="font-medium">Admin</span>
+                    <span className="font-medium">Админ</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Full access to user management
+                    Полный доступ к управлению пользователями
                   </p>
                 </div>
               </div>

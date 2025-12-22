@@ -7,15 +7,23 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { profile, isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (user && !allowedRoles.includes(user.role)) {
+  if (profile && !allowedRoles.includes(profile.role)) {
     // Redirect to appropriate dashboard based on role
-    const dashboardPath = `/${user.role}`;
+    const dashboardPath = `/${profile.role}`;
     return <Navigate to={dashboardPath} replace />;
   }
 
