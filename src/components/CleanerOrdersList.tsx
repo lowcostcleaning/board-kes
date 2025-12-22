@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Calendar, Clock, Building2, Home, Check, X } from 'lucide-react';
+import { Calendar, Clock, Building2, Home, Check, X, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { CompletionReportDialog } from './CompletionReportDialog';
+import { ViewReportDialog } from './ViewReportDialog';
+
 interface CleanerOrder {
   id: string;
   scheduled_date: string;
@@ -44,6 +46,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
   const [orders, setOrders] = useState<CleanerOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
+  const [viewingReportOrderId, setViewingReportOrderId] = useState<string | null>(null);
 
   const fetchOrders = async () => {
     try {
@@ -161,6 +164,10 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
     onRefresh();
   };
 
+  const handleViewReport = (id: string) => {
+    setViewingReportOrderId(id);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -187,27 +194,39 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
           key={order.id}
           className="p-4 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors space-y-3"
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm">
-              <Calendar className="w-4 h-4 text-primary" />
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2 text-sm flex-wrap">
+              <Calendar className="w-4 h-4 text-primary flex-shrink-0" />
               <span className="font-medium">
                 {format(new Date(order.scheduled_date), 'd MMMM yyyy', { locale: ru })}
               </span>
-              <Clock className="w-4 h-4 text-muted-foreground ml-2" />
+              <Clock className="w-4 h-4 text-muted-foreground ml-2 flex-shrink-0" />
               <span>{order.scheduled_time}</span>
             </div>
-            <Badge variant={statusVariants[order.status]}>
-              {statusLabels[order.status]}
-            </Badge>
+            <div className="flex items-center gap-2">
+              {order.status === 'completed' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2"
+                  onClick={() => handleViewReport(order.id)}
+                >
+                  <FileText className="w-4 h-4 text-primary" />
+                </Button>
+              )}
+              <Badge variant={statusVariants[order.status]}>
+                {statusLabels[order.status]}
+              </Badge>
+            </div>
           </div>
           
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-4 text-sm flex-wrap">
             <div className="flex items-center gap-1">
-              <Building2 className="w-3 h-3 text-muted-foreground" />
-              <span>{order.object.complex_name}</span>
+              <Building2 className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+              <span className="truncate">{order.object.complex_name}</span>
             </div>
             <div className="flex items-center gap-1">
-              <Home className="w-3 h-3 text-muted-foreground" />
+              <Home className="w-3 h-3 text-muted-foreground flex-shrink-0" />
               <span>{order.object.apartment_number}</span>
             </div>
           </div>
@@ -264,6 +283,12 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
         onClose={() => setCompletingOrderId(null)}
         orderId={completingOrderId || ''}
         onComplete={handleCompleteSuccess}
+      />
+
+      <ViewReportDialog
+        isOpen={!!viewingReportOrderId}
+        onClose={() => setViewingReportOrderId(null)}
+        orderId={viewingReportOrderId || ''}
       />
     </div>
   );
