@@ -80,11 +80,14 @@ export const CompletionReportDialog = ({
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      if (!user) {
+        throw new Error('Не авторизован');
+      }
 
       // Create completion report
       const { data: report, error: reportError } = await supabase
@@ -96,9 +99,12 @@ export const CompletionReportDialog = ({
         .select()
         .single();
 
-      if (reportError) throw reportError;
+      if (reportError) {
+        console.error('Report creation error:', reportError);
+        throw new Error('Ошибка создания отчёта: ' + reportError.message);
+      }
 
-      // Upload files
+      // Upload files one by one
       for (const fileData of files) {
         const fileExt = fileData.file.name.split('.').pop();
         const filePath = `${orderId}/${crypto.randomUUID()}.${fileExt}`;
@@ -107,7 +113,10 @@ export const CompletionReportDialog = ({
           .from('reports')
           .upload(filePath, fileData.file);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('File upload error:', uploadError);
+          throw new Error('Ошибка загрузки файла: ' + uploadError.message);
+        }
 
         // Save file reference
         const { error: fileRefError } = await supabase
@@ -118,7 +127,10 @@ export const CompletionReportDialog = ({
             file_type: fileData.type,
           });
 
-        if (fileRefError) throw fileRefError;
+        if (fileRefError) {
+          console.error('File reference error:', fileRefError);
+          throw new Error('Ошибка сохранения ссылки на файл: ' + fileRefError.message);
+        }
       }
 
       // Update order status
@@ -127,14 +139,17 @@ export const CompletionReportDialog = ({
         .update({ status: 'completed' })
         .eq('id', orderId);
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error('Order update error:', orderError);
+        throw new Error('Ошибка обновления статуса: ' + orderError.message);
+      }
 
       toast({
         title: 'Успешно',
         description: 'Отчёт отправлен',
       });
 
-      // Cleanup
+      // Cleanup and close only on success
       files.forEach((f) => URL.revokeObjectURL(f.preview));
       setDescription('');
       setFiles([]);
@@ -147,6 +162,7 @@ export const CompletionReportDialog = ({
         description: error.message || 'Не удалось отправить отчёт',
         variant: 'destructive',
       });
+      // Dialog stays open on error - user can retry
     } finally {
       setIsSubmitting(false);
     }
