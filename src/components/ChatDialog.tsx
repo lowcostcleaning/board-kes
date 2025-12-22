@@ -5,9 +5,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send } from 'lucide-react';
+import { Send, Paperclip, X, Image as ImageIcon, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+interface MessageFile {
+  id: string;
+  message_id: string;
+  file_url: string;
+  file_type: string;
+}
 
 interface Message {
   id: string;
@@ -16,6 +23,13 @@ interface Message {
   sender_role: string;
   text: string;
   created_at: string;
+  files?: MessageFile[];
+}
+
+interface FilePreview {
+  file: File;
+  preview: string;
+  type: 'image' | 'video';
 }
 
 interface ChatDialogProps {
@@ -41,7 +55,9 @@ export function ChatDialog({
   const [dialogId, setDialogId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [files, setFiles] = useState<FilePreview[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentManagerId = userRole === 'manager' ? user?.id : managerId;
 
@@ -52,7 +68,6 @@ export function ChatDialog({
     const fetchOrCreateDialog = async () => {
       setLoading(true);
       try {
-        // Try to find existing dialog
         const { data: existingDialog, error: fetchError } = await supabase
           .from('dialogs')
           .select('id')
@@ -65,7 +80,6 @@ export function ChatDialog({
         if (existingDialog) {
           setDialogId(existingDialog.id);
         } else if (userRole === 'manager') {
-          // Create new dialog (only managers can create)
           const { data: newDialog, error: createError } = await supabase
             .from('dialogs')
             .insert({
@@ -89,23 +103,41 @@ export function ChatDialog({
     fetchOrCreateDialog();
   }, [open, user?.id, cleanerId, currentManagerId, userRole]);
 
-  // Fetch messages
+  // Fetch messages with files
   useEffect(() => {
     if (!dialogId) return;
 
     const fetchMessages = async () => {
-      const { data, error } = await supabase
+      const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
         .select('*')
         .eq('dialog_id', dialogId)
         .order('created_at', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching messages:', error);
+      if (messagesError) {
+        console.error('Error fetching messages:', messagesError);
         return;
       }
 
-      setMessages(data || []);
+      // Fetch files for all messages
+      const messageIds = messagesData?.map(m => m.id) || [];
+      let filesData: MessageFile[] = [];
+      
+      if (messageIds.length > 0) {
+        const { data: fetchedFiles } = await supabase
+          .from('message_files')
+          .select('*')
+          .in('message_id', messageIds);
+        filesData = fetchedFiles || [];
+      }
+
+      // Attach files to messages
+      const messagesWithFiles = messagesData?.map(msg => ({
+        ...msg,
+        files: filesData.filter(f => f.message_id === msg.id)
+      })) || [];
+
+      setMessages(messagesWithFiles);
     };
 
     fetchMessages();
@@ -121,8 +153,15 @@ export function ChatDialog({
           table: 'messages',
           filter: `dialog_id=eq.${dialogId}`
         },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
+        async (payload) => {
+          const newMsg = payload.new as Message;
+          // Fetch files for new message
+          const { data: newFiles } = await supabase
+            .from('message_files')
+            .select('*')
+            .eq('message_id', newMsg.id);
+          
+          setMessages((prev) => [...prev, { ...newMsg, files: newFiles || [] }]);
         }
       )
       .subscribe();
@@ -139,20 +178,88 @@ export function ChatDialog({
     }
   }, [messages]);
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    const validFiles: FilePreview[] = [];
+
+    for (const file of selectedFiles) {
+      if (file.type.startsWith('image/')) {
+        validFiles.push({
+          file,
+          preview: URL.createObjectURL(file),
+          type: 'image'
+        });
+      } else if (file.type.startsWith('video/')) {
+        validFiles.push({
+          file,
+          preview: URL.createObjectURL(file),
+          type: 'video'
+        });
+      }
+    }
+
+    setFiles(prev => [...prev, ...validFiles]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setFiles(prev => {
+      const updated = [...prev];
+      URL.revokeObjectURL(updated[index].preview);
+      updated.splice(index, 1);
+      return updated;
+    });
+  };
+
   const handleSend = async () => {
-    if (!newMessage.trim() || !dialogId || !user?.id) return;
+    if ((!newMessage.trim() && files.length === 0) || !dialogId || !user?.id) return;
 
     setSending(true);
     try {
-      const { error } = await supabase.from('messages').insert({
-        dialog_id: dialogId,
-        sender_id: user.id,
-        sender_role: userRole,
-        text: newMessage.trim()
-      });
+      // Create message
+      const { data: messageData, error: messageError } = await supabase
+        .from('messages')
+        .insert({
+          dialog_id: dialogId,
+          sender_id: user.id,
+          sender_role: userRole,
+          text: newMessage.trim() || '📎 Файлы'
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (messageError) throw messageError;
 
+      // Upload files
+      for (const fileData of files) {
+        const fileExt = fileData.file.name.split('.').pop();
+        const filePath = `${dialogId}/${messageData.id}/${crypto.randomUUID()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('chat_files')
+          .upload(filePath, fileData.file);
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          continue;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('chat_files')
+          .getPublicUrl(filePath);
+
+        await supabase.from('message_files').insert({
+          message_id: messageData.id,
+          file_url: publicUrl,
+          file_type: fileData.type
+        });
+      }
+
+      // Cleanup
+      files.forEach(f => URL.revokeObjectURL(f.preview));
+      setFiles([]);
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
@@ -234,7 +341,38 @@ export function ChatDialog({
                                   : 'bg-muted'
                               )}
                             >
-                              <p className="text-sm break-words">{message.text}</p>
+                              {/* Files */}
+                              {message.files && message.files.length > 0 && (
+                                <div className="space-y-2 mb-2">
+                                  {message.files.map((file) => (
+                                    <div key={file.id}>
+                                      {file.file_type === 'image' ? (
+                                        <a 
+                                          href={file.file_url} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                        >
+                                          <img
+                                            src={file.file_url}
+                                            alt="Attachment"
+                                            className="rounded max-w-full max-h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                          />
+                                        </a>
+                                      ) : (
+                                        <video
+                                          src={file.file_url}
+                                          controls
+                                          className="rounded max-w-full max-h-48"
+                                        />
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              
+                              {message.text && message.text !== '📎 Файлы' && (
+                                <p className="text-sm break-words">{message.text}</p>
+                              )}
                               <p
                                 className={cn(
                                   'text-[10px] mt-1',
@@ -259,19 +397,66 @@ export function ChatDialog({
               </div>
             </ScrollArea>
 
+            {/* File previews */}
+            {files.length > 0 && (
+              <div className="px-4 py-2 border-t bg-muted/50">
+                <div className="flex gap-2 overflow-x-auto">
+                  {files.map((file, index) => (
+                    <div key={index} className="relative shrink-0">
+                      {file.type === 'image' ? (
+                        <img
+                          src={file.preview}
+                          alt="Preview"
+                          className="h-16 w-16 object-cover rounded"
+                        />
+                      ) : (
+                        <div className="h-16 w-16 bg-muted rounded flex items-center justify-center">
+                          <Video className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                      )}
+                      <button
+                        onClick={() => removeFile(index)}
+                        className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="p-4 border-t">
               <div className="flex gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={sending || !dialogId}
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
                 <Input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Сообщение..."
                   disabled={sending || !dialogId}
+                  className="flex-1"
                 />
                 <Button
                   size="icon"
                   onClick={handleSend}
-                  disabled={!newMessage.trim() || sending || !dialogId}
+                  disabled={(!newMessage.trim() && files.length === 0) || sending || !dialogId}
                 >
                   <Send className="h-4 w-4" />
                 </Button>
