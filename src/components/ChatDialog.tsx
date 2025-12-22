@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Paperclip, X, Image as ImageIcon, Video } from 'lucide-react';
+import { Send, Paperclip, X, Video, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -55,7 +55,10 @@ export function ChatDialog({
   const [dialogId, setDialogId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [files, setFiles] = useState<FilePreview[]>([]);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightboxType, setLightboxType] = useState<'image' | 'video'>('image');
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -124,10 +127,14 @@ export function ChatDialog({
       let filesData: MessageFile[] = [];
       
       if (messageIds.length > 0) {
-        const { data: fetchedFiles } = await supabase
+        const { data: fetchedFiles, error: filesError } = await supabase
           .from('message_files')
           .select('*')
           .in('message_id', messageIds);
+        
+        if (filesError) {
+          console.error('Error fetching files:', filesError);
+        }
         filesData = fetchedFiles || [];
       }
 
@@ -155,13 +162,21 @@ export function ChatDialog({
         },
         async (payload) => {
           const newMsg = payload.new as Message;
-          // Fetch files for new message
-          const { data: newFiles } = await supabase
-            .from('message_files')
-            .select('*')
-            .eq('message_id', newMsg.id);
-          
-          setMessages((prev) => [...prev, { ...newMsg, files: newFiles || [] }]);
+          // Small delay to ensure files are saved
+          setTimeout(async () => {
+            const { data: newFiles } = await supabase
+              .from('message_files')
+              .select('*')
+              .eq('message_id', newMsg.id);
+            
+            setMessages((prev) => {
+              // Check if message already exists
+              if (prev.some(m => m.id === newMsg.id)) {
+                return prev.map(m => m.id === newMsg.id ? { ...newMsg, files: newFiles || [] } : m);
+              }
+              return [...prev, { ...newMsg, files: newFiles || [] }];
+            });
+          }, 500);
         }
       )
       .subscribe();
@@ -199,8 +214,9 @@ export function ChatDialog({
     }
 
     setFiles(prev => [...prev, ...validFiles]);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    // Reset input
+    if (e.target) {
+      e.target.value = '';
     }
   };
 
@@ -217,8 +233,12 @@ export function ChatDialog({
     if ((!newMessage.trim() && files.length === 0) || !dialogId || !user?.id) return;
 
     setSending(true);
+    if (files.length > 0) {
+      setUploading(true);
+    }
+
     try {
-      // Create message
+      // Create message first
       const { data: messageData, error: messageError } = await supabase
         .from('messages')
         .insert({
@@ -232,7 +252,9 @@ export function ChatDialog({
 
       if (messageError) throw messageError;
 
-      // Upload files
+      // Upload files and create file records
+      const uploadedFiles: MessageFile[] = [];
+      
       for (const fileData of files) {
         const fileExt = fileData.file.name.split('.').pop();
         const filePath = `${dialogId}/${messageData.id}/${crypto.randomUUID()}.${fileExt}`;
@@ -243,6 +265,7 @@ export function ChatDialog({
 
         if (uploadError) {
           console.error('Upload error:', uploadError);
+          toast.error(`Ошибка загрузки: ${fileData.file.name}`);
           continue;
         }
 
@@ -250,12 +273,35 @@ export function ChatDialog({
           .from('chat_files')
           .getPublicUrl(filePath);
 
-        await supabase.from('message_files').insert({
-          message_id: messageData.id,
-          file_url: publicUrl,
-          file_type: fileData.type
-        });
+        const { data: fileRecord, error: fileRecordError } = await supabase
+          .from('message_files')
+          .insert({
+            message_id: messageData.id,
+            file_url: publicUrl,
+            file_type: fileData.type
+          })
+          .select()
+          .single();
+
+        if (fileRecordError) {
+          console.error('File record error:', fileRecordError);
+        } else if (fileRecord) {
+          uploadedFiles.push(fileRecord);
+        }
       }
+
+      // Add message with files to state immediately
+      const newMsgWithFiles: Message = {
+        ...messageData,
+        files: uploadedFiles
+      };
+      
+      setMessages(prev => {
+        if (prev.some(m => m.id === messageData.id)) {
+          return prev.map(m => m.id === messageData.id ? newMsgWithFiles : m);
+        }
+        return [...prev, newMsgWithFiles];
+      });
 
       // Cleanup
       files.forEach(f => URL.revokeObjectURL(f.preview));
@@ -266,6 +312,7 @@ export function ChatDialog({
       toast.error('Ошибка при отправке сообщения');
     } finally {
       setSending(false);
+      setUploading(false);
     }
   };
 
@@ -274,6 +321,15 @@ export function ChatDialog({
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const openLightbox = (url: string, type: 'image' | 'video') => {
+    setLightboxUrl(url);
+    setLightboxType(type);
+  };
+
+  const closeLightbox = () => {
+    setLightboxUrl(null);
   };
 
   const formatTime = (dateString: string) => {
@@ -301,170 +357,206 @@ export function ChatDialog({
   }, {} as Record<string, Message[]>);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md h-[600px] flex flex-col p-0">
-        <DialogHeader className="px-4 py-3 border-b">
-          <DialogTitle className="text-base font-medium">{cleanerName}</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md h-[600px] flex flex-col p-0">
+          <DialogHeader className="px-4 py-3 border-b">
+            <DialogTitle className="text-base font-medium">{cleanerName}</DialogTitle>
+          </DialogHeader>
 
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground">Загрузка...</p>
-          </div>
-        ) : (
-          <>
-            <ScrollArea className="flex-1 px-4" ref={scrollRef}>
-              <div className="py-4 space-y-4">
-                {Object.entries(groupedMessages).map(([date, msgs]) => (
-                  <div key={date}>
-                    <div className="flex justify-center mb-3">
-                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                        {date}
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      {msgs.map((message) => {
-                        const isOwn = message.sender_id === user?.id;
-                        return (
-                          <div
-                            key={message.id}
-                            className={cn(
-                              'flex',
-                              isOwn ? 'justify-end' : 'justify-start'
-                            )}
-                          >
+          {loading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              <ScrollArea className="flex-1 px-4" ref={scrollRef}>
+                <div className="py-4 space-y-4">
+                  {Object.entries(groupedMessages).map(([date, msgs]) => (
+                    <div key={date}>
+                      <div className="flex justify-center mb-3">
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                          {date}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {msgs.map((message) => {
+                          const isOwn = message.sender_id === user?.id;
+                          return (
                             <div
+                              key={message.id}
                               className={cn(
-                                'max-w-[75%] rounded-lg px-3 py-2',
-                                isOwn
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'bg-muted'
+                                'flex',
+                                isOwn ? 'justify-end' : 'justify-start'
                               )}
                             >
-                              {/* Files */}
-                              {message.files && message.files.length > 0 && (
-                                <div className="space-y-2 mb-2">
-                                  {message.files.map((file) => (
-                                    <div key={file.id}>
-                                      {file.file_type === 'image' ? (
-                                        <a 
-                                          href={file.file_url} 
-                                          target="_blank" 
-                                          rel="noopener noreferrer"
-                                        >
+                              <div
+                                className={cn(
+                                  'max-w-[75%] rounded-lg px-3 py-2',
+                                  isOwn
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted'
+                                )}
+                              >
+                                {/* Files as thumbnails */}
+                                {message.files && message.files.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mb-2">
+                                    {message.files.map((file) => (
+                                      <button
+                                        key={file.id}
+                                        onClick={() => openLightbox(file.file_url, file.file_type as 'image' | 'video')}
+                                        className="relative rounded overflow-hidden hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring"
+                                      >
+                                        {file.file_type === 'image' ? (
                                           <img
                                             src={file.file_url}
                                             alt="Attachment"
-                                            className="rounded max-w-full max-h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                            className="h-16 w-16 object-cover"
+                                            loading="lazy"
                                           />
-                                        </a>
-                                      ) : (
-                                        <video
-                                          src={file.file_url}
-                                          controls
-                                          className="rounded max-w-full max-h-48"
-                                        />
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              
-                              {message.text && message.text !== '📎 Файлы' && (
-                                <p className="text-sm break-words">{message.text}</p>
-                              )}
-                              <p
-                                className={cn(
-                                  'text-[10px] mt-1',
-                                  isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                                        ) : (
+                                          <div className="h-16 w-16 bg-background/20 flex items-center justify-center">
+                                            <Video className="h-6 w-6" />
+                                          </div>
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
                                 )}
-                              >
-                                {formatTime(message.created_at)}
-                              </p>
+                                
+                                {message.text && message.text !== '📎 Файлы' && (
+                                  <p className="text-sm break-words">{message.text}</p>
+                                )}
+                                <p
+                                  className={cn(
+                                    'text-[10px] mt-1',
+                                    isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                                  )}
+                                >
+                                  {formatTime(message.created_at)}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-
-                {messages.length === 0 && (
-                  <p className="text-center text-muted-foreground text-sm py-8">
-                    Начните диалог
-                  </p>
-                )}
-              </div>
-            </ScrollArea>
-
-            {/* File previews */}
-            {files.length > 0 && (
-              <div className="px-4 py-2 border-t bg-muted/50">
-                <div className="flex gap-2 overflow-x-auto">
-                  {files.map((file, index) => (
-                    <div key={index} className="relative shrink-0">
-                      {file.type === 'image' ? (
-                        <img
-                          src={file.preview}
-                          alt="Preview"
-                          className="h-16 w-16 object-cover rounded"
-                        />
-                      ) : (
-                        <div className="h-16 w-16 bg-muted rounded flex items-center justify-center">
-                          <Video className="h-6 w-6 text-muted-foreground" />
-                        </div>
-                      )}
-                      <button
-                        onClick={() => removeFile(index)}
-                        className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   ))}
+
+                  {messages.length === 0 && (
+                    <p className="text-center text-muted-foreground text-sm py-8">
+                      Начните диалог
+                    </p>
+                  )}
+                </div>
+              </ScrollArea>
+
+              {/* File previews with upload indicator */}
+              {files.length > 0 && (
+                <div className="px-4 py-2 border-t bg-muted/50">
+                  <div className="flex gap-2 overflow-x-auto">
+                    {files.map((file, index) => (
+                      <div key={index} className="relative shrink-0">
+                        {file.type === 'image' ? (
+                          <img
+                            src={file.preview}
+                            alt="Preview"
+                            className="h-16 w-16 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="h-16 w-16 bg-muted rounded flex items-center justify-center">
+                            <Video className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        )}
+                        {uploading ? (
+                          <div className="absolute inset-0 bg-background/60 rounded flex items-center justify-center">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => removeFile(index)}
+                            className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="p-4 border-t">
+                <div className="flex gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={sending || !dialogId}
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </Button>
+                  <Input
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Сообщение..."
+                    disabled={sending || !dialogId}
+                    className="flex-1"
+                  />
+                  <Button
+                    size="icon"
+                    onClick={handleSend}
+                    disabled={(!newMessage.trim() && files.length === 0) || sending || !dialogId}
+                  >
+                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </Button>
                 </div>
               </div>
-            )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
-            <div className="p-4 border-t">
-              <div className="flex gap-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*,video/*"
-                  multiple
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={sending || !dialogId}
-                >
-                  <Paperclip className="h-4 w-4" />
-                </Button>
-                <Input
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Сообщение..."
-                  disabled={sending || !dialogId}
-                  className="flex-1"
-                />
-                <Button
-                  size="icon"
-                  onClick={handleSend}
-                  disabled={(!newMessage.trim() && files.length === 0) || sending || !dialogId}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+      {/* Lightbox for viewing files */}
+      {lightboxUrl && (
+        <div 
+          className="fixed inset-0 z-[100] bg-background/95 flex items-center justify-center p-4"
+          onClick={closeLightbox}
+        >
+          <button
+            onClick={closeLightbox}
+            className="absolute top-4 right-4 p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <div className="max-w-full max-h-full" onClick={(e) => e.stopPropagation()}>
+            {lightboxType === 'image' ? (
+              <img
+                src={lightboxUrl}
+                alt="Full size"
+                className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              />
+            ) : (
+              <video
+                src={lightboxUrl}
+                controls
+                autoPlay
+                className="max-w-full max-h-[90vh] rounded-lg"
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
