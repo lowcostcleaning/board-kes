@@ -3,11 +3,13 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 export type UserRole = 'cleaner' | 'manager' | 'admin';
+export type UserStatus = 'pending' | 'approved';
 
 export interface UserProfile {
   id: string;
   email: string | null;
   role: UserRole;
+  status: UserStatus;
 }
 
 interface AuthContextType {
@@ -55,7 +57,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email, role')
+      .select('id, email, role, status')
       .eq('id', userId)
       .maybeSingle();
 
@@ -82,6 +84,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       id: data.id,
       email: data.email,
       role: data.role as UserRole,
+      status: (data.status as UserStatus) || 'pending',
     };
   };
 
@@ -170,6 +173,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         id: data.user.id,
         email,
         role,
+        status: 'pending',
       });
 
       if (profileInsertError) {

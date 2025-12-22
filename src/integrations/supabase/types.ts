@@ -20,18 +20,21 @@ export type Database = {
           email: string | null
           id: string
           role: string
+          status: string
         }
         Insert: {
           created_at?: string | null
           email?: string | null
           id: string
           role: string
+          status?: string
         }
         Update: {
           created_at?: string | null
           email?: string | null
           id?: string
           role?: string
+          status?: string
         }
         Relationships: []
       }
