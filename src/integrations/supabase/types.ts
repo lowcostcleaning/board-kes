@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      dialogs: {
+        Row: {
+          cleaner_id: string
+          created_at: string
+          id: string
+          manager_id: string
+        }
+        Insert: {
+          cleaner_id: string
+          created_at?: string
+          id?: string
+          manager_id: string
+        }
+        Update: {
+          cleaner_id?: string
+          created_at?: string
+          id?: string
+          manager_id?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          created_at: string
+          dialog_id: string
+          id: string
+          sender_id: string
+          sender_role: string
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          dialog_id: string
+          id?: string
+          sender_id: string
+          sender_role: string
+          text: string
+        }
+        Update: {
+          created_at?: string
+          dialog_id?: string
+          id?: string
+          sender_id?: string
+          sender_role?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_dialog_id_fkey"
+            columns: ["dialog_id"]
+            isOneToOne: false
+            referencedRelation: "dialogs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       objects: {
         Row: {
           apartment_number: string

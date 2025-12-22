@@ -5,7 +5,8 @@ import { DashboardCard } from '@/components/DashboardCard';
 import { ModerationBanner } from '@/components/ModerationBanner';
 import { CleanerOrdersList } from '@/components/CleanerOrdersList';
 import { OrdersCalendar } from '@/components/OrdersCalendar';
-import { Brush, Calendar } from 'lucide-react';
+import { CleanerChat } from '@/components/CleanerChat';
+import { Brush, Calendar, MessageCircle } from 'lucide-react';
 
 const CleanerDashboard = () => {
   const { user, profile } = useAuth();
@@ -35,7 +36,7 @@ const CleanerDashboard = () => {
         </div>
 
         {/* Dashboard Cards */}
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <div style={{ animationDelay: '0.2s' }}>
             <DashboardCard title="Мои заказы" icon={Brush}>
               <div className="space-y-3">
@@ -64,6 +65,20 @@ const CleanerDashboard = () => {
                 ) : (
                   <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
                     Календарь будет доступен после одобрения аккаунта.
+                  </p>
+                )}
+              </div>
+            </DashboardCard>
+          </div>
+
+          <div style={{ animationDelay: '0.4s' }}>
+            <DashboardCard title="Сообщения" icon={MessageCircle}>
+              <div className="space-y-3">
+                {isApproved ? (
+                  <CleanerChat />
+                ) : (
+                  <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
+                    Сообщения будут доступны после одобрения аккаунта.
                   </p>
                 )}
               </div>
