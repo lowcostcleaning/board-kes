@@ -12,8 +12,9 @@ import { cn } from '@/lib/utils';
 interface MessageFile {
   id: string;
   message_id: string;
-  file_url: string;
+  file_url: string; // This stores the file path, not a public URL
   file_type: string;
+  signedUrl?: string; // Generated signed URL for display
 }
 
 interface Message {
@@ -135,7 +136,24 @@ export function ChatDialog({
         if (filesError) {
           console.error('Error fetching files:', filesError);
         }
-        filesData = fetchedFiles || [];
+        
+        // Generate signed URLs for each file
+        const filesWithSignedUrls = await Promise.all(
+          (fetchedFiles || []).map(async (file) => {
+            // Extract file path from stored URL or use as path
+            const filePath = file.file_url.includes('/chat_files/') 
+              ? file.file_url.split('/chat_files/')[1]?.split('?')[0] 
+              : file.file_url;
+            
+            const { data } = await supabase.storage
+              .from('chat_files')
+              .createSignedUrl(filePath, 3600);
+            
+            return { ...file, signedUrl: data?.signedUrl };
+          })
+        );
+        
+        filesData = filesWithSignedUrls;
       }
 
       // Attach files to messages
@@ -169,12 +187,27 @@ export function ChatDialog({
               .select('*')
               .eq('message_id', newMsg.id);
             
+            // Generate signed URLs for new files
+            const filesWithSignedUrls = await Promise.all(
+              (newFiles || []).map(async (file) => {
+                const filePath = file.file_url.includes('/chat_files/') 
+                  ? file.file_url.split('/chat_files/')[1]?.split('?')[0] 
+                  : file.file_url;
+                
+                const { data } = await supabase.storage
+                  .from('chat_files')
+                  .createSignedUrl(filePath, 3600);
+                
+                return { ...file, signedUrl: data?.signedUrl };
+              })
+            );
+            
             setMessages((prev) => {
               // Check if message already exists
               if (prev.some(m => m.id === newMsg.id)) {
-                return prev.map(m => m.id === newMsg.id ? { ...newMsg, files: newFiles || [] } : m);
+                return prev.map(m => m.id === newMsg.id ? { ...newMsg, files: filesWithSignedUrls } : m);
               }
-              return [...prev, { ...newMsg, files: newFiles || [] }];
+              return [...prev, { ...newMsg, files: filesWithSignedUrls }];
             });
           }, 500);
         }
@@ -269,15 +302,12 @@ export function ChatDialog({
           continue;
         }
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('chat_files')
-          .getPublicUrl(filePath);
-
+        // Store file path instead of public URL
         const { data: fileRecord, error: fileRecordError } = await supabase
           .from('message_files')
           .insert({
             message_id: messageData.id,
-            file_url: publicUrl,
+            file_url: filePath,
             file_type: fileData.type
           })
           .select()
@@ -286,7 +316,12 @@ export function ChatDialog({
         if (fileRecordError) {
           console.error('File record error:', fileRecordError);
         } else if (fileRecord) {
-          uploadedFiles.push(fileRecord);
+          // Generate signed URL for immediate display
+          const { data } = await supabase.storage
+            .from('chat_files')
+            .createSignedUrl(filePath, 3600);
+          
+          uploadedFiles.push({ ...fileRecord, signedUrl: data?.signedUrl });
         }
       }
 
@@ -398,18 +433,17 @@ export function ChatDialog({
                                     : 'bg-muted'
                                 )}
                               >
-                                {/* Files as thumbnails */}
                                 {message.files && message.files.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mb-2">
                                     {message.files.map((file) => (
                                       <button
                                         key={file.id}
-                                        onClick={() => openLightbox(file.file_url, file.file_type as 'image' | 'video')}
+                                        onClick={() => file.signedUrl && openLightbox(file.signedUrl, file.file_type as 'image' | 'video')}
                                         className="relative rounded overflow-hidden hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring"
                                       >
-                                        {file.file_type === 'image' ? (
+                                        {file.file_type === 'image' && file.signedUrl ? (
                                           <img
-                                            src={file.file_url}
+                                            src={file.signedUrl}
                                             alt="Attachment"
                                             className="h-16 w-16 object-cover"
                                             loading="lazy"
