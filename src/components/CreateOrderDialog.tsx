@@ -32,6 +32,7 @@ interface PropertyObject {
 interface Cleaner {
   id: string;
   email: string;
+  name: string | null;
 }
 
 interface CleanerOrder {
@@ -105,7 +106,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   const fetchCleaners = async () => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email')
+      .select('id, email, name')
       .eq('role', 'cleaner')
       .eq('status', 'approved');
 
@@ -234,7 +235,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                         <User className="w-5 h-5 text-primary" />
                       </div>
                       <span className="text-sm font-medium">
-                        {cleaner.email?.split('@')[0] || 'Клинер'}
+                        {cleaner.name || cleaner.email?.split('@')[0] || 'Клинер'}
                       </span>
                     </button>
                   ))}
@@ -248,10 +249,10 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
           <>
             <DialogHeader>
               <DialogTitle className="text-center">Выберите дату</DialogTitle>
-              {selectedCleanerData && (
-                <p className="text-sm text-muted-foreground text-center mt-1">
-                  Расписание: {selectedCleanerData.email?.split('@')[0]}
-                </p>
+            {selectedCleanerData && (
+              <p className="text-sm text-muted-foreground text-center mt-1">
+                Расписание: {selectedCleanerData.name || selectedCleanerData.email?.split('@')[0]}
+              </p>
               )}
             </DialogHeader>
             <div className="py-4">
@@ -368,7 +369,14 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                     <User className="w-3 h-3" />
                     Клинер
                   </Label>
-                  <p className="text-sm">{selectedCleanerData.email?.split('@')[0]}</p>
+                  <p className="text-sm">
+                    {selectedCleanerData.name || selectedCleanerData.email?.split('@')[0]}
+                    {selectedCleanerData.name && (
+                      <span className="text-muted-foreground ml-1">
+                        (@{selectedCleanerData.email?.split('@')[0]})
+                      </span>
+                    )}
+                  </p>
                 </div>
               )}
             </div>
