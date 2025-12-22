@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback } from 'react';
-import { Upload, X, Image, Video, Loader2, Camera } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Upload, X, Image, Video, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -19,11 +20,11 @@ interface CompletionReportDialogProps {
   onComplete: () => void;
 }
 
-interface FilePreview {
-  file: File;
-  preview: string;
+type UploadedReportFile = {
+  path: string;
   type: 'image' | 'video';
-}
+  name: string;
+};
 
 export const CompletionReportDialog = ({
   isOpen,
@@ -32,77 +33,98 @@ export const CompletionReportDialog = ({
   onComplete,
 }: CompletionReportDialogProps) => {
   const [description, setDescription] = useState('');
-  const [files, setFiles] = useState<FilePreview[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedReportFile[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const canCreateObjectUrl = typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function';
+  const draftIdRef = useRef<string>(crypto.randomUUID());
 
-  const processFiles = useCallback((selectedFiles: FileList | null) => {
-    if (!selectedFiles) return;
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
 
-    const newFiles: FilePreview[] = [];
-    
-    Array.from(selectedFiles).forEach((file) => {
-      const isImage = file.type.startsWith('image/');
-      const isVideo = file.type.startsWith('video/');
+    // Reset input ASAP (iOS Safari stability)
+    if (e.target) e.target.value = '';
 
-      if (!isImage && !isVideo) {
-        toast({
-          title: 'Ошибка',
-          description: 'Можно загружать только фото и видео',
-          variant: 'destructive',
+    if (selectedFiles.length === 0) return;
+
+    setUploadingFiles(true);
+    try {
+      const draftId = draftIdRef.current;
+
+      for (const file of selectedFiles) {
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+
+        if (!isImage && !isVideo) {
+          toast({
+            title: 'Ошибка',
+            description: 'Можно загружать только фото и видео',
+            variant: 'destructive',
+          });
+          continue;
+        }
+
+        const maxBytes = 20 * 1024 * 1024; // 20MB
+        if (file.size > maxBytes) {
+          toast({
+            title: 'Ошибка',
+            description: 'Файл слишком большой (макс. 20MB)',
+            variant: 'destructive',
+          });
+          continue;
+        }
+
+        const fileExt = file.name.split('.').pop() || (isImage ? 'jpg' : 'mp4');
+        const filePath = `${orderId}/${draftId}/${crypto.randomUUID()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage.from('reports').upload(filePath, file, {
+          contentType: file.type,
         });
-        return;
-      }
 
-      const maxBytes = 20 * 1024 * 1024; // 20MB
-      if (file.size > maxBytes) {
-        toast({
-          title: 'Ошибка',
-          description: 'Файл слишком большой (макс. 20MB)',
-          variant: 'destructive',
-        });
-        return;
-      }
+        if (uploadError) {
+          console.error('File upload error:', uploadError);
+          toast({
+            title: 'Ошибка',
+            description: 'Ошибка загрузки файла: ' + uploadError.message,
+            variant: 'destructive',
+          });
+          continue;
+        }
 
-      // Avoid video object-URL previews on mobile (can cause crashes). Videos already render as an icon.
-      const preview = isImage && canCreateObjectUrl ? URL.createObjectURL(file) : '';
-      newFiles.push({
-        file,
-        preview,
-        type: isImage ? 'image' : 'video',
+        setUploadedFiles((prev) => [
+          ...prev,
+          {
+            path: filePath,
+            type: isImage ? 'image' : 'video',
+            name: file.name,
+          },
+        ]);
+      }
+    } catch (error: any) {
+      console.error('Error selecting/uploading files:', error);
+      toast({
+        title: 'Ошибка',
+        description: error?.message || 'Не удалось загрузить файл',
+        variant: 'destructive',
       });
-    });
-
-    setFiles((prev) => [...prev, ...newFiles]);
-  }, []);
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    processFiles(e.target.files);
-    if (e.target) {
-      e.target.value = '';
+    } finally {
+      setUploadingFiles(false);
     }
   };
 
   const removeFile = (index: number) => {
-    setFiles((prev) => {
-      const newFiles = [...prev];
-      const item = newFiles[index];
-      if (canCreateObjectUrl && item?.preview) {
-        URL.revokeObjectURL(item.preview);
-      }
-      newFiles.splice(index, 1);
-      return newFiles;
-    });
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || uploadingFiles) return;
     setIsSubmitting(true);
-    
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('Не авторизован');
       }
@@ -122,28 +144,13 @@ export const CompletionReportDialog = ({
         throw new Error('Ошибка создания отчёта: ' + reportError.message);
       }
 
-      // Upload files one by one
-      for (const fileData of files) {
-        const fileExt = fileData.file.name.split('.').pop();
-        const filePath = `${orderId}/${crypto.randomUUID()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('reports')
-          .upload(filePath, fileData.file);
-
-        if (uploadError) {
-          console.error('File upload error:', uploadError);
-          throw new Error('Ошибка загрузки файла: ' + uploadError.message);
-        }
-
-        // Save file reference
-        const { error: fileRefError } = await supabase
-          .from('report_files')
-          .insert({
-            report_id: report.id,
-            file_path: filePath,
-            file_type: fileData.type,
-          });
+      // Save uploaded file references
+      for (const file of uploadedFiles) {
+        const { error: fileRefError } = await supabase.from('report_files').insert({
+          report_id: report.id,
+          file_path: file.path,
+          file_type: file.type,
+        });
 
         if (fileRefError) {
           console.error('File reference error:', fileRefError);
@@ -152,10 +159,7 @@ export const CompletionReportDialog = ({
       }
 
       // Update order status
-      const { error: orderError } = await supabase
-        .from('orders')
-        .update({ status: 'completed' })
-        .eq('id', orderId);
+      const { error: orderError } = await supabase.from('orders').update({ status: 'completed' }).eq('id', orderId);
 
       if (orderError) {
         console.error('Order update error:', orderError);
@@ -168,11 +172,9 @@ export const CompletionReportDialog = ({
       });
 
       // Cleanup and close only on success
-      if (canCreateObjectUrl) {
-        files.forEach((f) => f.preview && URL.revokeObjectURL(f.preview));
-      }
       setDescription('');
-      setFiles([]);
+      setUploadedFiles([]);
+      draftIdRef.current = crypto.randomUUID();
       onComplete();
       onClose();
     } catch (error: any) {
@@ -182,154 +184,138 @@ export const CompletionReportDialog = ({
         description: error.message || 'Не удалось отправить отчёт',
         variant: 'destructive',
       });
-      // Dialog stays open on error - user can retry
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleClose = () => {
-    if (!isSubmitting) {
-      if (canCreateObjectUrl) {
-        files.forEach((f) => f.preview && URL.revokeObjectURL(f.preview));
-      }
-      setDescription('');
-      setFiles([]);
-      onClose();
-    }
+    if (isSubmitting || uploadingFiles) return;
+    setDescription('');
+    setUploadedFiles([]);
+    draftIdRef.current = crypto.randomUUID();
+    onClose();
   };
 
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Отчёт о выполнении</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Отчёт о выполнении</DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <div>
-            <Textarea
-              placeholder="Описание выполненной работы..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="min-h-[100px] resize-none"
-            />
-          </div>
+          <div className="space-y-4">
+            <div>
+              <Textarea
+                placeholder="Описание выполненной работы..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="min-h-[100px] resize-none"
+              />
+            </div>
 
-          <div className="space-y-2">
-            {/* File input for gallery */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,video/*"
-              multiple
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-            
-            {/* Camera input for mobile */}
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-            
-            {isMobile ? (
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => cameraInputRef.current?.click()}
-                >
-                  <Camera className="w-4 h-4 mr-2" />
-                  Камера
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Галерея
-                </Button>
-              </div>
-            ) : (
+            <div className="space-y-2">
               <Button
                 type="button"
                 variant="outline"
                 className="w-full"
                 onClick={() => fileInputRef.current?.click()}
+                disabled={isSubmitting || uploadingFiles}
               >
-                <Upload className="w-4 h-4 mr-2" />
-                Добавить фото/видео
+                {uploadingFiles ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Загрузка…
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Добавить фото/видео
+                  </>
+                )}
               </Button>
+            </div>
+
+            {uploadedFiles.length > 0 && (
+              <div className="space-y-2">
+                {uploadedFiles.map((file, index) => (
+                  <div
+                    key={`${file.path}-${index}`}
+                    className="flex items-center gap-2 rounded-md border bg-background px-2 py-2"
+                  >
+                    {file.type === 'image' ? (
+                      <Image className="w-4 h-4 text-muted-foreground shrink-0" />
+                    ) : (
+                      <Video className="w-4 h-4 text-muted-foreground shrink-0" />
+                    )}
+                    <span className="text-sm truncate flex-1">{file.name}</span>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => removeFile(index)}
+                      disabled={isSubmitting || uploadingFiles}
+                      aria-label="Удалить файл"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
-          {files.length > 0 && (
-            <div className="grid grid-cols-3 gap-2">
-              {files.map((fileData, index) => (
-                <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
-                  {fileData.type === 'image' ? (
-                    fileData.preview ? (
-                      <img
-                        src={fileData.preview}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Image className="w-8 h-8 text-muted-foreground" />
-                      </div>
-                    )
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Video className="w-8 h-8 text-muted-foreground" />
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => removeFile(index)}
-                    className="absolute top-1 right-1 p-1 rounded-full bg-background/80 hover:bg-background transition-colors"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                  <div className="absolute bottom-1 left-1 p-1 rounded bg-background/80">
-                    {fileData.type === 'image' ? (
-                      <Image className="w-3 h-3" />
-                    ) : (
-                      <Video className="w-3 h-3" />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              disabled={isSubmitting || uploadingFiles}
+              className="w-full sm:w-auto"
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || uploadingFiles}
+              className="w-full sm:w-auto"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Отправка...
+                </>
+              ) : (
+                'Отправить'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={handleClose} disabled={isSubmitting} className="w-full sm:w-auto">
-            Отмена
-          </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full sm:w-auto">
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Отправка...
-              </>
-            ) : (
-              'Отправить'
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      {/* IMPORTANT: file input is portaled outside Dialog to avoid mobile crashes */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            onChange={handleFileSelect}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: 1,
+              height: 1,
+              opacity: 0,
+              pointerEvents: 'none',
+            }}
+            aria-hidden="true"
+            tabIndex={-1}
+          />,
+          document.body
+        )}
+    </>
   );
 };
