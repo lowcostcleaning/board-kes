@@ -41,16 +41,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, userEmail?: string | null): Promise<UserProfile | null> => {
     const { data, error } = await supabase
       .from('profiles')
       .select('id, email, role')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching profile:', error);
       return null;
+    }
+
+    // If profile doesn't exist, create one with default role 'cleaner'
+    if (!data) {
+      const { data: newProfile, error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: userEmail || null,
+          role: 'cleaner',
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error creating profile:', insertError);
+        return null;
+      }
+
+      return {
+        id: newProfile.id,
+        email: newProfile.email,
+        role: newProfile.role as UserRole,
+      };
     }
 
     return {
@@ -70,7 +94,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Defer profile fetch with setTimeout to avoid deadlock
         if (session?.user) {
           setTimeout(() => {
-            fetchProfile(session.user.id).then(setProfile);
+            fetchProfile(session.user.id, session.user.email).then(setProfile);
           }, 0);
         } else {
           setProfile(null);
@@ -84,7 +108,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        fetchProfile(session.user.id).then((p) => {
+        fetchProfile(session.user.id, session.user.email).then((p) => {
           setProfile(p);
           setIsLoading(false);
         });
