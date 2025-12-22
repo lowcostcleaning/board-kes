@@ -161,6 +161,7 @@ export type Database = {
       orders: {
         Row: {
           cleaner_id: string
+          cleaner_rating: number | null
           created_at: string
           id: string
           manager_id: string
@@ -172,6 +173,7 @@ export type Database = {
         }
         Insert: {
           cleaner_id: string
+          cleaner_rating?: number | null
           created_at?: string
           id?: string
           manager_id: string
@@ -183,6 +185,7 @@ export type Database = {
         }
         Update: {
           cleaner_id?: string
+          cleaner_rating?: number | null
           created_at?: string
           id?: string
           manager_id?: string
@@ -204,26 +207,32 @@ export type Database = {
       }
       profiles: {
         Row: {
+          completed_orders_count: number
           created_at: string | null
           email: string | null
           id: string
           name: string | null
+          rating: number | null
           role: string
           status: string
         }
         Insert: {
+          completed_orders_count?: number
           created_at?: string | null
           email?: string | null
           id: string
           name?: string | null
+          rating?: number | null
           role: string
           status?: string
         }
         Update: {
+          completed_orders_count?: number
           created_at?: string | null
           email?: string | null
           id?: string
           name?: string | null
+          rating?: number | null
           role?: string
           status?: string
         }

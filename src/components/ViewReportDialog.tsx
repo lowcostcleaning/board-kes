@@ -8,6 +8,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { CleanerRatingInput } from '@/components/CleanerRatingInput';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ReportFile {
   id: string;
@@ -34,10 +37,15 @@ export const ViewReportDialog = ({
   onClose,
   orderId,
 }: ViewReportDialogProps) => {
+  const { profile } = useAuth();
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [lightboxType, setLightboxType] = useState<'image' | 'video'>('image');
+  const [currentRating, setCurrentRating] = useState<number>(0);
+  const [savingRating, setSavingRating] = useState(false);
+
+  const isManager = profile?.role === 'manager';
 
   useEffect(() => {
     if (!isOpen || !orderId) return;
@@ -58,6 +66,19 @@ export const ViewReportDialog = ({
           setReport(null);
           setLoading(false);
           return;
+        }
+
+        // Fetch current order rating
+        const { data: orderData } = await supabase
+          .from('orders')
+          .select('cleaner_rating')
+          .eq('id', orderId)
+          .single();
+
+        if (orderData?.cleaner_rating) {
+          setCurrentRating(orderData.cleaner_rating);
+        } else {
+          setCurrentRating(0);
         }
 
         // Fetch files
@@ -91,6 +112,34 @@ export const ViewReportDialog = ({
 
     fetchReport();
   }, [isOpen, orderId]);
+
+  const handleRatingChange = async (rating: number) => {
+    setCurrentRating(rating);
+    setSavingRating(true);
+
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ cleaner_rating: rating })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Оценка сохранена',
+        description: `Вы поставили оценку ${rating} из 5`,
+      });
+    } catch (error) {
+      console.error('Error saving rating:', error);
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось сохранить оценку',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingRating(false);
+    }
+  };
 
   const openLightbox = (url: string | undefined, type: string) => {
     if (url) {
@@ -175,6 +224,24 @@ export const ViewReportDialog = ({
               {report.files.length === 0 && !report.description && (
                 <div className="text-center py-4 text-muted-foreground text-sm">
                   Отчёт без описания и файлов
+                </div>
+              )}
+
+              {/* Rating section - only for managers */}
+              {isManager && (
+                <div className="pt-4 border-t border-border">
+                  <p className="text-sm font-medium mb-2">Оцените работу клинера</p>
+                  <div className="flex items-center gap-3">
+                    <CleanerRatingInput
+                      value={currentRating}
+                      onChange={handleRatingChange}
+                      disabled={savingRating}
+                      size="lg"
+                    />
+                    {savingRating && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
                 </div>
               )}
             </div>
