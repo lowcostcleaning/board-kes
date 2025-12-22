@@ -16,12 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
 import { Plus, Building2, Home, Clock, User, CalendarIcon, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { OrdersCalendar } from '@/components/OrdersCalendar';
 
 interface PropertyObject {
   id: string;
@@ -67,14 +67,12 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     }
   }, [open]);
 
-  // Fetch cleaner's orders when cleaner is selected
   useEffect(() => {
     if (selectedCleaner) {
       fetchCleanerOrders();
     }
   }, [selectedCleaner]);
 
-  // Update busy time slots when date changes
   useEffect(() => {
     if (selectedDate && cleanerOrders.length > 0) {
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -85,7 +83,6 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
         )
         .map(order => order.scheduled_time);
       setBusyTimeSlots(busySlots);
-      // Reset time if it's now busy
       if (busySlots.includes(selectedTime)) {
         setSelectedTime('');
       }
@@ -143,11 +140,9 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     setStep('calendar');
   };
 
-  const handleDateSelect = (date: Date | undefined) => {
-    if (date) {
-      setSelectedDate(date);
-      setStep('details');
-    }
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    setStep('details');
   };
 
   const handleSubmit = async () => {
@@ -202,6 +197,8 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   const selectedCleanerData = cleaners.find(c => c.id === selectedCleaner);
 
   const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
@@ -214,7 +211,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
           Создать заказ
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[440px]">
         {step === 'cleaner' && (
           <>
             <DialogHeader>
@@ -231,7 +228,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                     <button
                       key={cleaner.id}
                       onClick={() => handleCleanerSelect(cleaner.id)}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+                      className="w-full flex items-center gap-3 p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40 hover:bg-[#ebebeb] dark:hover:bg-muted/60 transition-all duration-300 text-left hover:scale-[1.01] active:scale-[0.99]"
                     >
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                         <User className="w-5 h-5 text-primary" />
@@ -251,18 +248,25 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
           <>
             <DialogHeader>
               <DialogTitle className="text-center">Выберите дату</DialogTitle>
+              {selectedCleanerData && (
+                <p className="text-sm text-muted-foreground text-center mt-1">
+                  Расписание: {selectedCleanerData.email?.split('@')[0]}
+                </p>
+              )}
             </DialogHeader>
-            <div className="py-4 flex justify-center">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateSelect}
-                locale={ru}
-                disabled={(date) => date < new Date()}
-                className={cn("p-3 pointer-events-auto")}
+            <div className="py-4">
+              <OrdersCalendar
+                cleanerId={selectedCleaner}
+                onDateSelect={handleDateSelect}
+                selectedDate={selectedDate}
+                minDate={today}
               />
             </div>
-            <Button variant="outline" onClick={() => setStep('cleaner')}>
+            <Button 
+              variant="outline" 
+              onClick={() => setStep('cleaner')}
+              className="rounded-[14px] transition-all duration-300"
+            >
               Назад
             </Button>
           </>
@@ -271,7 +275,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
         {step === 'details' && (
           <>
             <DialogHeader className="text-center space-y-3">
-              <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <div className="mx-auto w-16 h-16 rounded-[18px] bg-primary/10 flex items-center justify-center">
                 <Building2 className="w-8 h-8 text-primary" />
               </div>
               <DialogTitle>Уборка апартаментов</DialogTitle>
@@ -290,15 +294,15 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                   Время
                 </Label>
                 {availableTimeSlots.length === 0 ? (
-                  <p className="text-sm text-destructive p-3 rounded-lg bg-destructive/10">
+                  <p className="text-sm text-destructive p-3 rounded-[14px] bg-destructive/10">
                     Все слоты заняты на эту дату. Выберите другую дату.
                   </p>
                 ) : (
                   <Select value={selectedTime} onValueChange={setSelectedTime}>
-                    <SelectTrigger className="bg-muted/50">
+                    <SelectTrigger className="bg-[#f5f5f5] dark:bg-muted/40 rounded-[14px] border-0">
                       <SelectValue placeholder="Выберите время" />
                     </SelectTrigger>
-                    <SelectContent className="bg-background">
+                    <SelectContent className="bg-background rounded-[14px]">
                       {TIME_SLOTS.map((time) => {
                         const isBusy = busyTimeSlots.includes(time);
                         return (
@@ -306,7 +310,10 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                             key={time} 
                             value={time} 
                             disabled={isBusy}
-                            className={cn(isBusy && "text-muted-foreground line-through")}
+                            className={cn(
+                              "rounded-lg",
+                              isBusy && "text-muted-foreground line-through"
+                            )}
                           >
                             {time} {isBusy && '(занято)'}
                           </SelectItem>
@@ -323,12 +330,12 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                   Объект
                 </Label>
                 <Select value={selectedObject} onValueChange={setSelectedObject}>
-                  <SelectTrigger className="bg-muted/50">
+                  <SelectTrigger className="bg-[#f5f5f5] dark:bg-muted/40 rounded-[14px] border-0">
                     <SelectValue placeholder="Выберите объект" />
                   </SelectTrigger>
-                  <SelectContent className="bg-background">
+                  <SelectContent className="bg-background rounded-[14px]">
                     {objects.map((obj) => (
-                      <SelectItem key={obj.id} value={obj.id}>
+                      <SelectItem key={obj.id} value={obj.id} className="rounded-lg">
                         {obj.complex_name} - {obj.apartment_number}
                       </SelectItem>
                     ))}
@@ -338,14 +345,14 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
 
               {selectedObjectData && (
                 <div className="space-y-3 pt-2">
-                  <div className="p-3 rounded-lg bg-muted/50">
+                  <div className="p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40">
                     <Label className="flex items-center gap-2 text-muted-foreground mb-1">
                       <Building2 className="w-3 h-3" />
                       ЖК
                     </Label>
                     <p className="text-sm">{selectedObjectData.complex_name}</p>
                   </div>
-                  <div className="p-3 rounded-lg bg-muted/50">
+                  <div className="p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40">
                     <Label className="flex items-center gap-2 text-muted-foreground mb-1">
                       <Home className="w-3 h-3" />
                       Апартамент
@@ -356,7 +363,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
               )}
 
               {selectedCleanerData && (
-                <div className="p-3 rounded-lg bg-muted/50">
+                <div className="p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40">
                   <Label className="flex items-center gap-2 text-muted-foreground mb-1">
                     <User className="w-3 h-3" />
                     Клинер
@@ -367,16 +374,20 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep('calendar')} className="flex-1">
+              <Button 
+                variant="outline" 
+                onClick={() => setStep('calendar')} 
+                className="flex-1 rounded-[14px] transition-all duration-300"
+              >
                 Назад
               </Button>
               <Button 
                 onClick={handleSubmit} 
                 disabled={isLoading || !selectedTime || !selectedObject}
-                className="flex-1 bg-primary hover:bg-primary/90"
+                className="flex-1 bg-primary hover:bg-primary/90 rounded-[14px] transition-all duration-300"
               >
                 <Send className="w-4 h-4 mr-2" />
-                {isLoading ? 'Создание...' : 'Отправить заявку'}
+                {isLoading ? 'Создание...' : 'Отправить'}
               </Button>
             </div>
           </>
