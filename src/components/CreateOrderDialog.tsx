@@ -22,6 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { OrdersCalendar } from '@/components/OrdersCalendar';
+import { CleanerRatingDisplay } from '@/components/CleanerRatingDisplay';
 
 interface PropertyObject {
   id: string;
@@ -33,6 +34,8 @@ interface Cleaner {
   id: string;
   email: string;
   name: string | null;
+  rating: number | null;
+  completed_orders_count: number;
 }
 
 interface CleanerOrder {
@@ -106,7 +109,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   const fetchCleaners = async () => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email, name')
+      .select('id, email, name, rating, completed_orders_count')
       .eq('role', 'cleaner')
       .eq('status', 'approved');
 
@@ -234,9 +237,16 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                         <User className="w-5 h-5 text-primary" />
                       </div>
-                      <span className="text-sm font-medium">
-                        {cleaner.name || cleaner.email?.split('@')[0] || 'Клинер'}
-                      </span>
+                      <div className="flex-1">
+                        <span className="text-sm font-medium block">
+                          {cleaner.name || cleaner.email?.split('@')[0] || 'Клинер'}
+                        </span>
+                        <CleanerRatingDisplay
+                          rating={cleaner.rating}
+                          completedOrders={cleaner.completed_orders_count}
+                          size="sm"
+                        />
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -377,6 +387,13 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                       </span>
                     )}
                   </p>
+                  <div className="mt-1">
+                    <CleanerRatingDisplay
+                      rating={selectedCleanerData.rating}
+                      completedOrders={selectedCleanerData.completed_orders_count}
+                      size="sm"
+                    />
+                  </div>
                 </div>
               )}
             </div>

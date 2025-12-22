@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Paperclip, X, Video, Loader2, Image } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useNotificationSound } from '@/hooks/use-notification-sound';
 
 interface MessageFile {
   id: string;
@@ -52,6 +53,7 @@ export function ChatDialog({
   userRole,
 }: ChatDialogProps) {
   const { user } = useAuth();
+  const { playSound } = useNotificationSound();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [dialogId, setDialogId] = useState<string | null>(null);
@@ -184,6 +186,11 @@ export function ChatDialog({
         },
         async (payload) => {
           const newMsg = payload.new as Message;
+
+          // Play notification sound if message is from someone else
+          if (newMsg.sender_id !== user?.id) {
+            playSound();
+          }
 
           // Small delay to ensure files are saved
           setTimeout(async () => {

@@ -5,7 +5,8 @@ import { DashboardCard } from '@/components/DashboardCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Shield, UserCheck, Clock, Brush, Briefcase, CheckCircle2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Users, Shield, UserCheck, Clock, Brush, Briefcase, CheckCircle2, Star, Edit2, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -15,6 +16,9 @@ interface UserProfile {
   role: string;
   status: string;
   created_at: string | null;
+  name: string | null;
+  rating: number | null;
+  completed_orders_count: number;
 }
 
 const AdminDashboard = () => {
@@ -22,6 +26,8 @@ const AdminDashboard = () => {
   const { toast } = useToast();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingOrdersCount, setEditingOrdersCount] = useState<string | null>(null);
+  const [newOrdersCount, setNewOrdersCount] = useState<string>('');
 
   const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Админ';
 
@@ -120,6 +126,51 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleStartEditOrdersCount = (userId: string, currentCount: number) => {
+    setEditingOrdersCount(userId);
+    setNewOrdersCount(currentCount.toString());
+  };
+
+  const handleCancelEditOrdersCount = () => {
+    setEditingOrdersCount(null);
+    setNewOrdersCount('');
+  };
+
+  const handleSaveOrdersCount = async (userId: string) => {
+    const count = parseInt(newOrdersCount, 10);
+    if (isNaN(count) || count < 0) {
+      toast({
+        title: 'Ошибка',
+        description: 'Введите корректное число',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ completed_orders_count: count })
+      .eq('id', userId);
+
+    if (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось обновить количество уборок',
+        variant: 'destructive',
+      });
+    } else {
+      setUsers(users.map(u =>
+        u.id === userId ? { ...u, completed_orders_count: count } : u
+      ));
+      toast({
+        title: 'Успешно',
+        description: 'Количество уборок обновлено',
+      });
+      setEditingOrdersCount(null);
+      setNewOrdersCount('');
+    }
+  };
+
   return (
     <DashboardLayout title="Панель администратора">
       <div className="space-y-6">
@@ -190,19 +241,71 @@ const AdminDashboard = () => {
                 {users.map((u) => (
                   <div
                     key={u.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/50"
+                    className="flex flex-col lg:flex-row lg:items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/50 gap-3"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center shrink-0">
                         <span className="text-sm font-medium text-accent-foreground">
                           {(u.email || 'U').charAt(0).toUpperCase()}
                         </span>
                       </div>
-                      <div>
-                        <p className="font-medium text-foreground">{u.email}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground truncate">{u.name || u.email}</p>
                         <p className="text-sm text-muted-foreground">
                           ID: {u.id.slice(0, 8)}...
                         </p>
+                        {/* Show rating and orders count for cleaners */}
+                        {u.role === 'cleaner' && (
+                          <div className="flex items-center gap-3 mt-1 text-sm">
+                            <div className="flex items-center gap-1">
+                              <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                              <span>{u.rating ? u.rating.toFixed(1) : '—'}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {editingOrdersCount === u.id ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    value={newOrdersCount}
+                                    onChange={(e) => setNewOrdersCount(e.target.value)}
+                                    className="w-16 h-6 text-xs px-2"
+                                    min={0}
+                                  />
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    onClick={() => handleSaveOrdersCount(u.id)}
+                                  >
+                                    <Check className="w-3 h-3 text-status-active" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    onClick={handleCancelEditOrdersCount}
+                                  >
+                                    <X className="w-3 h-3 text-destructive" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <>
+                                  <span className="text-muted-foreground">
+                                    {u.completed_orders_count} уборок
+                                  </span>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-5 w-5"
+                                    onClick={() => handleStartEditOrdersCount(u.id, u.completed_orders_count)}
+                                  >
+                                    <Edit2 className="w-3 h-3" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
