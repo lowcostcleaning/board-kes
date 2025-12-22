@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Sparkles, LogOut, ArrowLeft, AlertCircle } from 'lucide-react';
+import { TreePine, LogOut, ArrowLeft, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -121,13 +121,13 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen gradient-hero flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 flex flex-col">
       <header className="p-6 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-xl text-foreground">CleanFlow</span>
+          <TreePine className="w-8 h-8 text-emerald-600" />
+          <span className="font-bold text-lg text-emerald-700 italic">Lowcost</span>
+          <span className="font-bold text-lg text-red-500 italic">Cleaning</span>
+          <TreePine className="w-8 h-8 text-emerald-600" />
         </Link>
       </header>
 
@@ -163,15 +163,15 @@ const Login = () => {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting}>
                 {isSubmitting ? 'Вход…' : 'Войти'}
               </Button>
-              <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+              <Link to="/forgot-password" className="text-sm text-emerald-600 hover:underline">
                 Забыли пароль?
               </Link>
               <p className="text-sm text-muted-foreground text-center">
                 Нет аккаунта?{' '}
-                <Link to="/register" className="text-primary hover:underline font-medium">
+                <Link to="/register" className="text-emerald-600 hover:underline font-medium">
                   Регистрация
                 </Link>
               </p>
