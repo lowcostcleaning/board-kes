@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-
+import { CompletionReportDialog } from './CompletionReportDialog';
 interface CleanerOrder {
   id: string;
   scheduled_date: string;
@@ -43,6 +43,7 @@ const statusVariants: Record<string, 'default' | 'secondary' | 'destructive' | '
 export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersListProps) => {
   const [orders, setOrders] = useState<CleanerOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
 
   const fetchOrders = async () => {
     try {
@@ -151,27 +152,13 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
     }
   };
 
-  const handleComplete = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: 'completed' })
-        .eq('id', id);
+  const handleComplete = (id: string) => {
+    setCompletingOrderId(id);
+  };
 
-      if (error) throw error;
-
-      toast({
-        title: 'Успешно',
-        description: 'Уборка завершена',
-      });
-      onRefresh();
-    } catch (error: any) {
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось завершить заказ',
-        variant: 'destructive',
-      });
-    }
+  const handleCompleteSuccess = () => {
+    setCompletingOrderId(null);
+    onRefresh();
   };
 
   if (isLoading) {
@@ -271,6 +258,13 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
           )}
         </div>
       ))}
+
+      <CompletionReportDialog
+        isOpen={!!completingOrderId}
+        onClose={() => setCompletingOrderId(null)}
+        orderId={completingOrderId || ''}
+        onComplete={handleCompleteSuccess}
+      />
     </div>
   );
 };

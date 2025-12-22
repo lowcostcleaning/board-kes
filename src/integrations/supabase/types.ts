@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      completion_reports: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          order_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "completion_reports_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dialogs: {
         Row: {
           cleaner_id: string
@@ -167,6 +196,38 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      report_files: {
+        Row: {
+          created_at: string
+          file_path: string
+          file_type: string
+          id: string
+          report_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_path: string
+          file_type: string
+          id?: string
+          report_id: string
+        }
+        Update: {
+          created_at?: string
+          file_path?: string
+          file_type?: string
+          id?: string
+          report_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_files_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "completion_reports"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
