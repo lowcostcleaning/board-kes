@@ -81,7 +81,7 @@ const Register = () => {
           <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
             <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="font-bold text-xl text-foreground">CleanFlow</span>
+          <span className="font-bold text-xl text-foreground">Lowcost Cleaning</span>
         </Link>
         {isAuthenticated && (
           <Button variant="ghost" size="sm" onClick={logout} className="gap-2">
@@ -96,7 +96,7 @@ const Register = () => {
         <Card className="w-full max-w-md shadow-soft border-border/50 animate-slide-up">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold">Регистрация</CardTitle>
-            <CardDescription>Присоединяйтесь к CleanFlow</CardDescription>
+            <CardDescription>Присоединяйтесь к Lowcost Cleaning</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
