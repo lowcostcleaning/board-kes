@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Upload, X, Image, Video, Loader2 } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Upload, X, Image, Video, Loader2, Camera } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -35,9 +35,9 @@ export const CompletionReportDialog = ({
   const [files, setFiles] = useState<FilePreview[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = e.target.files;
+  const processFiles = useCallback((selectedFiles: FileList | null) => {
     if (!selectedFiles) return;
 
     const newFiles: FilePreview[] = [];
@@ -64,9 +64,12 @@ export const CompletionReportDialog = ({
     });
 
     setFiles((prev) => [...prev, ...newFiles]);
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  }, []);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    processFiles(e.target.files);
+    if (e.target) {
+      e.target.value = '';
     }
   };
 
@@ -177,9 +180,11 @@ export const CompletionReportDialog = ({
     }
   };
 
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Отчёт о выполнении</DialogTitle>
         </DialogHeader>
@@ -194,7 +199,8 @@ export const CompletionReportDialog = ({
             />
           </div>
 
-          <div>
+          <div className="space-y-2">
+            {/* File input for gallery */}
             <input
               ref={fileInputRef}
               type="file"
@@ -204,15 +210,48 @@ export const CompletionReportDialog = ({
               onChange={handleFileSelect}
             />
             
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Добавить фото/видео
-            </Button>
+            {/* Camera input for mobile */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+            
+            {isMobile ? (
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => cameraInputRef.current?.click()}
+                >
+                  <Camera className="w-4 h-4 mr-2" />
+                  Камера
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Галерея
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Добавить фото/видео
+              </Button>
+            )}
           </div>
 
           {files.length > 0 && (
@@ -250,11 +289,11 @@ export const CompletionReportDialog = ({
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting} className="w-full sm:w-auto">
             Отмена
           </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+          <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full sm:w-auto">
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
