@@ -142,9 +142,13 @@ export function ChatDialog({
         // Generate signed URLs for each file
         const filesWithSignedUrls = await Promise.all(
           (fetchedFiles || []).map(async (file) => {
-            const filePath = file.file_url.includes('/chat_files/')
-              ? file.file_url.split('/chat_files/')[1]?.split('?')[0]
-              : file.file_url;
+            // Normalize file path: handle old full URLs and new path-only values
+            let filePath = file.file_url;
+            if (filePath.includes('/chat_files/')) {
+              filePath = filePath.split('/chat_files/')[1]?.split('?')[0] || filePath;
+            }
+            // Decode URI components that may be double-encoded
+            try { filePath = decodeURIComponent(filePath); } catch {}
 
             const { data } = await supabase.storage.from('chat_files').createSignedUrl(filePath, 3600);
 
@@ -187,9 +191,11 @@ export function ChatDialog({
 
             const filesWithSignedUrls = await Promise.all(
               (newFiles || []).map(async (file) => {
-                const filePath = file.file_url.includes('/chat_files/')
-                  ? file.file_url.split('/chat_files/')[1]?.split('?')[0]
-                  : file.file_url;
+                let filePath = file.file_url;
+                if (filePath.includes('/chat_files/')) {
+                  filePath = filePath.split('/chat_files/')[1]?.split('?')[0] || filePath;
+                }
+                try { filePath = decodeURIComponent(filePath); } catch {}
 
                 const { data } = await supabase.storage.from('chat_files').createSignedUrl(filePath, 3600);
 
