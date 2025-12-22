@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Building2, Home, Trash2, LayoutGrid } from 'lucide-react';
+import { Building2, Home, Trash2, LayoutGrid, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { EditObjectDialog } from './EditObjectDialog';
 
 interface PropertyObject {
   id: string;
@@ -35,6 +36,8 @@ const getApartmentTypeLabel = (type: string | null) => {
 export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsListProps) => {
   const [objects, setObjects] = useState<PropertyObject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [editObject, setEditObject] = useState<PropertyObject | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const fetchObjects = async () => {
     try {
@@ -124,17 +127,37 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
             )}
           </div>
           {!disabled && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-              onClick={() => handleDelete(obj.id)}
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                onClick={() => {
+                  setEditObject(obj);
+                  setEditDialogOpen(true);
+                }}
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                onClick={() => handleDelete(obj.id)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           )}
         </div>
       ))}
+
+      <EditObjectDialog
+        object={editObject}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onObjectUpdated={onRefresh}
+      />
     </div>
   );
 };
