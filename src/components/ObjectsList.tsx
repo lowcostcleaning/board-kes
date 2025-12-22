@@ -108,19 +108,19 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
       {objects.map((obj) => (
         <div
           key={obj.id}
-          className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors"
+          className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors gap-2"
         >
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex flex-col gap-1 min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">{obj.complex_name}</span>
+              <Building2 className="w-4 h-4 text-primary flex-shrink-0" />
+              <span className="text-sm font-medium truncate">{obj.complex_name}</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
-              <Home className="w-3 h-3" />
-              <span className="text-sm">{obj.apartment_number}</span>
+              <Home className="w-3 h-3 flex-shrink-0" />
+              <span className="text-sm truncate">{obj.apartment_number}</span>
             </div>
             {obj.apartment_type && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs w-fit">
                 <LayoutGrid className="w-3 h-3 mr-1" />
                 {getApartmentTypeLabel(obj.apartment_type)}
               </Badge>
