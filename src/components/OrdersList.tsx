@@ -47,28 +47,42 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
 
   const fetchOrders = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select(`
           id,
           scheduled_date,
           scheduled_time,
           status,
-          object:objects(complex_name, apartment_number),
-          cleaner:profiles!orders_cleaner_id_fkey(email)
+          cleaner_id,
+          object:objects(complex_name, apartment_number)
         `)
         .order('scheduled_date', { ascending: true });
 
-      if (error) throw error;
+      if (ordersError) throw ordersError;
 
-      // Transform data to match Order interface
-      const transformedOrders = (data || []).map((order: any) => ({
+      if (!ordersData || ordersData.length === 0) {
+        setOrders([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Get cleaner profiles separately
+      const cleanerIds = [...new Set(ordersData.map(o => o.cleaner_id))];
+      const { data: cleanerProfiles } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .in('id', cleanerIds);
+
+      const cleanerMap = new Map(cleanerProfiles?.map(p => [p.id, p]) || []);
+
+      const transformedOrders = ordersData.map((order: any) => ({
         id: order.id,
         scheduled_date: order.scheduled_date,
         scheduled_time: order.scheduled_time,
         status: order.status,
         object: order.object || { complex_name: 'Неизвестно', apartment_number: '' },
-        cleaner: order.cleaner || { email: 'Неизвестно' },
+        cleaner: cleanerMap.get(order.cleaner_id) || { email: 'Неизвестно' },
       }));
 
       setOrders(transformedOrders);

@@ -49,28 +49,43 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select(`
           id,
           scheduled_date,
           scheduled_time,
           status,
-          object:objects(complex_name, apartment_number),
-          manager:profiles!orders_manager_id_fkey(email)
+          manager_id,
+          object:objects(complex_name, apartment_number)
         `)
         .eq('cleaner_id', user.id)
         .order('scheduled_date', { ascending: true });
 
-      if (error) throw error;
+      if (ordersError) throw ordersError;
 
-      const transformedOrders = (data || []).map((order: any) => ({
+      if (!ordersData || ordersData.length === 0) {
+        setOrders([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Get manager profiles separately
+      const managerIds = [...new Set(ordersData.map(o => o.manager_id))];
+      const { data: managerProfiles } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .in('id', managerIds);
+
+      const managerMap = new Map(managerProfiles?.map(p => [p.id, p]) || []);
+
+      const transformedOrders = ordersData.map((order: any) => ({
         id: order.id,
         scheduled_date: order.scheduled_date,
         scheduled_time: order.scheduled_time,
         status: order.status,
         object: order.object || { complex_name: 'Неизвестно', apartment_number: '' },
-        manager: order.manager || { email: 'Неизвестно' },
+        manager: managerMap.get(order.manager_id) || { email: 'Неизвестно' },
       }));
 
       setOrders(transformedOrders);
