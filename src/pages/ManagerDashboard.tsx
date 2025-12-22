@@ -96,7 +96,7 @@ const ManagerDashboard = () => {
           </div>
 
           <div style={{ animationDelay: '0.35s' }}>
-            <DashboardCard title="Сообщения" icon={MessageCircle}>
+            <DashboardCard title="Сообщения" icon={MessageCircle} collapsible defaultOpen={false}>
               <div className="space-y-3">
                 {isApproved ? (
                   <ManagerChatList />
