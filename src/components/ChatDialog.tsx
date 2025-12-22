@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Paperclip, X, Video, Loader2 } from 'lucide-react';
+import { Send, Paperclip, X, Video, Loader2, Image } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -62,6 +62,7 @@ export function ChatDialog({
   const [lightboxType, setLightboxType] = useState<'image' | 'video'>('image');
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canCreateObjectUrl = typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function';
 
   const currentManagerId = userRole === 'manager' ? user?.id : managerId;
 
@@ -227,36 +228,52 @@ export function ChatDialog({
   }, [messages]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []);
-    const validFiles: FilePreview[] = [];
+    try {
+      const selectedFiles = Array.from(e.target.files || []);
+      const validFiles: FilePreview[] = [];
 
-    for (const file of selectedFiles) {
-      if (file.type.startsWith('image/')) {
+      for (const file of selectedFiles) {
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+
+        if (!isImage && !isVideo) continue;
+
+        // Mobile browsers can crash when generating previews for very large files.
+        // Skip huge files and avoid video object-URL previews.
+        const maxBytes = 20 * 1024 * 1024; // 20MB
+        if (file.size > maxBytes) {
+          toast.error('Файл слишком большой (макс. 20MB)');
+          continue;
+        }
+
+        const preview = isImage && canCreateObjectUrl ? URL.createObjectURL(file) : '';
+
         validFiles.push({
           file,
-          preview: URL.createObjectURL(file),
-          type: 'image'
-        });
-      } else if (file.type.startsWith('video/')) {
-        validFiles.push({
-          file,
-          preview: URL.createObjectURL(file),
-          type: 'video'
+          preview,
+          type: isImage ? 'image' : 'video',
         });
       }
-    }
 
-    setFiles(prev => [...prev, ...validFiles]);
-    // Reset input
-    if (e.target) {
-      e.target.value = '';
+      setFiles((prev) => [...prev, ...validFiles]);
+    } catch (err) {
+      console.error('Error selecting file(s):', err);
+      toast.error('Ошибка при выборе файла');
+    } finally {
+      // Reset input
+      if (e.target) {
+        e.target.value = '';
+      }
     }
   };
 
   const removeFile = (index: number) => {
-    setFiles(prev => {
+    setFiles((prev) => {
       const updated = [...prev];
-      URL.revokeObjectURL(updated[index].preview);
+      const item = updated[index];
+      if (canCreateObjectUrl && item?.preview) {
+        URL.revokeObjectURL(item.preview);
+      }
       updated.splice(index, 1);
       return updated;
     });
@@ -339,7 +356,9 @@ export function ChatDialog({
       });
 
       // Cleanup
-      files.forEach(f => URL.revokeObjectURL(f.preview));
+      if (canCreateObjectUrl) {
+        files.forEach((f) => f.preview && URL.revokeObjectURL(f.preview));
+      }
       setFiles([]);
       setNewMessage('');
     } catch (error) {
@@ -492,11 +511,17 @@ export function ChatDialog({
                     {files.map((file, index) => (
                       <div key={index} className="relative shrink-0">
                         {file.type === 'image' ? (
-                          <img
-                            src={file.preview}
-                            alt="Preview"
-                            className="h-16 w-16 object-cover rounded"
-                          />
+                          file.preview ? (
+                            <img
+                              src={file.preview}
+                              alt="Preview"
+                              className="h-16 w-16 object-cover rounded"
+                            />
+                          ) : (
+                            <div className="h-16 w-16 bg-muted rounded flex items-center justify-center">
+                              <Image className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                          )
                         ) : (
                           <div className="h-16 w-16 bg-muted rounded flex items-center justify-center">
                             <Video className="h-6 w-6 text-muted-foreground" />

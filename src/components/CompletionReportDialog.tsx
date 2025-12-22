@@ -36,6 +36,7 @@ export const CompletionReportDialog = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const canCreateObjectUrl = typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function';
 
   const processFiles = useCallback((selectedFiles: FileList | null) => {
     if (!selectedFiles) return;
@@ -45,7 +46,7 @@ export const CompletionReportDialog = ({
     Array.from(selectedFiles).forEach((file) => {
       const isImage = file.type.startsWith('image/');
       const isVideo = file.type.startsWith('video/');
-      
+
       if (!isImage && !isVideo) {
         toast({
           title: 'Ошибка',
@@ -55,7 +56,18 @@ export const CompletionReportDialog = ({
         return;
       }
 
-      const preview = URL.createObjectURL(file);
+      const maxBytes = 20 * 1024 * 1024; // 20MB
+      if (file.size > maxBytes) {
+        toast({
+          title: 'Ошибка',
+          description: 'Файл слишком большой (макс. 20MB)',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Avoid video object-URL previews on mobile (can cause crashes). Videos already render as an icon.
+      const preview = isImage && canCreateObjectUrl ? URL.createObjectURL(file) : '';
       newFiles.push({
         file,
         preview,
@@ -76,7 +88,10 @@ export const CompletionReportDialog = ({
   const removeFile = (index: number) => {
     setFiles((prev) => {
       const newFiles = [...prev];
-      URL.revokeObjectURL(newFiles[index].preview);
+      const item = newFiles[index];
+      if (canCreateObjectUrl && item?.preview) {
+        URL.revokeObjectURL(item.preview);
+      }
       newFiles.splice(index, 1);
       return newFiles;
     });
@@ -153,7 +168,9 @@ export const CompletionReportDialog = ({
       });
 
       // Cleanup and close only on success
-      files.forEach((f) => URL.revokeObjectURL(f.preview));
+      if (canCreateObjectUrl) {
+        files.forEach((f) => f.preview && URL.revokeObjectURL(f.preview));
+      }
       setDescription('');
       setFiles([]);
       onComplete();
@@ -173,7 +190,9 @@ export const CompletionReportDialog = ({
 
   const handleClose = () => {
     if (!isSubmitting) {
-      files.forEach((f) => URL.revokeObjectURL(f.preview));
+      if (canCreateObjectUrl) {
+        files.forEach((f) => f.preview && URL.revokeObjectURL(f.preview));
+      }
       setDescription('');
       setFiles([]);
       onClose();
@@ -183,7 +202,7 @@ export const CompletionReportDialog = ({
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Отчёт о выполнении</DialogTitle>
@@ -259,11 +278,17 @@ export const CompletionReportDialog = ({
               {files.map((fileData, index) => (
                 <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
                   {fileData.type === 'image' ? (
-                    <img
-                      src={fileData.preview}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
+                    fileData.preview ? (
+                      <img
+                        src={fileData.preview}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Image className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                    )
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Video className="w-8 h-8 text-muted-foreground" />
