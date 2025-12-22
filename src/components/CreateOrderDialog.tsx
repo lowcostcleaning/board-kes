@@ -34,6 +34,12 @@ interface Cleaner {
   email: string;
 }
 
+interface CleanerOrder {
+  scheduled_date: string;
+  scheduled_time: string;
+  status: string;
+}
+
 interface CreateOrderDialogProps {
   onOrderCreated: () => void;
   disabled?: boolean;
@@ -51,6 +57,8 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [selectedObject, setSelectedObject] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [cleanerOrders, setCleanerOrders] = useState<CleanerOrder[]>([]);
+  const [busyTimeSlots, setBusyTimeSlots] = useState<string[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -58,6 +66,33 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
       fetchCleaners();
     }
   }, [open]);
+
+  // Fetch cleaner's orders when cleaner is selected
+  useEffect(() => {
+    if (selectedCleaner) {
+      fetchCleanerOrders();
+    }
+  }, [selectedCleaner]);
+
+  // Update busy time slots when date changes
+  useEffect(() => {
+    if (selectedDate && cleanerOrders.length > 0) {
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const busySlots = cleanerOrders
+        .filter(order => 
+          order.scheduled_date === dateStr && 
+          order.status !== 'cancelled'
+        )
+        .map(order => order.scheduled_time);
+      setBusyTimeSlots(busySlots);
+      // Reset time if it's now busy
+      if (busySlots.includes(selectedTime)) {
+        setSelectedTime('');
+      }
+    } else {
+      setBusyTimeSlots([]);
+    }
+  }, [selectedDate, cleanerOrders]);
 
   const fetchObjects = async () => {
     const { data, error } = await supabase
@@ -82,12 +117,25 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     }
   };
 
+  const fetchCleanerOrders = async () => {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('scheduled_date, scheduled_time, status')
+      .eq('cleaner_id', selectedCleaner);
+
+    if (!error && data) {
+      setCleanerOrders(data);
+    }
+  };
+
   const resetForm = () => {
     setStep('cleaner');
     setSelectedCleaner('');
     setSelectedDate(undefined);
     setSelectedTime('');
     setSelectedObject('');
+    setCleanerOrders([]);
+    setBusyTimeSlots([]);
   };
 
   const handleCleanerSelect = (cleanerId: string) => {
@@ -152,6 +200,8 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
 
   const selectedObjectData = objects.find(o => o.id === selectedObject);
   const selectedCleanerData = cleaners.find(c => c.id === selectedCleaner);
+
+  const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time));
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
@@ -239,18 +289,32 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                   <Clock className="w-4 h-4" />
                   Время
                 </Label>
-                <Select value={selectedTime} onValueChange={setSelectedTime}>
-                  <SelectTrigger className="bg-muted/50">
-                    <SelectValue placeholder="Выберите время" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background">
-                    {TIME_SLOTS.map((time) => (
-                      <SelectItem key={time} value={time}>
-                        {time}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {availableTimeSlots.length === 0 ? (
+                  <p className="text-sm text-destructive p-3 rounded-lg bg-destructive/10">
+                    Все слоты заняты на эту дату. Выберите другую дату.
+                  </p>
+                ) : (
+                  <Select value={selectedTime} onValueChange={setSelectedTime}>
+                    <SelectTrigger className="bg-muted/50">
+                      <SelectValue placeholder="Выберите время" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background">
+                      {TIME_SLOTS.map((time) => {
+                        const isBusy = busyTimeSlots.includes(time);
+                        return (
+                          <SelectItem 
+                            key={time} 
+                            value={time} 
+                            disabled={isBusy}
+                            className={cn(isBusy && "text-muted-foreground line-through")}
+                          >
+                            {time} {isBusy && '(занято)'}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div className="space-y-2">
