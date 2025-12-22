@@ -46,21 +46,27 @@ export type Database = {
       dialogs: {
         Row: {
           cleaner_id: string
+          cleaner_last_read_at: string | null
           created_at: string
           id: string
           manager_id: string
+          manager_last_read_at: string | null
         }
         Insert: {
           cleaner_id: string
+          cleaner_last_read_at?: string | null
           created_at?: string
           id?: string
           manager_id: string
+          manager_last_read_at?: string | null
         }
         Update: {
           cleaner_id?: string
+          cleaner_last_read_at?: string | null
           created_at?: string
           id?: string
           manager_id?: string
+          manager_last_read_at?: string | null
         }
         Relationships: []
       }

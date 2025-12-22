@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 interface Dialog {
   id: string;
   manager_id: string;
+  cleaner_last_read_at: string | null;
   manager?: {
     id: string;
     name: string | null;
@@ -22,6 +23,23 @@ export function CleanerChat() {
   const [loading, setLoading] = useState(true);
   const [selectedDialog, setSelectedDialog] = useState<Dialog | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
+  const checkUnreadMessages = async (dialogsList: Dialog[]) => {
+    const newUnreadMap: Record<string, boolean> = {};
+
+    for (const dialog of dialogsList) {
+      const { count } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('dialog_id', dialog.id)
+        .eq('sender_role', 'manager')
+        .gt('created_at', dialog.cleaner_last_read_at || '1970-01-01');
+
+      newUnreadMap[dialog.id] = (count || 0) > 0;
+    }
+
+    setUnreadMap(newUnreadMap);
+  };
 
   useEffect(() => {
     const fetchDialogs = async () => {
@@ -31,7 +49,7 @@ export function CleanerChat() {
         // Fetch dialogs where cleaner is the current user
         const { data: dialogsData, error: dialogsError } = await supabase
           .from('dialogs')
-          .select('id, manager_id')
+          .select('id, manager_id, cleaner_last_read_at')
           .eq('cleaner_id', user.id)
           .order('created_at', { ascending: false });
 
@@ -62,6 +80,9 @@ export function CleanerChat() {
         }));
 
         setDialogs(dialogsWithManagers);
+        
+        // Check unread messages
+        await checkUnreadMessages(dialogsWithManagers);
       } catch (error) {
         console.error('Error fetching dialogs:', error);
       } finally {
@@ -72,9 +93,43 @@ export function CleanerChat() {
     fetchDialogs();
   }, [user?.id]);
 
-  const handleOpenChat = (dialog: Dialog) => {
+  // Subscribe to new messages
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel('cleaner-unread-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        () => {
+          if (dialogs.length > 0) {
+            checkUnreadMessages(dialogs);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, dialogs]);
+
+  const handleOpenChat = async (dialog: Dialog) => {
     setSelectedDialog(dialog);
     setChatOpen(true);
+    
+    // Mark as read when opening chat
+    await supabase
+      .from('dialogs')
+      .update({ cleaner_last_read_at: new Date().toISOString() })
+      .eq('id', dialog.id);
+    
+    setUnreadMap(prev => ({ ...prev, [dialog.id]: false }));
   };
 
   const getManagerName = (dialog: Dialog) => {
@@ -119,7 +174,12 @@ export function CleanerChat() {
                   </p>
                 )}
               </div>
-              <MessageCircle className="w-4 h-4 text-muted-foreground" />
+              <div className="relative">
+                <MessageCircle className="w-4 h-4 text-muted-foreground" />
+                {unreadMap[dialog.id] && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary rounded-full" />
+                )}
+              </div>
             </Button>
           ))}
         </div>
