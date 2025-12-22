@@ -1,9 +1,10 @@
 import { ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, Sparkles } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { EditProfileDialog } from '@/components/EditProfileDialog';
+import logo from '@/assets/logo.png';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -27,9 +28,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center shadow-glow">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <img src={logo} alt="Lowcost Cleaning" className="w-10 h-10 object-contain" />
             <span className="font-semibold text-foreground">{title}</span>
           </div>
           

@@ -1,17 +1,16 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import logo from '@/assets/logo.png';
 
 const Index = () => {
   return (
     <div className="min-h-screen gradient-hero flex flex-col">
       {/* Header */}
       <header className="p-6">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-xl text-foreground">CleanFlow</span>
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="Lowcost Cleaning" className="w-12 h-12 object-contain" />
+          <span className="font-bold text-xl text-foreground">Lowcost Cleaning</span>
         </div>
       </header>
 
@@ -19,14 +18,12 @@ const Index = () => {
       <main className="flex-1 flex items-center justify-center px-6">
         <div className="text-center max-w-md animate-fade-in">
           <div className="mb-8">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl gradient-primary flex items-center justify-center shadow-glow">
-              <Sparkles className="w-10 h-10 text-primary-foreground" />
-            </div>
+            <img src={logo} alt="Lowcost Cleaning" className="w-32 h-32 mx-auto mb-6 object-contain" />
             <h1 className="text-4xl font-bold text-foreground mb-3">
-              CleanFlow
+              Lowcost Cleaning
             </h1>
             <p className="text-muted-foreground text-lg">
-              Professional cleaning service management
+              Professional Cleaners
             </p>
           </div>
 
@@ -48,7 +45,7 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="p-6 text-center text-sm text-muted-foreground">
-        © 2024 CleanFlow. All rights reserved.
+        © 2024 Lowcost Cleaning. All rights reserved.
       </footer>
     </div>
   );
