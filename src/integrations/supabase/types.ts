@@ -41,6 +41,50 @@ export type Database = {
         }
         Relationships: []
       }
+      orders: {
+        Row: {
+          cleaner_id: string
+          created_at: string
+          id: string
+          manager_id: string
+          object_id: string
+          scheduled_date: string
+          scheduled_time: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cleaner_id: string
+          created_at?: string
+          id?: string
+          manager_id: string
+          object_id: string
+          scheduled_date: string
+          scheduled_time: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cleaner_id?: string
+          created_at?: string
+          id?: string
+          manager_id?: string
+          object_id?: string
+          scheduled_date?: string
+          scheduled_time?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_object_id_fkey"
+            columns: ["object_id"]
+            isOneToOne: false
+            referencedRelation: "objects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
