@@ -18,6 +18,7 @@ interface Order {
   };
   cleaner: {
     email: string;
+    name: string | null;
   };
 }
 
@@ -71,7 +72,7 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
       const cleanerIds = [...new Set(ordersData.map(o => o.cleaner_id))];
       const { data: cleanerProfiles } = await supabase
         .from('profiles')
-        .select('id, email')
+        .select('id, email, name')
         .in('id', cleanerIds);
 
       const cleanerMap = new Map(cleanerProfiles?.map(p => [p.id, p]) || []);
@@ -82,7 +83,7 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
         scheduled_time: order.scheduled_time,
         status: order.status,
         object: order.object || { complex_name: 'Неизвестно', apartment_number: '' },
-        cleaner: cleanerMap.get(order.cleaner_id) || { email: 'Неизвестно' },
+        cleaner: cleanerMap.get(order.cleaner_id) || { email: 'Неизвестно', name: null },
       }));
 
       setOrders(transformedOrders);
@@ -176,7 +177,12 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
             </div>
             <div className="flex items-center gap-1">
               <User className="w-3 h-3" />
-              <span>{order.cleaner.email?.split('@')[0]}</span>
+              <span>
+                {order.cleaner.name || order.cleaner.email?.split('@')[0]}
+                {order.cleaner.name && (
+                  <span className="ml-1">(@{order.cleaner.email?.split('@')[0]})</span>
+                )}
+              </span>
             </div>
           </div>
 
