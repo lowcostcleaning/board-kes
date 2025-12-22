@@ -248,15 +248,24 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
           )}
 
           {order.status === 'confirmed' && (
-            <div className="pt-2 border-t border-border/50">
+            <div className="flex gap-2 pt-2 border-t border-border/50">
               <Button
                 size="sm"
                 variant="outline"
-                className="w-full"
+                className="flex-1"
                 onClick={() => handleComplete(order.id)}
               >
                 <Check className="w-4 h-4 mr-1" />
-                Отметить выполненным
+                Выполнено
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => handleDecline(order.id)}
+              >
+                <X className="w-4 h-4 mr-1" />
+                Отменить
               </Button>
             </div>
           )}

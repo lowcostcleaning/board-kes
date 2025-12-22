@@ -4,6 +4,7 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import { DashboardCard } from '@/components/DashboardCard';
 import { ModerationBanner } from '@/components/ModerationBanner';
 import { CleanerOrdersList } from '@/components/CleanerOrdersList';
+import { OrdersCalendar } from '@/components/OrdersCalendar';
 import { Brush, Calendar } from 'lucide-react';
 
 const CleanerDashboard = () => {
@@ -55,14 +56,16 @@ const CleanerDashboard = () => {
           <div style={{ animationDelay: '0.3s' }}>
             <DashboardCard title="Календарь" icon={Calendar}>
               <div className="space-y-3">
-                <div className="flex items-center justify-center p-8 rounded-lg bg-muted/50 border-2 border-dashed border-border">
-                  <div className="text-center">
-                    <Calendar className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      Календарь скоро будет доступен
-                    </p>
-                  </div>
-                </div>
+                {isApproved ? (
+                  <OrdersCalendar 
+                    refreshTrigger={ordersRefresh} 
+                    userRole="cleaner"
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
+                    Календарь будет доступен после одобрения аккаунта.
+                  </p>
+                )}
               </div>
             </DashboardCard>
           </div>
