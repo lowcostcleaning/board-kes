@@ -4,15 +4,28 @@ import { ru } from 'date-fns/locale';
 import { Calendar, Clock, Building2, User, Trash2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { ViewReportDialog } from '@/components/ViewReportDialog';
 
+interface ObjectOption {
+  id: string;
+  complex_name: string;
+  apartment_number: string;
+}
 interface Order {
   id: string;
   scheduled_date: string;
   scheduled_time: string;
   status: string;
+  object_id: string;
   object: {
     complex_name: string;
     apartment_number: string;
@@ -47,7 +60,19 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [objects, setObjects] = useState<ObjectOption[]>([]);
+  const [selectedObjectId, setSelectedObjectId] = useState<string>('all');
 
+  useEffect(() => {
+    const fetchObjects = async () => {
+      const { data } = await supabase
+        .from('objects')
+        .select('id, complex_name, apartment_number')
+        .order('complex_name');
+      if (data) setObjects(data);
+    };
+    fetchObjects();
+  }, []);
   const fetchOrders = async () => {
     try {
       const { data: ordersData, error: ordersError } = await supabase
@@ -58,10 +83,10 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
           scheduled_time,
           status,
           cleaner_id,
+          object_id,
           object:objects(complex_name, apartment_number)
         `)
         .order('scheduled_date', { ascending: true });
-
       if (ordersError) throw ordersError;
 
       if (!ordersData || ordersData.length === 0) {
@@ -84,6 +109,7 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
         scheduled_date: order.scheduled_date,
         scheduled_time: order.scheduled_time,
         status: order.status,
+        object_id: order.object_id,
         object: order.object || { complex_name: 'Неизвестно', apartment_number: '' },
         cleaner: cleanerMap.get(order.cleaner_id) || { email: 'Неизвестно', name: null },
       }));
@@ -157,10 +183,30 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
     );
   }
 
+  const filteredOrders = selectedObjectId === 'all'
+    ? orders
+    : orders.filter(order => order.object_id === selectedObjectId);
+
   return (
     <>
+      <div className="mb-4">
+        <Select value={selectedObjectId} onValueChange={setSelectedObjectId}>
+          <SelectTrigger className="w-full sm:w-64">
+            <SelectValue placeholder="Все объекты" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Все объекты</SelectItem>
+            {objects.map((obj) => (
+              <SelectItem key={obj.id} value={obj.id}>
+                {obj.complex_name} - {obj.apartment_number}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="space-y-3">
-        {orders.map((order) => (
+        {filteredOrders.map((order) => (
           <div
             key={order.id}
             className={`p-4 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors space-y-3 ${
