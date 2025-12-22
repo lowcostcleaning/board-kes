@@ -1,14 +1,22 @@
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { DashboardCard } from '@/components/DashboardCard';
 import { ModerationBanner } from '@/components/ModerationBanner';
-import { Building2, ShoppingCart, Package } from 'lucide-react';
+import { AddObjectDialog } from '@/components/AddObjectDialog';
+import { ObjectsList } from '@/components/ObjectsList';
+import { Building2, ShoppingCart } from 'lucide-react';
 
 const ManagerDashboard = () => {
   const { user, profile } = useAuth();
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Менеджер';
   const isApproved = profile?.role === 'admin' || profile?.status === 'approved';
+
+  const handleRefresh = () => {
+    setRefreshTrigger((prev) => prev + 1);
+  };
 
   return (
     <DashboardLayout title="Панель менеджера">
@@ -29,14 +37,17 @@ const ManagerDashboard = () => {
         {/* Dashboard Cards */}
         <div className="grid gap-6 md:grid-cols-2">
           <div style={{ animationDelay: '0.2s' }}>
-            <DashboardCard title="Объекты" icon={Building2}>
+            <DashboardCard 
+              title="Объекты" 
+              icon={Building2}
+              action={<AddObjectDialog onObjectAdded={handleRefresh} disabled={!isApproved} />}
+            >
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <Package className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm">Нет зарегистрированных объектов</span>
-                  </div>
-                </div>
+                <ObjectsList 
+                  refreshTrigger={refreshTrigger} 
+                  onRefresh={handleRefresh}
+                  disabled={!isApproved}
+                />
                 <p className="text-sm text-muted-foreground">
                   Добавьте объекты недвижимости для клининговых услуг.
                 </p>
