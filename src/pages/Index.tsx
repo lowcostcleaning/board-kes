@@ -52,7 +52,7 @@ const Index = () => {
             {/* New Year banner */}
             <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-full px-4 py-2 text-sm text-amber-800">
               <span>🎄</span>
-              <span>С Новым 2025 годом!</span>
+              <span>С Новым 2026 годом!</span>
               <span>🎄</span>
             </div>
           </div>
@@ -75,7 +75,7 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="p-6 text-center text-sm text-muted-foreground relative z-10">
-        © 2025 Lowcost Cleaning. Все права защищены.
+        © 2026 Lowcost Cleaning. Все права защищены.
       </footer>
     </div>
   );
