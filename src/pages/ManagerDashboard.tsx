@@ -5,57 +5,59 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { Building2, ShoppingCart, Package } from 'lucide-react';
 
 const ManagerDashboard = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  
+  const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Менеджер';
 
   return (
-    <DashboardLayout title="Manager Dashboard">
+    <DashboardLayout title="Панель менеджера">
       <div className="space-y-6">
         {/* Welcome Section */}
         <div className="animate-fade-in">
           <h1 className="text-2xl font-bold text-foreground mb-1">
-            Welcome, {user?.name}!
+            Добро пожаловать, {displayName}!
           </h1>
           <p className="text-muted-foreground">
-            Manage your properties and orders from here.
+            Управляйте объектами и заказами.
           </p>
         </div>
 
         {/* Status Section */}
         <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <StatusBadge status={user?.status || 'pending'} />
+          <StatusBadge status="pending" />
         </div>
 
         {/* Dashboard Cards */}
         <div className="grid gap-6 md:grid-cols-2">
           <div style={{ animationDelay: '0.2s' }}>
-            <DashboardCard title="Objects" icon={Building2}>
+            <DashboardCard title="Объекты" icon={Building2}>
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-3">
                     <Package className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm">No objects registered</span>
+                    <span className="text-sm">Нет зарегистрированных объектов</span>
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Add properties and locations that need cleaning services.
+                  Добавьте объекты недвижимости для клининговых услуг.
                 </p>
               </div>
             </DashboardCard>
           </div>
 
           <div style={{ animationDelay: '0.3s' }}>
-            <DashboardCard title="Orders" icon={ShoppingCart}>
+            <DashboardCard title="Заказы" icon={ShoppingCart}>
               <div className="space-y-3">
                 <div className="flex items-center justify-center p-8 rounded-lg bg-muted/50 border-2 border-dashed border-border">
                   <div className="text-center">
                     <ShoppingCart className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">
-                      No orders yet
+                      Пока нет заказов
                     </p>
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Create and manage cleaning orders for your properties.
+                  Создавайте и управляйте заказами на уборку.
                 </p>
               </div>
             </DashboardCard>

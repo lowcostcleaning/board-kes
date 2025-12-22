@@ -10,13 +10,15 @@ interface DashboardLayoutProps {
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, title }) => {
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
+
+  const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Пользователь';
 
   return (
     <div className="min-h-screen gradient-hero">
@@ -33,14 +35,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <User className="w-4 h-4" />
-              <span className="font-medium text-foreground">{user?.name}</span>
+              <span className="font-medium text-foreground">{displayName}</span>
               <span className="px-2 py-0.5 rounded-full text-xs bg-accent text-accent-foreground capitalize">
-                {user?.role}
+                {profile?.role}
               </span>
             </div>
             <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
               <LogOut className="w-4 h-4" />
-              Logout
+              Выйти
             </Button>
           </div>
         </div>

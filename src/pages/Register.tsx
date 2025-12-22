@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -15,44 +15,62 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'cleaner' | 'manager'>('cleaner');
   const [isLoading, setIsLoading] = useState(false);
-  const { register, isAuthenticated, logout, user } = useAuth();
+  const { register, isAuthenticated, logout, profile, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && profile) {
+      navigate(`/${profile.role}`, { replace: true });
+    }
+  }, [isAuthenticated, profile, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!name || !email || !password) {
       toast({
-        title: 'Error',
-        description: 'Please fill in all fields',
+        title: 'Ошибка',
+        description: 'Заполните все поля',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({
+        title: 'Ошибка',
+        description: 'Пароль должен быть не менее 6 символов',
         variant: 'destructive',
       });
       return;
     }
 
     setIsLoading(true);
-    try {
-      await register(name, email, password, role);
+    const { error } = await register(name, email, password, role);
+    
+    if (error) {
       toast({
-        title: 'Account created!',
-        description: 'Your account is pending moderation.',
-      });
-    } catch {
-      toast({
-        title: 'Error',
-        description: 'Registration failed',
+        title: 'Ошибка',
+        description: error.message,
         variant: 'destructive',
       });
-    } finally {
-      setIsLoading(false);
+    } else {
+      toast({
+        title: 'Аккаунт создан!',
+        description: 'Проверьте email для подтверждения.',
+      });
     }
+    setIsLoading(false);
   };
 
-  // Redirect if already authenticated
-  if (isAuthenticated && user) {
-    navigate(`/${user.role}`, { replace: true });
-    return null;
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
@@ -68,7 +86,7 @@ const Register = () => {
         {isAuthenticated && (
           <Button variant="ghost" size="sm" onClick={logout} className="gap-2">
             <LogOut className="w-4 h-4" />
-            Logout
+            Выйти
           </Button>
         )}
       </header>
@@ -77,17 +95,17 @@ const Register = () => {
       <main className="flex-1 flex items-center justify-center px-6 py-12">
         <Card className="w-full max-w-md shadow-soft border-border/50 animate-slide-up">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Create account</CardTitle>
-            <CardDescription>Join CleanFlow today</CardDescription>
+            <CardTitle className="text-2xl font-bold">Регистрация</CardTitle>
+            <CardDescription>Присоединяйтесь к CleanFlow</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
+                <Label htmlFor="name">Имя</Label>
                 <Input
                   id="name"
                   type="text"
-                  placeholder="Enter your name"
+                  placeholder="Введите имя"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -98,25 +116,25 @@ const Register = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="Введите email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Пароль</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Create a password"
+                  placeholder="Создайте пароль"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-3">
-                <Label>Select your role</Label>
+                <Label>Выберите роль</Label>
                 <RadioGroup
                   value={role}
                   onValueChange={(value) => setRole(value as 'cleaner' | 'manager')}
@@ -136,7 +154,7 @@ const Register = () => {
                     }`}>
                       <Brush className="w-5 h-5" />
                     </div>
-                    <span className="font-medium text-sm">Cleaner</span>
+                    <span className="font-medium text-sm">Клинер</span>
                   </Label>
                   <Label
                     htmlFor="manager"
@@ -152,19 +170,19 @@ const Register = () => {
                     }`}>
                       <Briefcase className="w-5 h-5" />
                     </div>
-                    <span className="font-medium text-sm">Manager</span>
+                    <span className="font-medium text-sm">Менеджер</span>
                   </Label>
                 </RadioGroup>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Creating account...' : 'Create Account'}
+                {isLoading ? 'Создание...' : 'Создать аккаунт'}
               </Button>
               <p className="text-sm text-muted-foreground text-center">
-                Already have an account?{' '}
+                Уже есть аккаунт?{' '}
                 <Link to="/login" className="text-primary hover:underline font-medium">
-                  Sign in
+                  Войти
                 </Link>
               </p>
               <Link
@@ -172,7 +190,7 @@ const Register = () => {
                 className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 justify-center"
               >
                 <ArrowLeft className="w-3 h-3" />
-                Back to home
+                На главную
               </Link>
             </CardFooter>
           </form>
