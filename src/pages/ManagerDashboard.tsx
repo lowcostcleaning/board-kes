@@ -52,73 +52,61 @@ const ManagerDashboard = () => {
         </div>
 
         {/* Dashboard Cards */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Left column */}
-          <div className="space-y-6">
-            <div style={{ animationDelay: '0.2s' }}>
-              <DashboardCard 
-                title="Объекты" 
-                icon={Building2}
-                action={<AddObjectDialog onObjectAdded={handleObjectsRefresh} disabled={!isApproved} />}
-              >
-                <div className="space-y-3">
-                  <ObjectsList 
-                    refreshTrigger={objectsRefresh} 
-                    onRefresh={handleObjectsRefresh}
-                    disabled={!isApproved}
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Добавьте объекты недвижимости для клининговых услуг.
-                  </p>
-                </div>
-              </DashboardCard>
-            </div>
-
-            <div style={{ animationDelay: '0.3s' }}>
-              <DashboardCard 
-                title="Заказы" 
-                icon={ShoppingCart}
-                action={<CreateOrderDialog onOrderCreated={handleOrdersRefresh} disabled={!isApproved} />}
-              >
-                <div className="space-y-3">
-                  <OrdersList 
-                    refreshTrigger={ordersRefresh} 
-                    onRefresh={handleOrdersRefresh}
-                    disabled={!isApproved}
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Создавайте и управляйте заказами на уборку.
-                  </p>
-                </div>
-              </DashboardCard>
-            </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div style={{ animationDelay: '0.2s' }}>
+            <DashboardCard 
+              title="Объекты" 
+              icon={Building2}
+              action={<AddObjectDialog onObjectAdded={handleObjectsRefresh} disabled={!isApproved} />}
+            >
+              <div className="space-y-3">
+                <ObjectsList 
+                  refreshTrigger={objectsRefresh} 
+                  onRefresh={handleObjectsRefresh}
+                  disabled={!isApproved}
+                />
+              </div>
+            </DashboardCard>
           </div>
 
-          {/* Right column */}
-          <div className="space-y-6">
-            <div style={{ animationDelay: '0.25s' }}>
-              <DashboardCard title="Календарь" icon={Calendar}>
-                <OrdersCalendar 
-                  refreshTrigger={ordersRefresh} 
-                  userRole="manager"
-                  onDateSelect={handleCalendarDateSelect}
-                />
-              </DashboardCard>
-            </div>
+          <div style={{ animationDelay: '0.25s' }}>
+            <DashboardCard title="Календарь" icon={Calendar}>
+              <OrdersCalendar 
+                refreshTrigger={ordersRefresh} 
+                userRole="manager"
+                onDateSelect={handleCalendarDateSelect}
+              />
+            </DashboardCard>
+          </div>
 
-            <div style={{ animationDelay: '0.4s' }}>
-              <DashboardCard title="Сообщения" icon={MessageCircle}>
-                <div className="space-y-3">
-                  {isApproved ? (
-                    <ManagerChatList />
-                  ) : (
-                    <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
-                      Сообщения будут доступны после одобрения аккаунта.
-                    </p>
-                  )}
-                </div>
-              </DashboardCard>
-            </div>
+          <div style={{ animationDelay: '0.3s' }}>
+            <DashboardCard 
+              title="Заказы" 
+              icon={ShoppingCart}
+              action={<CreateOrderDialog onOrderCreated={handleOrdersRefresh} disabled={!isApproved} />}
+            >
+              <div className="space-y-3">
+                <OrdersList 
+                  refreshTrigger={ordersRefresh} 
+                  onRefresh={handleOrdersRefresh}
+                  disabled={!isApproved}
+                />
+              </div>
+            </DashboardCard>
+          </div>
+
+          <div style={{ animationDelay: '0.35s' }}>
+            <DashboardCard title="Сообщения" icon={MessageCircle}>
+              <div className="space-y-3">
+                {isApproved ? (
+                  <ManagerChatList />
+                ) : (
+                  <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
+                    Сообщения будут доступны после одобрения аккаунта.
+                  </p>
+                )}
+              </div>
+            </DashboardCard>
           </div>
         </div>
 
