@@ -107,10 +107,16 @@ const Login = () => {
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
+              <Link
+                to="/forgot-password"
+                className="text-sm text-primary hover:underline"
+              >
+                Забыли пароль?
+              </Link>
               <p className="text-sm text-muted-foreground text-center">
-                Don't have an account?{' '}
+                Нет аккаунта?{' '}
                 <Link to="/register" className="text-primary hover:underline font-medium">
-                  Register
+                  Регистрация
                 </Link>
               </p>
               <Link
