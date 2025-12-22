@@ -1,17 +1,21 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { DashboardCard } from '@/components/DashboardCard';
-import { StatusBadge } from '@/components/StatusBadge';
+import { ModerationBanner } from '@/components/ModerationBanner';
 import { Brush, Calendar, ClipboardList } from 'lucide-react';
 
 const CleanerDashboard = () => {
   const { user, profile } = useAuth();
   
   const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Клинер';
+  const isApproved = profile?.role === 'admin' || profile?.status === 'approved';
 
   return (
     <DashboardLayout title="Панель клинера">
       <div className="space-y-6">
+        {/* Moderation Banner */}
+        <ModerationBanner />
+
         {/* Welcome Section */}
         <div className="animate-fade-in">
           <h1 className="text-2xl font-bold text-foreground mb-1">
@@ -20,11 +24,6 @@ const CleanerDashboard = () => {
           <p className="text-muted-foreground">
             Управляйте своими уборками и расписанием.
           </p>
-        </div>
-
-        {/* Status Section */}
-        <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <StatusBadge status="pending" />
         </div>
 
         {/* Dashboard Cards */}
@@ -39,7 +38,9 @@ const CleanerDashboard = () => {
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Назначенные задачи появятся здесь после одобрения аккаунта.
+                  {isApproved 
+                    ? 'Назначенные задачи появятся здесь.' 
+                    : 'Назначенные задачи появятся здесь после одобрения аккаунта.'}
                 </p>
               </div>
             </DashboardCard>

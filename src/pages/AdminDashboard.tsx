@@ -5,7 +5,7 @@ import { DashboardCard } from '@/components/DashboardCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Shield, UserCheck, UserX, Brush, Briefcase } from 'lucide-react';
+import { Users, Shield, UserCheck, Clock, Brush, Briefcase, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -13,6 +13,7 @@ interface UserProfile {
   id: string;
   email: string | null;
   role: string;
+  status: string;
   created_at: string | null;
 }
 
@@ -65,7 +66,30 @@ const AdminDashboard = () => {
       ));
       toast({
         title: 'Роль обновлена',
-        description: `Роль пользователя изменена на ${newRole}`,
+        description: `Роль пользователя изменена на ${getRoleLabel(newRole)}`,
+      });
+    }
+  };
+
+  const handleStatusChange = async (userId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ status: newStatus })
+      .eq('id', userId);
+
+    if (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось обновить статус',
+        variant: 'destructive',
+      });
+    } else {
+      setUsers(users.map(u => 
+        u.id === userId ? { ...u, status: newStatus } : u
+      ));
+      toast({
+        title: 'Статус обновлен',
+        description: newStatus === 'approved' ? 'Пользователь одобрен' : 'Пользователь на модерации',
       });
     }
   };
@@ -124,27 +148,27 @@ const AdminDashboard = () => {
           </div>
           <div className="p-4 rounded-lg bg-card border border-border shadow-card">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-status-active/15 flex items-center justify-center">
-                <Brush className="w-5 h-5 text-status-active" />
+              <div className="w-10 h-10 rounded-lg bg-status-pending/15 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-status-pending" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">
-                  {users.filter(u => u.role === 'cleaner').length}
+                  {users.filter(u => u.status === 'pending').length}
                 </p>
-                <p className="text-sm text-muted-foreground">Клинеров</p>
+                <p className="text-sm text-muted-foreground">На модерации</p>
               </div>
             </div>
           </div>
           <div className="p-4 rounded-lg bg-card border border-border shadow-card">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-status-pending/15 flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-status-pending" />
+              <div className="w-10 h-10 rounded-lg bg-status-active/15 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-status-active" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">
-                  {users.filter(u => u.role === 'manager').length}
+                  {users.filter(u => u.status === 'approved').length}
                 </p>
-                <p className="text-sm text-muted-foreground">Менеджеров</p>
+                <p className="text-sm text-muted-foreground">Одобрено</p>
               </div>
             </div>
           </div>
@@ -182,6 +206,43 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
+                      {/* Status Badge */}
+                      {u.status === 'pending' ? (
+                        <Badge variant="outline" className="bg-status-pending/10 text-status-pending border-status-pending/30">
+                          <Clock className="w-3 h-3 mr-1" />
+                          На модерации
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-status-active/10 text-status-active border-status-active/30">
+                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                          Одобрен
+                        </Badge>
+                      )}
+
+                      {/* Status Toggle Button */}
+                      {u.status === 'pending' ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-status-active/50 text-status-active hover:bg-status-active/10"
+                          onClick={() => handleStatusChange(u.id, 'approved')}
+                        >
+                          <UserCheck className="w-4 h-4 mr-1" />
+                          Одобрить
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-status-pending"
+                          onClick={() => handleStatusChange(u.id, 'pending')}
+                        >
+                          <Clock className="w-4 h-4 mr-1" />
+                          На модерацию
+                        </Button>
+                      )}
+
+                      {/* Role Selector */}
                       <Select
                         value={u.role}
                         onValueChange={(value) => handleRoleChange(u.id, value)}

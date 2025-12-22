@@ -1,17 +1,21 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { DashboardCard } from '@/components/DashboardCard';
-import { StatusBadge } from '@/components/StatusBadge';
+import { ModerationBanner } from '@/components/ModerationBanner';
 import { Building2, ShoppingCart, Package } from 'lucide-react';
 
 const ManagerDashboard = () => {
   const { user, profile } = useAuth();
   
   const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Менеджер';
+  const isApproved = profile?.role === 'admin' || profile?.status === 'approved';
 
   return (
     <DashboardLayout title="Панель менеджера">
       <div className="space-y-6">
+        {/* Moderation Banner */}
+        <ModerationBanner />
+
         {/* Welcome Section */}
         <div className="animate-fade-in">
           <h1 className="text-2xl font-bold text-foreground mb-1">
@@ -20,11 +24,6 @@ const ManagerDashboard = () => {
           <p className="text-muted-foreground">
             Управляйте объектами и заказами.
           </p>
-        </div>
-
-        {/* Status Section */}
-        <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <StatusBadge status="pending" />
         </div>
 
         {/* Dashboard Cards */}
