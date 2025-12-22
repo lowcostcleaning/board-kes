@@ -8,12 +8,16 @@ import { ObjectsList } from '@/components/ObjectsList';
 import { CreateOrderDialog } from '@/components/CreateOrderDialog';
 import { OrdersList } from '@/components/OrdersList';
 import { ManagerChatList } from '@/components/ManagerChatList';
-import { Building2, ShoppingCart, MessageCircle } from 'lucide-react';
+import { OrdersCalendar } from '@/components/OrdersCalendar';
+import { ManagerDayOrdersDialog } from '@/components/ManagerDayOrdersDialog';
+import { Building2, ShoppingCart, MessageCircle, Calendar } from 'lucide-react';
 
 const ManagerDashboard = () => {
   const { user, profile } = useAuth();
   const [objectsRefresh, setObjectsRefresh] = useState(0);
   const [ordersRefresh, setOrdersRefresh] = useState(0);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
+  const [dayOrdersDialogOpen, setDayOrdersDialogOpen] = useState(false);
   
   const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Менеджер';
   const isApproved = profile?.role === 'admin' || profile?.status === 'approved';
@@ -24,6 +28,11 @@ const ManagerDashboard = () => {
 
   const handleOrdersRefresh = () => {
     setOrdersRefresh((prev) => prev + 1);
+  };
+
+  const handleCalendarDateSelect = (date: Date) => {
+    setSelectedCalendarDate(date);
+    setDayOrdersDialogOpen(true);
   };
 
   return (
@@ -43,59 +52,81 @@ const ManagerDashboard = () => {
         </div>
 
         {/* Dashboard Cards */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <div style={{ animationDelay: '0.2s' }}>
-            <DashboardCard 
-              title="Объекты" 
-              icon={Building2}
-              action={<AddObjectDialog onObjectAdded={handleObjectsRefresh} disabled={!isApproved} />}
-            >
-              <div className="space-y-3">
-                <ObjectsList 
-                  refreshTrigger={objectsRefresh} 
-                  onRefresh={handleObjectsRefresh}
-                  disabled={!isApproved}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Добавьте объекты недвижимости для клининговых услуг.
-                </p>
-              </div>
-            </DashboardCard>
-          </div>
-
-          <div style={{ animationDelay: '0.3s' }}>
-            <DashboardCard 
-              title="Заказы" 
-              icon={ShoppingCart}
-              action={<CreateOrderDialog onOrderCreated={handleOrdersRefresh} disabled={!isApproved} />}
-            >
-              <div className="space-y-3">
-                <OrdersList 
-                  refreshTrigger={ordersRefresh} 
-                  onRefresh={handleOrdersRefresh}
-                  disabled={!isApproved}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Создавайте и управляйте заказами на уборку.
-                </p>
-              </div>
-            </DashboardCard>
-          </div>
-
-          <div style={{ animationDelay: '0.4s' }}>
-            <DashboardCard title="Сообщения" icon={MessageCircle}>
-              <div className="space-y-3">
-                {isApproved ? (
-                  <ManagerChatList />
-                ) : (
-                  <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
-                    Сообщения будут доступны после одобрения аккаунта.
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Left column */}
+          <div className="space-y-6">
+            <div style={{ animationDelay: '0.2s' }}>
+              <DashboardCard 
+                title="Объекты" 
+                icon={Building2}
+                action={<AddObjectDialog onObjectAdded={handleObjectsRefresh} disabled={!isApproved} />}
+              >
+                <div className="space-y-3">
+                  <ObjectsList 
+                    refreshTrigger={objectsRefresh} 
+                    onRefresh={handleObjectsRefresh}
+                    disabled={!isApproved}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Добавьте объекты недвижимости для клининговых услуг.
                   </p>
-                )}
-              </div>
-            </DashboardCard>
+                </div>
+              </DashboardCard>
+            </div>
+
+            <div style={{ animationDelay: '0.3s' }}>
+              <DashboardCard 
+                title="Заказы" 
+                icon={ShoppingCart}
+                action={<CreateOrderDialog onOrderCreated={handleOrdersRefresh} disabled={!isApproved} />}
+              >
+                <div className="space-y-3">
+                  <OrdersList 
+                    refreshTrigger={ordersRefresh} 
+                    onRefresh={handleOrdersRefresh}
+                    disabled={!isApproved}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Создавайте и управляйте заказами на уборку.
+                  </p>
+                </div>
+              </DashboardCard>
+            </div>
+          </div>
+
+          {/* Right column */}
+          <div className="space-y-6">
+            <div style={{ animationDelay: '0.25s' }}>
+              <DashboardCard title="Календарь" icon={Calendar}>
+                <OrdersCalendar 
+                  refreshTrigger={ordersRefresh} 
+                  userRole="manager"
+                  onDateSelect={handleCalendarDateSelect}
+                />
+              </DashboardCard>
+            </div>
+
+            <div style={{ animationDelay: '0.4s' }}>
+              <DashboardCard title="Сообщения" icon={MessageCircle}>
+                <div className="space-y-3">
+                  {isApproved ? (
+                    <ManagerChatList />
+                  ) : (
+                    <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
+                      Сообщения будут доступны после одобрения аккаунта.
+                    </p>
+                  )}
+                </div>
+              </DashboardCard>
+            </div>
           </div>
         </div>
+
+        <ManagerDayOrdersDialog
+          open={dayOrdersDialogOpen}
+          onOpenChange={setDayOrdersDialogOpen}
+          selectedDate={selectedCalendarDate}
+        />
       </div>
     </DashboardLayout>
   );
