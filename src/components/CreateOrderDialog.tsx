@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -17,17 +17,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Plus, Building2, Home, Clock, User, CalendarIcon, Send } from 'lucide-react';
+import { Plus, Building2, Home, Clock, User, CalendarIcon, Send, Banknote, LayoutGrid } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { OrdersCalendar } from '@/components/OrdersCalendar';
 import { CleanerRatingDisplay } from '@/components/CleanerRatingDisplay';
+import { CleanerFilters } from '@/components/CleanerFilters';
 
 interface PropertyObject {
   id: string;
   complex_name: string;
   apartment_number: string;
+  apartment_type: string | null;
 }
 
 interface Cleaner {
@@ -36,6 +38,9 @@ interface Cleaner {
   name: string | null;
   rating: number | null;
   completed_orders_count: number;
+  price_studio: number | null;
+  price_one_plus_one: number | null;
+  price_two_plus_one: number | null;
 }
 
 interface CleanerOrder {
@@ -51,6 +56,33 @@ interface CreateOrderDialogProps {
 
 const TIME_SLOTS = ['10:00', '12:00', '14:00', '16:00', '18:00'];
 
+const getApartmentTypeLabel = (type: string | null) => {
+  switch (type) {
+    case 'studio':
+      return 'Студия';
+    case '1+1':
+      return '1+1';
+    case '2+1':
+      return '2+1';
+    default:
+      return null;
+  }
+};
+
+const getCleanerPrice = (cleaner: Cleaner, apartmentType: string | null): number | null => {
+  if (!apartmentType) return null;
+  switch (apartmentType) {
+    case 'studio':
+      return cleaner.price_studio;
+    case '1+1':
+      return cleaner.price_one_plus_one;
+    case '2+1':
+      return cleaner.price_two_plus_one;
+    default:
+      return null;
+  }
+};
+
 export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialogProps) => {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'cleaner' | 'calendar' | 'details'>('cleaner');
@@ -63,6 +95,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   const [isLoading, setIsLoading] = useState(false);
   const [cleanerOrders, setCleanerOrders] = useState<CleanerOrder[]>([]);
   const [busyTimeSlots, setBusyTimeSlots] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<string>('name');
 
   useEffect(() => {
     if (open) {
@@ -109,7 +142,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   const fetchCleaners = async () => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email, name, rating, completed_orders_count')
+      .select('id, email, name, rating, completed_orders_count, price_studio, price_one_plus_one, price_two_plus_one')
       .eq('role', 'cleaner')
       .eq('status', 'approved');
 
@@ -129,6 +162,29 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     }
   };
 
+  const sortedCleaners = useMemo(() => {
+    const sorted = [...cleaners];
+    switch (sortBy) {
+      case 'rating_desc':
+        return sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      case 'rating_asc':
+        return sorted.sort((a, b) => (a.rating || 0) - (b.rating || 0));
+      case 'orders_desc':
+        return sorted.sort((a, b) => b.completed_orders_count - a.completed_orders_count);
+      case 'orders_asc':
+        return sorted.sort((a, b) => a.completed_orders_count - b.completed_orders_count);
+      case 'price_asc':
+        return sorted.sort((a, b) => (a.price_studio || 0) - (b.price_studio || 0));
+      case 'price_desc':
+        return sorted.sort((a, b) => (b.price_studio || 0) - (a.price_studio || 0));
+      case 'name':
+      default:
+        return sorted.sort((a, b) => 
+          (a.name || a.email || '').localeCompare(b.name || b.email || '')
+        );
+    }
+  }, [cleaners, sortBy]);
+
   const resetForm = () => {
     setStep('cleaner');
     setSelectedCleaner('');
@@ -137,6 +193,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     setSelectedObject('');
     setCleanerOrders([]);
     setBusyTimeSlots([]);
+    setSortBy('name');
   };
 
   const handleCleanerSelect = (cleanerId: string) => {
@@ -199,6 +256,9 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
 
   const selectedObjectData = objects.find(o => o.id === selectedObject);
   const selectedCleanerData = cleaners.find(c => c.id === selectedCleaner);
+  const selectedPrice = selectedCleanerData && selectedObjectData 
+    ? getCleanerPrice(selectedCleanerData, selectedObjectData.apartment_type)
+    : null;
 
   const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time));
   const today = new Date();
@@ -222,13 +282,15 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
               <DialogTitle className="text-center">Выберите клинера</DialogTitle>
             </DialogHeader>
             <div className="py-4">
-              {cleaners.length === 0 ? (
+              <CleanerFilters sortBy={sortBy} onSortChange={setSortBy} />
+              
+              {sortedCleaners.length === 0 ? (
                 <p className="text-center text-muted-foreground">
                   Нет доступных клинеров
                 </p>
               ) : (
-                <div className="space-y-2">
-                  {cleaners.map((cleaner) => (
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {sortedCleaners.map((cleaner) => (
                     <button
                       key={cleaner.id}
                       onClick={() => handleCleanerSelect(cleaner.id)}
@@ -246,6 +308,16 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                           completedOrders={cleaner.completed_orders_count}
                           size="sm"
                         />
+                        {(cleaner.price_studio || cleaner.price_one_plus_one || cleaner.price_two_plus_one) && (
+                          <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+                            <Banknote className="w-3 h-3" />
+                            <span>
+                              {cleaner.price_studio && `Ст: ${cleaner.price_studio}₾`}
+                              {cleaner.price_one_plus_one && ` • 1+1: ${cleaner.price_one_plus_one}₾`}
+                              {cleaner.price_two_plus_one && ` • 2+1: ${cleaner.price_two_plus_one}₾`}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </button>
                   ))}
@@ -348,6 +420,11 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                     {objects.map((obj) => (
                       <SelectItem key={obj.id} value={obj.id} className="rounded-lg">
                         {obj.complex_name} - {obj.apartment_number}
+                        {obj.apartment_type && (
+                          <span className="ml-1 text-muted-foreground">
+                            ({getApartmentTypeLabel(obj.apartment_type)})
+                          </span>
+                        )}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -368,7 +445,14 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                       <Home className="w-3 h-3" />
                       Апартамент
                     </Label>
-                    <p className="text-sm">{selectedObjectData.apartment_number}</p>
+                    <p className="text-sm">
+                      {selectedObjectData.apartment_number}
+                      {selectedObjectData.apartment_type && (
+                        <span className="ml-2 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                          {getApartmentTypeLabel(selectedObjectData.apartment_type)}
+                        </span>
+                      )}
+                    </p>
                   </div>
                 </div>
               )}
@@ -394,6 +478,18 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                       size="sm"
                     />
                   </div>
+                </div>
+              )}
+
+              {selectedPrice !== null && (
+                <div className="p-3 rounded-[14px] bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+                  <Label className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 mb-1">
+                    <Banknote className="w-3 h-3" />
+                    Стоимость уборки
+                  </Label>
+                  <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">
+                    {selectedPrice} ₾
+                  </p>
                 </div>
               )}
             </div>

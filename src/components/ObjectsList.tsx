@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Building2, Home, Trash2 } from 'lucide-react';
+import { Building2, Home, Trash2, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -8,6 +9,7 @@ interface PropertyObject {
   id: string;
   complex_name: string;
   apartment_number: string;
+  apartment_type: string | null;
   created_at: string;
 }
 
@@ -16,6 +18,19 @@ interface ObjectsListProps {
   onRefresh: () => void;
   disabled?: boolean;
 }
+
+const getApartmentTypeLabel = (type: string | null) => {
+  switch (type) {
+    case 'studio':
+      return 'Студия';
+    case '1+1':
+      return '1+1';
+    case '2+1':
+      return '2+1';
+    default:
+      return null;
+  }
+};
 
 export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsListProps) => {
   const [objects, setObjects] = useState<PropertyObject[]>([]);
@@ -92,7 +107,7 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
           key={obj.id}
           className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors"
         >
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium">{obj.complex_name}</span>
@@ -101,6 +116,12 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
               <Home className="w-3 h-3" />
               <span className="text-sm">{obj.apartment_number}</span>
             </div>
+            {obj.apartment_type && (
+              <Badge variant="secondary" className="text-xs">
+                <LayoutGrid className="w-3 h-3 mr-1" />
+                {getApartmentTypeLabel(obj.apartment_type)}
+              </Badge>
+            )}
           </div>
           {!disabled && (
             <Button
