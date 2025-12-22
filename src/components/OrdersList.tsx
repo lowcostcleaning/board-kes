@@ -209,42 +209,43 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
         {filteredOrders.map((order) => (
           <div
             key={order.id}
-            className={`p-4 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors space-y-3 ${
+            className={`p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors space-y-2 ${
               order.status === 'completed' ? 'cursor-pointer' : ''
             }`}
             onClick={() => handleOrderClick(order)}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="w-4 h-4 text-primary" />
-                <span className="font-medium">
-                  {format(new Date(order.scheduled_date), 'd MMMM yyyy', { locale: ru })}
-                </span>
-                <Clock className="w-4 h-4 text-muted-foreground ml-2" />
-                <span>{order.scheduled_time}</span>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-col gap-1 min-w-0">
+                <div className="flex items-center gap-2 text-sm flex-wrap">
+                  <Calendar className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="font-medium whitespace-nowrap">
+                    {format(new Date(order.scheduled_date), 'd MMM yyyy', { locale: ru })}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">{order.scheduled_time}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 flex-shrink-0">
                 {order.status === 'completed' && (
-                  <FileText className="w-4 h-4 text-muted-foreground" />
+                  <FileText className="w-3 h-3 text-muted-foreground" />
                 )}
-                <Badge variant={statusVariants[order.status]}>
+                <Badge variant={statusVariants[order.status]} className="text-xs whitespace-nowrap">
                   {statusLabels[order.status]}
                 </Badge>
               </div>
             </div>
             
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Building2 className="w-3 h-3" />
-                <span>{order.object.complex_name} - {order.object.apartment_number}</span>
+            <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1 min-w-0">
+                <Building2 className="w-3 h-3 flex-shrink-0" />
+                <span className="truncate">{order.object.complex_name} - {order.object.apartment_number}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <User className="w-3 h-3" />
-                <span>
+              <div className="flex items-center gap-1 min-w-0">
+                <User className="w-3 h-3 flex-shrink-0" />
+                <span className="truncate">
                   {order.cleaner.name || order.cleaner.email?.split('@')[0]}
-                  {order.cleaner.name && (
-                    <span className="ml-1">(@{order.cleaner.email?.split('@')[0]})</span>
-                  )}
                 </span>
               </div>
             </div>

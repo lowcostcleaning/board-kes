@@ -217,16 +217,19 @@ export const OrdersCalendar = ({
                 </span>
                 
                 {dayOrders.length > 0 && (
-                  <div className="flex gap-[3px] flex-wrap justify-center max-w-[80%]">
-                    {dayOrders.slice(0, 5).map((order) => (
+                  <div className="flex gap-[2px] justify-center">
+                    {dayOrders.slice(0, 3).map((order) => (
                       <div
                         key={order.id}
                         className={cn(
-                          "w-[5px] h-[5px] rounded-full transition-transform duration-200",
+                          "w-[4px] h-[4px] rounded-full flex-shrink-0",
                           getDotColor(order.status)
                         )}
                       />
                     ))}
+                    {dayOrders.length > 3 && (
+                      <span className="text-[8px] text-muted-foreground ml-0.5">+{dayOrders.length - 3}</span>
+                    )}
                   </div>
                 )}
               </button>
