@@ -22,14 +22,6 @@ const Index = () => {
         ))}
       </div>
 
-      {/* Header */}
-      <header className="p-6 relative z-10">
-        <div className="flex items-center gap-2">
-          <TreePine className="w-8 h-8 text-emerald-600" />
-          <span className="font-bold text-xl text-emerald-700">Lowcost Cleaning</span>
-          <TreePine className="w-8 h-8 text-emerald-600" />
-        </div>
-      </header>
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center px-6 relative z-10">
