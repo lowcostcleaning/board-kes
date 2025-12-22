@@ -94,9 +94,8 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" disabled={disabled}>
-          <Plus className="w-4 h-4 mr-2" />
-          Добавить объект
+        <Button size="icon" variant="default" disabled={disabled} className="h-7 w-7">
+          <Plus className="w-4 h-4" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">

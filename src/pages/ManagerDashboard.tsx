@@ -52,8 +52,8 @@ const ManagerDashboard = () => {
         </div>
 
         {/* Dashboard Cards */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <div style={{ animationDelay: '0.2s' }}>
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-12">
+          <div style={{ animationDelay: '0.2s' }} className="lg:col-span-2">
             <DashboardCard 
               title="Объекты" 
               icon={Building2}
@@ -69,7 +69,7 @@ const ManagerDashboard = () => {
             </DashboardCard>
           </div>
 
-          <div style={{ animationDelay: '0.25s' }}>
+          <div style={{ animationDelay: '0.25s' }} className="lg:col-span-4">
             <DashboardCard title="Календарь" icon={Calendar}>
               <OrdersCalendar 
                 refreshTrigger={ordersRefresh} 
@@ -79,7 +79,7 @@ const ManagerDashboard = () => {
             </DashboardCard>
           </div>
 
-          <div style={{ animationDelay: '0.3s' }}>
+          <div style={{ animationDelay: '0.3s' }} className="lg:col-span-4">
             <DashboardCard 
               title="Заказы" 
               icon={ShoppingCart}
@@ -95,7 +95,7 @@ const ManagerDashboard = () => {
             </DashboardCard>
           </div>
 
-          <div style={{ animationDelay: '0.35s' }}>
+          <div style={{ animationDelay: '0.35s' }} className="lg:col-span-2">
             <DashboardCard title="Сообщения" icon={MessageCircle} collapsible defaultOpen={false}>
               <div className="space-y-3">
                 {isApproved ? (
