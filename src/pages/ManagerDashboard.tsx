@@ -11,6 +11,7 @@ import { ManagerChatList } from '@/components/ManagerChatList';
 import { OrdersCalendar } from '@/components/OrdersCalendar';
 import { ManagerDayOrdersDialog } from '@/components/ManagerDayOrdersDialog';
 import { Building2, ShoppingCart, MessageCircle, Calendar } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ManagerDashboard = () => {
   const { user, profile } = useAuth();
@@ -18,6 +19,7 @@ const ManagerDashboard = () => {
   const [ordersRefresh, setOrdersRefresh] = useState(0);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
   const [dayOrdersDialogOpen, setDayOrdersDialogOpen] = useState(false);
+  const isMobile = useIsMobile();
   
   const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Менеджер';
   const isApproved = profile?.role === 'admin' || profile?.status === 'approved';
@@ -34,6 +36,11 @@ const ManagerDashboard = () => {
     setSelectedCalendarDate(date);
     setDayOrdersDialogOpen(true);
   };
+
+  // On mobile, cards are collapsible and closed by default
+  const cardProps = isMobile 
+    ? { collapsible: true, defaultOpen: false } 
+    : { collapsible: false, defaultOpen: true };
 
   return (
     <DashboardLayout title="Панель менеджера">
@@ -58,6 +65,7 @@ const ManagerDashboard = () => {
               title="Объекты" 
               icon={Building2}
               action={<AddObjectDialog onObjectAdded={handleObjectsRefresh} disabled={!isApproved} />}
+              {...cardProps}
             >
               <div className="space-y-3">
                 <ObjectsList 
@@ -70,7 +78,7 @@ const ManagerDashboard = () => {
           </div>
 
           <div style={{ animationDelay: '0.25s' }} className="lg:col-span-4">
-            <DashboardCard title="Календарь" icon={Calendar}>
+            <DashboardCard title="Календарь" icon={Calendar} {...cardProps}>
               <OrdersCalendar 
                 refreshTrigger={ordersRefresh} 
                 userRole="manager"
@@ -84,6 +92,7 @@ const ManagerDashboard = () => {
               title="Заказы" 
               icon={ShoppingCart}
               action={<CreateOrderDialog onOrderCreated={handleOrdersRefresh} disabled={!isApproved} />}
+              {...cardProps}
             >
               <div className="space-y-3">
                 <OrdersList 
@@ -96,7 +105,7 @@ const ManagerDashboard = () => {
           </div>
 
           <div style={{ animationDelay: '0.35s' }} className="lg:col-span-2">
-            <DashboardCard title="Сообщения" icon={MessageCircle} collapsible defaultOpen={false}>
+            <DashboardCard title="Сообщения" icon={MessageCircle} {...cardProps}>
               <div className="space-y-3">
                 {isApproved ? (
                   <ManagerChatList />
