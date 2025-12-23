@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Users, Shield, UserCheck, Clock, Brush, Briefcase, CheckCircle2, Star, Edit2, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface UserProfile {
   id: string;
@@ -28,8 +29,14 @@ const AdminDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [editingOrdersCount, setEditingOrdersCount] = useState<string | null>(null);
   const [newOrdersCount, setNewOrdersCount] = useState<string>('');
+  const isMobile = useIsMobile();
 
   const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Админ';
+  
+  // On mobile, cards are collapsible and closed by default
+  const cardProps = isMobile 
+    ? { collapsible: true, defaultOpen: false } 
+    : { collapsible: false, defaultOpen: true };
 
   useEffect(() => {
     fetchUsers();
@@ -227,7 +234,7 @@ const AdminDashboard = () => {
 
         {/* Users List */}
         <div style={{ animationDelay: '0.2s' }}>
-          <DashboardCard title="Пользователи" icon={Users}>
+          <DashboardCard title="Пользователи" icon={Users} {...cardProps}>
             {isLoading ? (
               <div className="flex items-center justify-center p-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -389,7 +396,7 @@ const AdminDashboard = () => {
 
         {/* Roles Management */}
         <div style={{ animationDelay: '0.3s' }}>
-          <DashboardCard title="Управление ролями" icon={Shield}>
+          <DashboardCard title="Управление ролями" icon={Shield} {...cardProps}>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
                 Управляйте ролями пользователей. Роль админа можно назначить только из этой панели.
