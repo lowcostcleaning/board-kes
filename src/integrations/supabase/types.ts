@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      cleaner_unavailability: {
+        Row: {
+          cleaner_id: string
+          created_at: string
+          date: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          cleaner_id: string
+          created_at?: string
+          date: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          cleaner_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       completion_reports: {
         Row: {
           created_at: string

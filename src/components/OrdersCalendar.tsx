@@ -12,6 +12,11 @@ interface OrderForCalendar {
   status: string;
 }
 
+interface UnavailabilityDate {
+  id: string;
+  date: string;
+}
+
 interface OrdersCalendarProps {
   refreshTrigger?: number;
   userRole?: 'manager' | 'cleaner';
@@ -31,49 +36,50 @@ export const OrdersCalendar = ({
 }: OrdersCalendarProps) => {
   const [currentMonth, setCurrentMonth] = useState(selectedDate || new Date());
   const [orders, setOrders] = useState<OrderForCalendar[]>([]);
+  const [unavailableDates, setUnavailableDates] = useState<UnavailabilityDate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchOrders = async () => {
+  const fetchData = async () => {
     try {
-      // If cleanerId is provided, fetch that cleaner's orders
-      if (cleanerId) {
-        const { data, error } = await supabase
-          .from('orders')
-          .select('id, scheduled_date, status')
-          .eq('cleaner_id', cleanerId);
-
-        if (error) throw error;
-        setOrders(data || []);
-        setIsLoading(false);
-        return;
-      }
-
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      let query = supabase
+      const targetCleanerId = cleanerId || (userRole === 'cleaner' ? user.id : undefined);
+
+      // Fetch orders
+      let ordersQuery = supabase
         .from('orders')
         .select('id, scheduled_date, status');
 
-      if (userRole === 'cleaner') {
-        query = query.eq('cleaner_id', user.id);
-      } else {
-        query = query.eq('manager_id', user.id);
+      if (targetCleanerId) {
+        ordersQuery = ordersQuery.eq('cleaner_id', targetCleanerId);
+      } else if (userRole === 'manager') {
+        ordersQuery = ordersQuery.eq('manager_id', user.id);
       }
 
-      const { data, error } = await query;
+      const { data: ordersData, error: ordersError } = await ordersQuery;
+      if (ordersError) throw ordersError;
+      setOrders(ordersData || []);
 
-      if (error) throw error;
-      setOrders(data || []);
+      // Fetch unavailability for cleaners
+      if (targetCleanerId) {
+        const { data: unavailabilityData, error: unavailabilityError } = await supabase
+          .from('cleaner_unavailability')
+          .select('id, date')
+          .eq('cleaner_id', targetCleanerId);
+
+        if (unavailabilityError) throw unavailabilityError;
+        setUnavailableDates(unavailabilityData || []);
+      }
     } catch (error) {
-      console.error('Error fetching orders for calendar:', error);
+      console.error('Error fetching calendar data:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchOrders();
+    fetchData();
   }, [refreshTrigger, userRole, cleanerId]);
 
   const daysInMonth = useMemo(() => {
@@ -91,13 +97,18 @@ export const OrdersCalendar = ({
     return orders.filter(order => isSameDay(new Date(order.scheduled_date), date));
   };
 
+  const isDateUnavailable = (date: Date) => {
+    return unavailableDates.some(u => isSameDay(new Date(u.date), date));
+  };
+
   const previousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
 
   const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
-  const getDayBackground = (dayOrders: OrderForCalendar[], isSelected: boolean) => {
+  const getDayBackground = (dayOrders: OrderForCalendar[], isSelected: boolean, isUnavailable: boolean) => {
     if (isSelected) return 'bg-primary/20';
+    if (isUnavailable) return 'bg-slate-200 dark:bg-slate-700/50';
     if (dayOrders.length === 0) return 'bg-[#f5f5f5] dark:bg-muted/40';
     
     const hasConfirmedOrCompleted = dayOrders.some(o => o.status === 'confirmed' || o.status === 'completed');
@@ -190,7 +201,8 @@ export const OrdersCalendar = ({
             const isToday = isSameDay(date, new Date());
             const isSelected = selectedDate ? isSameDay(date, selectedDate) : false;
             const isDisabled = minDate ? date < minDate : false;
-            const bgColor = getDayBackground(dayOrders, isSelected);
+            const isUnavailable = isDateUnavailable(date);
+            const bgColor = getDayBackground(dayOrders, isSelected, isUnavailable);
 
             return (
               <button
@@ -198,7 +210,7 @@ export const OrdersCalendar = ({
                 onClick={() => handleDayClick(date)}
                 disabled={isDisabled}
                 className={cn(
-                  "aspect-square rounded-[14px] flex flex-col items-center justify-center gap-1 transition-all duration-300 ease-out",
+                  "aspect-square rounded-[14px] flex flex-col items-center justify-center gap-1 transition-all duration-300 ease-out relative",
                   bgColor,
                   onDateSelect && !isDisabled && "cursor-pointer hover:scale-[1.02] hover:shadow-sm active:scale-[0.98]",
                   isToday && "ring-2 ring-primary/30 ring-offset-2 ring-offset-[#f8f8f8] dark:ring-offset-card",
@@ -206,11 +218,17 @@ export const OrdersCalendar = ({
                   isDisabled && "opacity-40 cursor-not-allowed"
                 )}
               >
+                {isUnavailable && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-full h-[1px] bg-slate-400 dark:bg-slate-500 rotate-45 transform origin-center" style={{ width: '60%' }} />
+                  </div>
+                )}
                 <span
                   className={cn(
                     "text-sm font-medium transition-colors duration-200",
                     isToday && "text-primary font-semibold",
-                    isSelected && "text-primary font-semibold"
+                    isSelected && "text-primary font-semibold",
+                    isUnavailable && "text-slate-500 dark:text-slate-400"
                   )}
                 >
                   {format(date, 'd')}
@@ -238,7 +256,7 @@ export const OrdersCalendar = ({
         </div>
 
         {/* Legend */}
-        <div className="flex items-center justify-center gap-5 mt-5 pt-4 border-t border-border/20">
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-5 pt-4 border-t border-border/20">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
             <div className="w-2 h-2 rounded-full bg-amber-400" />
             <span>Ожидает</span>
@@ -250,6 +268,14 @@ export const OrdersCalendar = ({
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
             <div className="w-2 h-2 rounded-full bg-rose-400" />
             <span>Отменён</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
+            <div className="w-3 h-3 rounded bg-slate-200 dark:bg-slate-700/50 relative">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-[60%] h-[1px] bg-slate-400 rotate-45" />
+              </div>
+            </div>
+            <span>Недоступен</span>
           </div>
         </div>
       </div>
