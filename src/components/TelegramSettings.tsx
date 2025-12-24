@@ -3,23 +3,40 @@ import { Button } from '@/components/ui/button';
 import { MessageCircle, Check, X, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 
 const TELEGRAM_BOT_USERNAME = 'kalendaruborok_bot';
 
 export const TelegramSettings: React.FC = () => {
-  const { user, profile } = useAuth();
-  const [telegramEnabled, setTelegramEnabled] = React.useState(false);
-  const [telegramChatId, setTelegramChatId] = React.useState<string | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const { user } = useAuth();
+  const [telegramEnabled, setTelegramEnabled] = React.useState<boolean>(false);
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  // Initial load from profile
-  React.useEffect(() => {
-    if (profile) {
-      setTelegramEnabled((profile as any).telegram_enabled || false);
-      setTelegramChatId((profile as any).telegram_chat_id || null);
+  // Load fresh profile data from Supabase
+  const loadProfileData = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('telegram_enabled')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      
+      setTelegramEnabled(data?.telegram_enabled === true);
+    } catch (error) {
+      console.error('Error loading telegram settings:', error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [profile]);
+  };
+
+  // Load data on mount
+  React.useEffect(() => {
+    loadProfileData();
+  }, [user]);
 
   // Real-time subscription for profile changes
   React.useEffect(() => {
@@ -37,8 +54,7 @@ export const TelegramSettings: React.FC = () => {
         },
         (payload) => {
           const newData = payload.new as any;
-          setTelegramEnabled(newData.telegram_enabled || false);
-          setTelegramChatId(newData.telegram_chat_id || null);
+          setTelegramEnabled(newData.telegram_enabled === true);
         }
       )
       .subscribe();
@@ -55,35 +71,6 @@ export const TelegramSettings: React.FC = () => {
     window.open(telegramUrl, '_blank');
   };
 
-  const handleDisconnect = async () => {
-    if (!user) return;
-    
-    setIsLoading(true);
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          telegram_chat_id: null, 
-          telegram_enabled: false 
-        })
-        .eq('id', user.id);
-
-      if (error) throw error;
-
-      setTelegramChatId(null);
-      setTelegramEnabled(false);
-      toast.success('Telegram отключён');
-    } catch (error: any) {
-      console.error('Error disconnecting telegram:', error);
-      toast.error('Ошибка отключения');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Connected = telegram_enabled is true AND telegram_chat_id exists
-  const isConnected = telegramEnabled && !!telegramChatId;
-
   return (
     <div className="space-y-4 border-t pt-4 mt-4">
       <div className="flex items-center gap-2">
@@ -95,7 +82,7 @@ export const TelegramSettings: React.FC = () => {
         {/* Connection status */}
         <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
           <div className="flex items-center gap-2">
-            {isConnected ? (
+            {telegramEnabled ? (
               <>
                 <Check className="w-4 h-4 text-green-500" />
                 <span className="text-sm">Telegram подключён ✅</span>
@@ -108,21 +95,12 @@ export const TelegramSettings: React.FC = () => {
             )}
           </div>
           
-          {isConnected ? (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleDisconnect}
-              disabled={isLoading}
-              className="text-destructive hover:text-destructive"
-            >
-              Отключить
-            </Button>
-          ) : (
+          {!telegramEnabled && (
             <Button 
               variant="outline" 
               size="sm" 
               onClick={handleConnectTelegram}
+              disabled={isLoading}
               className="gap-2"
             >
               <ExternalLink className="w-4 h-4" />
