@@ -251,6 +251,8 @@ export type Database = {
           rating: number | null
           role: string
           status: string
+          telegram_chat_id: string | null
+          telegram_enabled: boolean
         }
         Insert: {
           completed_orders_count?: number
@@ -264,6 +266,8 @@ export type Database = {
           rating?: number | null
           role: string
           status?: string
+          telegram_chat_id?: string | null
+          telegram_enabled?: boolean
         }
         Update: {
           completed_orders_count?: number
@@ -277,6 +281,8 @@ export type Database = {
           rating?: number | null
           role?: string
           status?: string
+          telegram_chat_id?: string | null
+          telegram_enabled?: boolean
         }
         Relationships: []
       }
