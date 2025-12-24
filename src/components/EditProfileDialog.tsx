@@ -13,7 +13,7 @@ import { Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-
+import { TelegramSettings } from './TelegramSettings';
 interface EditProfileDialogProps {
   onProfileUpdate?: () => void;
 }
@@ -121,6 +121,8 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
             </Button>
           </div>
         </form>
+        
+        <TelegramSettings />
       </DialogContent>
     </Dialog>
   );
