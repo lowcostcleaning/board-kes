@@ -12,6 +12,10 @@ interface NotificationPayload {
 }
 
 Deno.serve(async (req) => {
+  console.log('=== Edge Function send-telegram-notification called ===')
+  console.log('Request method:', req.method)
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()))
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
