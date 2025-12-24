@@ -1,13 +1,11 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { MessageCircle, Check, X, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-const TELEGRAM_BOT_USERNAME = 'kalendaruborok_bot';
+const TELEGRAM_BOT_USERNAME = 'LOWCOST_CLEANING_BOT';
 
 export const TelegramSettings: React.FC = () => {
   const { user, profile } = useAuth();
@@ -15,6 +13,7 @@ export const TelegramSettings: React.FC = () => {
   const [telegramChatId, setTelegramChatId] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
 
+  // Initial load from profile
   React.useEffect(() => {
     if (profile) {
       setTelegramEnabled((profile as any).telegram_enabled || false);
@@ -22,33 +21,38 @@ export const TelegramSettings: React.FC = () => {
     }
   }, [profile]);
 
+  // Real-time subscription for profile changes
+  React.useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('telegram-settings-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`
+        },
+        (payload) => {
+          const newData = payload.new as any;
+          setTelegramEnabled(newData.telegram_enabled || false);
+          setTelegramChatId(newData.telegram_chat_id || null);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const handleConnectTelegram = () => {
     if (!user) return;
     
     const telegramUrl = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${user.id}`;
     window.open(telegramUrl, '_blank');
-  };
-
-  const handleToggleEnabled = async (enabled: boolean) => {
-    if (!user) return;
-    
-    setIsLoading(true);
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ telegram_enabled: enabled })
-        .eq('id', user.id);
-
-      if (error) throw error;
-
-      setTelegramEnabled(enabled);
-      toast.success(enabled ? 'Уведомления включены' : 'Уведомления отключены');
-    } catch (error: any) {
-      console.error('Error updating telegram settings:', error);
-      toast.error('Ошибка обновления настроек');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleDisconnect = async () => {
@@ -77,7 +81,8 @@ export const TelegramSettings: React.FC = () => {
     }
   };
 
-  const isConnected = !!telegramChatId;
+  // Connected = telegram_enabled is true AND telegram_chat_id exists
+  const isConnected = telegramEnabled && !!telegramChatId;
 
   return (
     <div className="space-y-4 border-t pt-4 mt-4">
@@ -93,7 +98,7 @@ export const TelegramSettings: React.FC = () => {
             {isConnected ? (
               <>
                 <Check className="w-4 h-4 text-green-500" />
-                <span className="text-sm">Telegram подключён</span>
+                <span className="text-sm">Telegram подключён ✅</span>
               </>
             ) : (
               <>
@@ -126,26 +131,9 @@ export const TelegramSettings: React.FC = () => {
           )}
         </div>
 
-        {/* Enable/disable toggle */}
-        {isConnected && (
-          <div className="flex items-center justify-between">
-            <Label htmlFor="telegram-enabled" className="text-sm">
-              Получать уведомления
-            </Label>
-            <Switch
-              id="telegram-enabled"
-              checked={telegramEnabled}
-              onCheckedChange={handleToggleEnabled}
-              disabled={isLoading}
-            />
-          </div>
-        )}
-
         {/* Info text */}
         <p className="text-xs text-muted-foreground">
-          {isConnected 
-            ? 'Вы будете получать уведомления о новых заказах и сообщениях в Telegram.'
-            : 'Подключите Telegram для получения мгновенных уведомлений о заказах и сообщениях.'}
+          Подключите Telegram для получения мгновенных уведомлений о заказах и сообщениях.
         </p>
       </div>
     </div>
