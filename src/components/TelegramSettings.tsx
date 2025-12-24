@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-const TELEGRAM_BOT_USERNAME = 'YourBotUsername'; // Replace with actual bot username
+const TELEGRAM_BOT_USERNAME = 'kalendaruborok_bot';
 
 export const TelegramSettings: React.FC = () => {
   const { user, profile } = useAuth();
