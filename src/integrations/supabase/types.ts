@@ -240,11 +240,13 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           completed_orders_count: number
           created_at: string | null
           email: string | null
           id: string
           name: string | null
+          phone: string | null
           price_one_plus_one: number | null
           price_studio: number | null
           price_two_plus_one: number | null
@@ -255,11 +257,13 @@ export type Database = {
           telegram_enabled: boolean
         }
         Insert: {
+          avatar_url?: string | null
           completed_orders_count?: number
           created_at?: string | null
           email?: string | null
           id: string
           name?: string | null
+          phone?: string | null
           price_one_plus_one?: number | null
           price_studio?: number | null
           price_two_plus_one?: number | null
@@ -270,11 +274,13 @@ export type Database = {
           telegram_enabled?: boolean
         }
         Update: {
+          avatar_url?: string | null
           completed_orders_count?: number
           created_at?: string | null
           email?: string | null
           id?: string
           name?: string | null
+          phone?: string | null
           price_one_plus_one?: number | null
           price_studio?: number | null
           price_two_plus_one?: number | null
