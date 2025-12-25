@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,13 +17,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Plus, Building2, Home, Clock, User, CalendarIcon, Send, Banknote, LayoutGrid } from 'lucide-react';
+import { Plus, Building2, Home, Clock, CalendarIcon, Send, Banknote } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { OrdersCalendar } from '@/components/OrdersCalendar';
 import { CleanerRatingDisplay } from '@/components/CleanerRatingDisplay';
 import { CleanerFilters } from '@/components/CleanerFilters';
+import { UserAvatar } from '@/components/UserAvatar';
 
 interface PropertyObject {
   id: string;
@@ -36,6 +37,7 @@ interface Cleaner {
   id: string;
   email: string;
   name: string | null;
+  avatar_url: string | null;
   rating: number | null;
   completed_orders_count: number;
   price_studio: number | null;
@@ -47,6 +49,10 @@ interface CleanerOrder {
   scheduled_date: string;
   scheduled_time: string;
   status: string;
+}
+
+interface UnavailableDate {
+  date: string;
 }
 
 interface CreateOrderDialogProps {
@@ -94,6 +100,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   const [selectedObject, setSelectedObject] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [cleanerOrders, setCleanerOrders] = useState<CleanerOrder[]>([]);
+  const [cleanerUnavailableDates, setCleanerUnavailableDates] = useState<UnavailableDate[]>([]);
   const [busyTimeSlots, setBusyTimeSlots] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>('name');
 
@@ -107,6 +114,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   useEffect(() => {
     if (selectedCleaner) {
       fetchCleanerOrders();
+      fetchCleanerUnavailability();
     }
   }, [selectedCleaner]);
 
@@ -142,7 +150,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   const fetchCleaners = async () => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email, name, rating, completed_orders_count, price_studio, price_one_plus_one, price_two_plus_one')
+      .select('id, email, name, avatar_url, rating, completed_orders_count, price_studio, price_one_plus_one, price_two_plus_one')
       .eq('role', 'cleaner')
       .eq('status', 'approved');
 
@@ -159,6 +167,17 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
 
     if (!error && data) {
       setCleanerOrders(data);
+    }
+  };
+
+  const fetchCleanerUnavailability = async () => {
+    const { data, error } = await supabase
+      .from('cleaner_unavailability')
+      .select('date')
+      .eq('cleaner_id', selectedCleaner);
+
+    if (!error && data) {
+      setCleanerUnavailableDates(data);
     }
   };
 
@@ -185,6 +204,11 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     }
   }, [cleaners, sortBy]);
 
+  // Check if a date is unavailable for the selected cleaner
+  const isDateUnavailable = (date: Date): boolean => {
+    return cleanerUnavailableDates.some(u => isSameDay(new Date(u.date), date));
+  };
+
   const resetForm = () => {
     setStep('cleaner');
     setSelectedCleaner('');
@@ -192,6 +216,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     setSelectedTime('');
     setSelectedObject('');
     setCleanerOrders([]);
+    setCleanerUnavailableDates([]);
     setBusyTimeSlots([]);
     setSortBy('name');
   };
@@ -202,6 +227,15 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   };
 
   const handleDateSelect = (date: Date) => {
+    // Block selection if date is unavailable
+    if (isDateUnavailable(date)) {
+      toast({
+        title: 'Дата недоступна',
+        description: 'Клинер недоступен в выбранную дату',
+        variant: 'destructive',
+      });
+      return;
+    }
     setSelectedDate(date);
     setStep('details');
   };
@@ -211,6 +245,16 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
       toast({
         title: 'Ошибка',
         description: 'Заполните все поля',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Double-check unavailability before submitting
+    if (isDateUnavailable(selectedDate)) {
+      toast({
+        title: 'Ошибка',
+        description: 'Клинер недоступен в выбранную дату',
         variant: 'destructive',
       });
       return;
@@ -233,7 +277,13 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
         scheduled_time: selectedTime,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Handle backend validation error
+        if (error.message.includes('недоступен')) {
+          throw new Error('Клинер недоступен в выбранную дату');
+        }
+        throw error;
+      }
 
       toast({
         title: 'Успешно',
@@ -296,9 +346,12 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                       onClick={() => handleCleanerSelect(cleaner.id)}
                       className="w-full flex items-center gap-3 p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40 hover:bg-[#ebebeb] dark:hover:bg-muted/60 transition-all duration-300 text-left hover:scale-[1.01] active:scale-[0.99]"
                     >
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="w-5 h-5 text-primary" />
-                      </div>
+                      <UserAvatar
+                        avatarUrl={cleaner.avatar_url}
+                        name={cleaner.name}
+                        email={cleaner.email}
+                        size="md"
+                      />
                       <div className="flex-1">
                         <span className="text-sm font-medium block">
                           {cleaner.name || cleaner.email?.split('@')[0] || 'Клинер'}
@@ -344,6 +397,11 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                 selectedDate={selectedDate}
                 minDate={today}
               />
+              {cleanerUnavailableDates.length > 0 && (
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Перечёркнутые даты — клинер недоступен
+                </p>
+              )}
             </div>
             <Button 
               variant="outline" 
@@ -459,24 +517,26 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
 
               {selectedCleanerData && (
                 <div className="p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40">
-                  <Label className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <User className="w-3 h-3" />
+                  <Label className="flex items-center gap-2 text-muted-foreground mb-2">
                     Клинер
                   </Label>
-                  <p className="text-sm">
-                    {selectedCleanerData.name || selectedCleanerData.email?.split('@')[0]}
-                    {selectedCleanerData.name && (
-                      <span className="text-muted-foreground ml-1">
-                        (@{selectedCleanerData.email?.split('@')[0]})
-                      </span>
-                    )}
-                  </p>
-                  <div className="mt-1">
-                    <CleanerRatingDisplay
-                      rating={selectedCleanerData.rating}
-                      completedOrders={selectedCleanerData.completed_orders_count}
+                  <div className="flex items-center gap-3">
+                    <UserAvatar
+                      avatarUrl={selectedCleanerData.avatar_url}
+                      name={selectedCleanerData.name}
+                      email={selectedCleanerData.email}
                       size="sm"
                     />
+                    <div>
+                      <p className="text-sm font-medium">
+                        {selectedCleanerData.name || selectedCleanerData.email?.split('@')[0]}
+                      </p>
+                      <CleanerRatingDisplay
+                        rating={selectedCleanerData.rating}
+                        completedOrders={selectedCleanerData.completed_orders_count}
+                        size="sm"
+                      />
+                    </div>
                   </div>
                 </div>
               )}

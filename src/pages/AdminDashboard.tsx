@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Users, Shield, UserCheck, Clock, Brush, Briefcase, CheckCircle2, Star, Edit2, Check, X } from 'lucide-react';
+import { Users, Shield, UserCheck, Clock, Brush, Briefcase, CheckCircle2, Star, Edit2, Check, X, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { UserAvatar } from '@/components/UserAvatar';
+import { ViewUserProfileDialog } from '@/components/ViewUserProfileDialog';
 
 interface UserProfile {
   id: string;
@@ -20,6 +22,9 @@ interface UserProfile {
   name: string | null;
   rating: number | null;
   completed_orders_count: number;
+  avatar_url: string | null;
+  phone: string | null;
+  telegram_chat_id: string | null;
 }
 
 const AdminDashboard = () => {
@@ -29,6 +34,7 @@ const AdminDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [editingOrdersCount, setEditingOrdersCount] = useState<string | null>(null);
   const [newOrdersCount, setNewOrdersCount] = useState<string>('');
+  const [viewingUser, setViewingUser] = useState<UserProfile | null>(null);
   const isMobile = useIsMobile();
 
   const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Админ';
@@ -178,6 +184,10 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleViewProfile = (user: UserProfile) => {
+    setViewingUser(user);
+  };
+
   return (
     <DashboardLayout title="Панель администратора">
       <div className="space-y-6">
@@ -251,11 +261,12 @@ const AdminDashboard = () => {
                     className="flex flex-col lg:flex-row lg:items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/50 gap-3"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center shrink-0">
-                        <span className="text-sm font-medium text-accent-foreground">
-                          {(u.email || 'U').charAt(0).toUpperCase()}
-                        </span>
-                      </div>
+                      <UserAvatar
+                        avatarUrl={u.avatar_url}
+                        name={u.name}
+                        email={u.email}
+                        size="md"
+                      />
                       <div className="min-w-0">
                         <p className="font-medium text-foreground truncate">{u.name || u.email}</p>
                         <p className="text-sm text-muted-foreground">
@@ -315,7 +326,18 @@ const AdminDashboard = () => {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* View Profile Button */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleViewProfile(u)}
+                        className="gap-1"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span className="hidden sm:inline">Профиль</span>
+                      </Button>
+
                       {/* Status Badge */}
                       {u.status === 'pending' ? (
                         <Badge variant="outline" className="bg-status-pending/10 text-status-pending border-status-pending/30">
@@ -426,7 +448,7 @@ const AdminDashboard = () => {
                     <span className="font-medium">Админ</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Полный доступ к управлению пользователями
+                    Полный доступ к системе
                   </p>
                 </div>
               </div>
@@ -434,6 +456,12 @@ const AdminDashboard = () => {
           </DashboardCard>
         </div>
       </div>
+
+      <ViewUserProfileDialog
+        user={viewingUser}
+        open={!!viewingUser}
+        onOpenChange={(open) => !open && setViewingUser(null)}
+      />
     </DashboardLayout>
   );
 };

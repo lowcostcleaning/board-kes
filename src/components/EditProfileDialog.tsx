@@ -14,6 +14,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { TelegramSettings } from './TelegramSettings';
+import { AvatarUpload } from './AvatarUpload';
+
 interface EditProfileDialogProps {
   onProfileUpdate?: () => void;
 }
@@ -22,13 +24,18 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
   const { user, profile } = useAuth();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (open && profile) {
-      // Try to get name from profile first, then from user metadata
       const currentName = (profile as any).name || user?.user_metadata?.name || '';
+      const currentPhone = (profile as any).phone || '';
+      const currentAvatar = (profile as any).avatar_url || null;
       setName(currentName);
+      setPhone(currentPhone);
+      setAvatarUrl(currentAvatar);
     }
   }, [open, profile, user]);
 
@@ -54,7 +61,10 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
       // Update profile in database
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ name: trimmedName })
+        .update({ 
+          name: trimmedName,
+          phone: phone.trim() || null,
+        })
         .eq('id', user.id);
 
       if (profileError) throw profileError;
@@ -80,6 +90,10 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
     }
   };
 
+  const handleAvatarChange = (url: string | null) => {
+    setAvatarUrl(url);
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -92,7 +106,21 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
         <DialogHeader>
           <DialogTitle>Редактировать профиль</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Avatar Upload */}
+          {user && (
+            <div className="space-y-2">
+              <Label>Фото профиля</Label>
+              <AvatarUpload
+                currentAvatarUrl={avatarUrl}
+                userId={user.id}
+                userName={name}
+                userEmail={profile?.email}
+                onAvatarChange={handleAvatarChange}
+              />
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -110,6 +138,16 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
               onChange={(e) => setName(e.target.value)}
               placeholder="Введите ваше имя"
               maxLength={100}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="phone">Телефон</Label>
+            <Input
+              id="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+7 999 123 45 67"
+              maxLength={20}
             />
           </div>
           <div className="flex justify-end gap-2">
