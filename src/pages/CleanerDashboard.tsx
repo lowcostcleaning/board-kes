@@ -9,6 +9,7 @@ import { CleanerChat } from '@/components/CleanerChat';
 import { CleanerPricingForm } from '@/components/CleanerPricingForm';
 import { CleanerDayOrdersDialog } from '@/components/CleanerDayOrdersDialog';
 import { CleanerUnavailabilityManager } from '@/components/CleanerUnavailabilityManager';
+import { CleanerCreateOrderDialog } from '@/components/CleanerCreateOrderDialog';
 import { Brush, Calendar, MessageCircle, Banknote, CalendarX2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -58,10 +59,13 @@ const CleanerDashboard = () => {
             <DashboardCard title="Мои заказы" icon={Brush} {...cardProps}>
               <div className="space-y-3">
                 {isApproved ? (
-                  <CleanerOrdersList 
-                    refreshTrigger={ordersRefresh} 
-                    onRefresh={handleOrdersRefresh}
-                  />
+                  <>
+                    <CleanerCreateOrderDialog onOrderCreated={handleOrdersRefresh} />
+                    <CleanerOrdersList 
+                      refreshTrigger={ordersRefresh} 
+                      onRefresh={handleOrdersRefresh}
+                    />
+                  </>
                 ) : (
                   <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
                     Заказы будут доступны после одобрения аккаунта.

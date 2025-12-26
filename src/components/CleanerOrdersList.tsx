@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format, isToday, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Calendar, Clock, Building2, Home, Check, X, FileText } from 'lucide-react';
+import { Calendar, Clock, Building2, Home, Check, X, FileText, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +10,7 @@ import { CompletionReportDialog } from './CompletionReportDialog';
 import { ViewReportDialog } from './ViewReportDialog';
 import { OrdersFilter } from './OrdersFilter';
 import { UserAvatar } from './UserAvatar';
+import { EditOrderDialog } from './EditOrderDialog';
 import { DateRange } from 'react-day-picker';
 
 interface CleanerOrder {
@@ -18,6 +19,8 @@ interface CleanerOrder {
   scheduled_time: string;
   status: string;
   object_id: string;
+  cleaner_id: string;
+  manager_id: string;
   object: {
     complex_name: string;
     apartment_number: string;
@@ -60,6 +63,8 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
   const [isLoading, setIsLoading] = useState(true);
   const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
   const [viewingReportOrderId, setViewingReportOrderId] = useState<string | null>(null);
+  const [editingOrder, setEditingOrder] = useState<CleanerOrder | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedObjectId, setSelectedObjectId] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [showTodayOnly, setShowTodayOnly] = useState(true);
@@ -68,6 +73,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setCurrentUserId(user.id);
 
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
@@ -77,6 +83,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
           scheduled_time,
           status,
           manager_id,
+          cleaner_id,
           object_id,
           object:objects(complex_name, apartment_number)
         `)
@@ -119,6 +126,8 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
         scheduled_time: order.scheduled_time,
         status: order.status,
         object_id: order.object_id,
+        cleaner_id: order.cleaner_id,
+        manager_id: order.manager_id,
         object: order.object || { complex_name: 'Неизвестно', apartment_number: '' },
         manager: managerMap.get(order.manager_id) || { email: 'Неизвестно', name: null, avatar_url: null },
       }));
@@ -271,7 +280,18 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
                 <Clock className="w-4 h-4 text-muted-foreground ml-2 flex-shrink-0" />
                 <span>{order.scheduled_time}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                {/* Edit button - only for orders created by cleaner (manager_id === cleaner_id) */}
+                {order.manager_id === order.cleaner_id && order.status !== 'completed' && order.status !== 'cancelled' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2"
+                    onClick={() => setEditingOrder(order)}
+                  >
+                    <Pencil className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                )}
                 {order.status === 'completed' && (
                   <Button
                     variant="ghost"
@@ -369,6 +389,14 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
         isOpen={!!viewingReportOrderId}
         onClose={() => setViewingReportOrderId(null)}
         orderId={viewingReportOrderId || ''}
+      />
+
+      <EditOrderDialog
+        open={!!editingOrder}
+        onOpenChange={(open) => !open && setEditingOrder(null)}
+        order={editingOrder}
+        onSuccess={onRefresh}
+        canDelete={editingOrder?.manager_id === editingOrder?.cleaner_id}
       />
     </div>
   );
