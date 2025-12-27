@@ -244,7 +244,7 @@ export const EditOrderDialog = ({
                   <Clock className="w-4 h-4" />
                   Время
                 </Label>
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   {TIME_SLOTS.map((time) => {
                     const isBusy = busyTimeSlots.includes(time);
                     const isSelected = selectedTime === time;
