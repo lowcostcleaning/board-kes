@@ -325,7 +325,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
           Создать заказ
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[440px]">
+      <DialogContent className="max-w-[95vw] sm:max-w-[440px] max-h-[90vh] overflow-y-auto">
         {step === 'cleaner' && (
           <>
             <DialogHeader>
@@ -439,29 +439,29 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                     Все слоты заняты на эту дату. Выберите другую дату.
                   </p>
                 ) : (
-                  <Select value={selectedTime} onValueChange={setSelectedTime}>
-                    <SelectTrigger className="bg-[#f5f5f5] dark:bg-muted/40 rounded-[14px] border-0">
-                      <SelectValue placeholder="Выберите время" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background rounded-[14px]">
-                      {TIME_SLOTS.map((time) => {
-                        const isBusy = busyTimeSlots.includes(time);
-                        return (
-                          <SelectItem 
-                            key={time} 
-                            value={time} 
-                            disabled={isBusy}
-                            className={cn(
-                              "rounded-lg",
-                              isBusy && "text-muted-foreground line-through"
-                            )}
-                          >
-                            {time} {isBusy && '(занято)'}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                  <div className="grid grid-cols-3 gap-2">
+                    {TIME_SLOTS.map((time) => {
+                      const isBusy = busyTimeSlots.includes(time);
+                      const isSelected = selectedTime === time;
+                      return (
+                        <button
+                          key={time}
+                          onClick={() => !isBusy && setSelectedTime(time)}
+                          disabled={isBusy}
+                          className={cn(
+                            "p-2 rounded-lg text-sm font-medium transition-all",
+                            isSelected 
+                              ? "bg-primary text-primary-foreground" 
+                              : isBusy 
+                                ? "bg-muted/30 text-muted-foreground line-through cursor-not-allowed" 
+                                : "bg-muted/50 hover:bg-muted"
+                          )}
+                        >
+                          {time}
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
 
