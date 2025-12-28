@@ -33,7 +33,7 @@ const App = () => (
             <Route
               path="/cleaner"
               element={
-                <ProtectedRoute allowedRoles={['cleaner']}>
+                <ProtectedRoute allowedRoles={['cleaner', 'demo_cleaner']}>
                   <CleanerDashboard />
                 </ProtectedRoute>
               }
@@ -41,7 +41,7 @@ const App = () => (
             <Route
               path="/manager"
               element={
-                <ProtectedRoute allowedRoles={['manager']}>
+                <ProtectedRoute allowedRoles={['manager', 'demo_manager']}>
                   <ManagerDashboard />
                 </ProtectedRoute>
               }

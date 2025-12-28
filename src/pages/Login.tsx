@@ -26,9 +26,11 @@ const Login = () => {
           navigate('/admin', { replace: true });
           break;
         case 'manager':
+        case 'demo_manager':
           navigate('/manager', { replace: true });
           break;
         case 'cleaner':
+        case 'demo_cleaner':
           navigate('/cleaner', { replace: true });
           break;
         default:
