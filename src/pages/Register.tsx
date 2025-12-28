@@ -22,7 +22,13 @@ const Register = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (!authLoading && isAuthenticated && profile) {
-      navigate(`/${profile.role}`, { replace: true });
+      const path =
+        profile.role === 'demo_manager'
+          ? '/manager'
+          : profile.role === 'demo_cleaner'
+            ? '/cleaner'
+            : `/${profile.role}`;
+      navigate(path, { replace: true });
     }
   }, [isAuthenticated, profile, authLoading, navigate]);
 

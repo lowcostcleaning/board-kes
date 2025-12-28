@@ -70,8 +70,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
       case 'admin':
         return <Navigate to="/admin" replace />;
       case 'manager':
+      case 'demo_manager':
         return <Navigate to="/manager" replace />;
       case 'cleaner':
+      case 'demo_cleaner':
         return <Navigate to="/cleaner" replace />;
       default:
         return <Navigate to="/login" replace />;

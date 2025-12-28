@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-export type UserRole = 'cleaner' | 'manager' | 'admin';
+export type UserRole = 'cleaner' | 'manager' | 'admin' | 'demo_manager' | 'demo_cleaner';
 export type UserStatus = 'pending' | 'approved';
 
 export interface UserProfile {
@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     // Validate role is one of allowed values
-    const validRoles: UserRole[] = ['cleaner', 'manager', 'admin'];
+    const validRoles: UserRole[] = ['cleaner', 'manager', 'admin', 'demo_manager', 'demo_cleaner'];
     if (!validRoles.includes(data.role as UserRole)) {
       setProfileError('Некорректная роль пользователя.');
       return null;
