@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Users, Shield, UserCheck, Clock, Brush, Briefcase, CheckCircle2, Star, Edit2, Check, X, Eye } from 'lucide-react';
+import { Users, Shield, UserCheck, Clock, Brush, Briefcase, CheckCircle2, Star, Edit2, Check, X, Eye, FlaskConical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -116,8 +116,10 @@ const AdminDashboard = () => {
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'cleaner':
+      case 'demo_cleaner':
         return <Brush className="w-3 h-3" />;
       case 'manager':
+      case 'demo_manager':
         return <Briefcase className="w-3 h-3" />;
       case 'admin':
         return <Shield className="w-3 h-3" />;
@@ -125,6 +127,8 @@ const AdminDashboard = () => {
         return null;
     }
   };
+
+  const isDemoRole = (role: string) => role === 'demo_manager' || role === 'demo_cleaner';
 
   const getRoleLabel = (role: string) => {
     switch (role) {
@@ -134,6 +138,10 @@ const AdminDashboard = () => {
         return 'Менеджер';
       case 'admin':
         return 'Админ';
+      case 'demo_manager':
+        return 'Demo Менеджер';
+      case 'demo_cleaner':
+        return 'Demo Клинер';
       default:
         return role;
     }
@@ -268,12 +276,20 @@ const AdminDashboard = () => {
                         size="md"
                       />
                       <div className="min-w-0">
-                        <p className="font-medium text-foreground truncate">{u.name || u.email}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-foreground truncate">{u.name || u.email}</p>
+                          {isDemoRole(u.role) && (
+                            <Badge variant="outline" className="bg-purple-500/10 text-purple-500 border-purple-500/30 text-xs">
+                              <FlaskConical className="w-2.5 h-2.5 mr-1" />
+                              Demo
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           ID: {u.id.slice(0, 8)}...
                         </p>
                         {/* Show rating and orders count for cleaners */}
-                        {u.role === 'cleaner' && (
+                        {(u.role === 'cleaner' || u.role === 'demo_cleaner') && (
                           <div className="flex items-center gap-3 mt-1 text-sm">
                             <div className="flex items-center gap-1">
                               <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
@@ -404,6 +420,18 @@ const AdminDashboard = () => {
                             <div className="flex items-center gap-2">
                               <Shield className="w-3 h-3" />
                               Админ
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="demo_manager">
+                            <div className="flex items-center gap-2">
+                              <FlaskConical className="w-3 h-3 text-purple-500" />
+                              Demo Менеджер
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="demo_cleaner">
+                            <div className="flex items-center gap-2">
+                              <FlaskConical className="w-3 h-3 text-purple-500" />
+                              Demo Клинер
                             </div>
                           </SelectItem>
                         </SelectContent>
