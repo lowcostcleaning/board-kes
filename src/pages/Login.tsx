@@ -126,8 +126,8 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 flex flex-col">
       <header className="p-6 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <img src="/favicon.png" alt="Lowcost Cleaning" className="w-10 h-10 rounded-xl" />
-          <span className="font-bold text-xl text-foreground">Lowcost Cleaning</span>
+          <img src="/favicon.png" alt="CleanOS" className="w-10 h-10 rounded-xl" />
+          <span className="font-bold text-xl text-foreground">CleanOS</span>
         </Link>
       </header>
 
