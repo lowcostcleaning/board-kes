@@ -46,10 +46,11 @@ export const OrdersCalendar = ({
 
       const targetCleanerId = cleanerId || (userRole === 'cleaner' ? user.id : undefined);
 
-      // Fetch orders
+      // Fetch orders (exclude cancelled from calendar)
       let ordersQuery = supabase
         .from('orders')
-        .select('id, scheduled_date, status');
+        .select('id, scheduled_date, status')
+        .neq('status', 'cancelled');
 
       if (targetCleanerId) {
         ordersQuery = ordersQuery.eq('cleaner_id', targetCleanerId);
@@ -112,14 +113,10 @@ export const OrdersCalendar = ({
     if (dayOrders.length === 0) return 'bg-[#f5f5f5] dark:bg-muted/40';
     
     const hasConfirmedOrCompleted = dayOrders.some(o => o.status === 'confirmed' || o.status === 'completed');
-    const hasCancelled = dayOrders.some(o => o.status === 'cancelled');
     const hasPending = dayOrders.some(o => o.status === 'pending');
     
-    if (hasConfirmedOrCompleted && !hasCancelled && !hasPending) {
+    if (hasConfirmedOrCompleted && !hasPending) {
       return 'bg-emerald-50 dark:bg-emerald-900/20';
-    }
-    if (hasCancelled && !hasConfirmedOrCompleted && !hasPending) {
-      return 'bg-rose-50 dark:bg-rose-900/20';
     }
     return 'bg-[#f5f5f5] dark:bg-muted/40';
   };
@@ -131,8 +128,6 @@ export const OrdersCalendar = ({
       case 'confirmed':
       case 'completed':
         return 'bg-emerald-500';
-      case 'cancelled':
-        return 'bg-rose-400';
       default:
         return 'bg-muted-foreground';
     }
@@ -264,10 +259,6 @@ export const OrdersCalendar = ({
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
             <div className="w-2 h-2 rounded-full bg-emerald-500" />
             <span>Подтверждён</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
-            <div className="w-2 h-2 rounded-full bg-rose-400" />
-            <span>Отменён</span>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
             <div className="w-3 h-3 rounded bg-slate-200 dark:bg-slate-700/50 relative">
