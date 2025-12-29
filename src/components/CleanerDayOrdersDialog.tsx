@@ -95,6 +95,7 @@ export const CleanerDayOrdersDialog: React.FC<CleanerDayOrdersDialogProps> = ({
         `)
         .eq('cleaner_id', user.id)
         .eq('scheduled_date', dateStr)
+        .neq('status', 'cancelled')
         .order('scheduled_time');
 
       if (error) throw error;
