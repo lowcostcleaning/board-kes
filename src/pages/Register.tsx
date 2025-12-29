@@ -84,8 +84,8 @@ const Register = () => {
       {/* Header */}
       <header className="p-6 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <img src="/favicon.png" alt="Lowcost Cleaning" className="w-10 h-10 rounded-xl" />
-          <span className="font-bold text-xl text-foreground">Lowcost Cleaning</span>
+          <img src="/favicon.png" alt="CleanOS" className="w-10 h-10 rounded-xl" />
+          <span className="font-bold text-xl text-foreground">CleanOS</span>
         </Link>
         {isAuthenticated && (
           <Button variant="ghost" size="sm" onClick={logout} className="gap-2">
