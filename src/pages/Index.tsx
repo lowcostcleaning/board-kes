@@ -31,14 +31,14 @@ const Index = () => {
             <div className="flex items-center justify-center gap-3 mb-6">
               <TreePine className="w-12 h-12 text-emerald-600" />
               <h1 className="text-4xl md:text-5xl font-bold">
-                <span className="text-emerald-600 italic">Lowcost</span>{' '}
-                <span className="text-red-500 italic">Cleaning</span>
+                <span className="text-emerald-600 italic">Clean</span>
+                <span className="text-sky-500 italic">OS</span>
               </h1>
               <TreePine className="w-12 h-12 text-emerald-600" />
             </div>
             
             <p className="text-muted-foreground text-lg mb-4">
-              Профессиональный клининг
+              Cleaning calendar and workflows for property managers and cleaners
             </p>
 
             {/* New Year banner */}
@@ -67,7 +67,7 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="p-6 text-center text-sm text-muted-foreground relative z-10">
-        © 2026 Lowcost Cleaning. Все права защищены.
+        © 2026 CleanOS. All rights reserved.
       </footer>
     </div>
   );
