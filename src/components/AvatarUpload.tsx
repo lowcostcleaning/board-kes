@@ -15,7 +15,7 @@ interface AvatarUploadProps {
 }
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_SIZE = 50 * 1024 * 1024; // 50MB
 
 export const AvatarUpload = ({
   currentAvatarUrl,
@@ -39,7 +39,7 @@ export const AvatarUpload = ({
 
     // Validate file size
     if (file.size > MAX_SIZE) {
-      toast.error('Размер файла не должен превышать 5MB');
+      toast.error('Размер файла не должен превышать 50MB');
       return;
     }
 

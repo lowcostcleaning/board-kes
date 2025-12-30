@@ -65,11 +65,11 @@ export const CompletionReportDialog = ({
           continue;
         }
 
-        const maxBytes = 20 * 1024 * 1024; // 20MB
+        const maxBytes = 50 * 1024 * 1024; // 50MB
         if (file.size > maxBytes) {
           toast({
             title: 'Ошибка',
-            description: 'Файл слишком большой (макс. 20MB)',
+            description: 'Файл слишком большой (макс. 50MB)',
             variant: 'destructive',
           });
           continue;
