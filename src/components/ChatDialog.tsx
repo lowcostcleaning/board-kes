@@ -252,9 +252,9 @@ export function ChatDialog({
           continue;
         }
 
-        const maxBytes = 20 * 1024 * 1024; // 20MB
+        const maxBytes = 50 * 1024 * 1024; // 50MB
         if (file.size > maxBytes) {
-          toast.error('Файл слишком большой (макс. 20MB)');
+          toast.error('Файл слишком большой (макс. 50MB)');
           continue;
         }
 
