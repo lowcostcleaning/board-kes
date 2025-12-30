@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -596,29 +595,27 @@ export function ChatDialog({
         </DialogContent>
       </Dialog>
 
-      {/* IMPORTANT: file input is portaled outside Dialog to avoid mobile crashes */}
-      {typeof document !== 'undefined' &&
-        createPortal(
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,video/*"
-            multiple
-            onChange={handleFileSelect}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: 1,
-              height: 1,
-              opacity: 0,
-              pointerEvents: 'none',
-            }}
-            aria-hidden="true"
-            tabIndex={-1}
-          />,
-          document.body
-        )}
+      {/* Hidden file input for attachment uploads */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,video/mp4,video/quicktime,video/webm,video/3gpp"
+        multiple
+        onChange={handleFileSelect}
+        style={{
+          position: 'absolute',
+          width: 1,
+          height: 1,
+          padding: 0,
+          margin: -1,
+          overflow: 'hidden',
+          clip: 'rect(0, 0, 0, 0)',
+          whiteSpace: 'nowrap',
+          border: 0,
+        }}
+        aria-hidden="true"
+        tabIndex={-1}
+      />
     </>
   );
 }
