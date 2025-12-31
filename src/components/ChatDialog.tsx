@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -67,6 +67,16 @@ export function ChatDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentManagerId = userRole === 'manager' ? user?.id : managerId;
+
+  const attachmentInputId = useId();
+  const isIOS = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent || '';
+    const platform = navigator.platform || '';
+    const maxTouchPoints = navigator.maxTouchPoints || 0;
+    return /iPad|iPhone|iPod/.test(ua) || (platform === 'MacIntel' && maxTouchPoints > 1);
+  }, []);
+
 
   // Fetch or create dialog
   useEffect(() => {
@@ -395,7 +405,11 @@ export function ChatDialog({
     return acc;
   }, {} as Record<string, Message[]>);
 
+
+  const attachDisabled = sending || uploadingAttachments || !dialogId;
+
   return (
+
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md h-[600px] flex flex-col p-0">
@@ -523,13 +537,18 @@ export function ChatDialog({
               <div className="p-4 border-t">
                 <div className="flex gap-2">
                   <Button
-                    type="button"
+                    asChild
                     size="icon"
                     variant="ghost"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={sending || uploadingAttachments || !dialogId}
+                    className={cn(attachDisabled && 'pointer-events-none opacity-50')}
                   >
-                    <Paperclip className="h-4 w-4" />
+                    <label
+                      htmlFor={attachDisabled ? undefined : attachmentInputId}
+                      tabIndex={attachDisabled ? -1 : 0}
+                      aria-label="Прикрепить файл"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </label>
                   </Button>
 
                   <Input
@@ -597,10 +616,11 @@ export function ChatDialog({
 
       {/* Hidden file input for attachment uploads */}
       <input
+        id={attachmentInputId}
         ref={fileInputRef}
         type="file"
         accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,video/mp4,video/quicktime,video/webm,video/3gpp"
-        multiple
+        multiple={!isIOS}
         onChange={handleFileSelect}
         style={{
           position: 'absolute',
