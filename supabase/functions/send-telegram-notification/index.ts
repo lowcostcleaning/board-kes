@@ -1,7 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Restrict CORS to known origins (server-side triggers use authorization header)
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') || 'https://hiulglwzolseqbsgvacq.lovableproject.com',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
@@ -14,7 +15,6 @@ interface NotificationPayload {
 Deno.serve(async (req) => {
   console.log('=== Edge Function send-telegram-notification called ===')
   console.log('Request method:', req.method)
-  console.log('Request headers:', Object.fromEntries(req.headers.entries()))
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -22,6 +22,16 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Explicit authentication check (defense in depth - platform JWT verification also enabled)
+    const authHeader = req.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.error('Missing or invalid authorization header')
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL')
