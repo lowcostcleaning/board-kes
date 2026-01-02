@@ -148,11 +148,30 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   };
 
   const fetchCleaners = async () => {
-    const { data, error } = await supabase
+    // Get current user's role to determine which cleaners to show
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: profile } = await supabase
       .from('profiles')
-      .select('id, email, name, avatar_url, rating, completed_orders_count, price_studio, price_one_plus_one, price_two_plus_one')
-      .eq('role', 'cleaner')
-      .eq('status', 'approved');
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isDemoManager = profile?.role === 'demo_manager';
+    
+    // Demo managers see demo_cleaners, regular managers see approved cleaners
+    let query = supabase
+      .from('profiles')
+      .select('id, email, name, avatar_url, rating, completed_orders_count, price_studio, price_one_plus_one, price_two_plus_one');
+
+    if (isDemoManager) {
+      query = query.eq('role', 'demo_cleaner');
+    } else {
+      query = query.eq('role', 'cleaner').eq('status', 'approved');
+    }
+
+    const { data, error } = await query;
 
     if (!error && data) {
       setCleaners(data);
