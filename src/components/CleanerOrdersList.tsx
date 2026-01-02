@@ -158,11 +158,16 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
       filtered = filtered.filter(order => order.object_id === selectedObjectId);
     }
 
-    // Filter by date
+    // Filter by date - always show pending orders regardless of date filter
     if (showTodayOnly) {
-      filtered = filtered.filter(order => isToday(new Date(order.scheduled_date)));
+      filtered = filtered.filter(order => 
+        order.status === 'pending' || isToday(new Date(order.scheduled_date))
+      );
     } else if (dateRange?.from) {
       filtered = filtered.filter(order => {
+        // Always show pending orders
+        if (order.status === 'pending') return true;
+        
         const orderDate = new Date(order.scheduled_date);
         if (dateRange.to) {
           return isWithinInterval(orderDate, {
