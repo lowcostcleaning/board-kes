@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, TreePine } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { EditProfileDialog } from '@/components/EditProfileDialog';
 import { AdminAddObjectDialog } from '@/components/AdminAddObjectDialog';
@@ -38,8 +38,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img src="/favicon.png" alt="CleanOS" className="w-8 h-8 rounded-lg" />
-            <span className="font-semibold text-emerald-700 italic">Clean</span>
-            <span className="font-semibold text-sky-500 italic">OS</span>
+            <span className="font-semibold text-primary">Clean</span>
+            <span className="font-semibold text-foreground">OS</span>
             <span className="ml-2 text-muted-foreground hidden sm:inline">•</span>
             <span className="ml-2 font-medium text-foreground hidden sm:inline">{title}</span>
           </div>
