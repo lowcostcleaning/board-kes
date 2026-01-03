@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Sparkles, LogOut, ArrowLeft, Brush, Briefcase } from 'lucide-react';
+import { LogOut, ArrowLeft, Brush, Briefcase } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const Register = () => {
@@ -80,7 +80,7 @@ const Register = () => {
   }
 
   return (
-    <div className="min-h-screen gradient-hero flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="p-6 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
