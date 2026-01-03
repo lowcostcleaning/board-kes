@@ -20,13 +20,13 @@ const Index = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" className="gap-2 px-8 h-12 text-base font-medium rounded-full bg-foreground text-background hover:bg-foreground/90">
+            <Button asChild size="lg" className="gap-2 px-8 h-12 text-base font-medium rounded-full">
               <Link to="/login">
                 Войти
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="px-8 h-12 text-base font-medium rounded-full border-border hover:bg-muted">
+            <Button asChild variant="outline" size="lg" className="px-8 h-12 text-base font-medium rounded-full">
               <Link to="/register">
                 Регистрация
               </Link>
