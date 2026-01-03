@@ -100,7 +100,7 @@ const Register = () => {
         <Card className="w-full max-w-md shadow-soft border-border/50 animate-slide-up">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold">Регистрация</CardTitle>
-            <CardDescription>Присоединяйтесь к Lowcost Cleaning</CardDescription>
+            <CardDescription>Присоединяйтесь к CleanOS</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
