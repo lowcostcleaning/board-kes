@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { DashboardCard } from '@/components/DashboardCard';
@@ -6,35 +6,43 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Users, Shield, UserCheck, Clock, Brush, Briefcase, CheckCircle2, Star, Edit2, Check, X, Eye, FlaskConical } from 'lucide-react';
+import { Users, Shield, UserCheck, Clock, Brush, Briefcase, CheckCircle2, Star, Edit2, Check, X, Eye, FlaskConical, Trash2, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { UserAvatar } from '@/components/UserAvatar';
 import { ViewUserProfileDialog } from '@/components/ViewUserProfileDialog';
-
-interface UserProfile {
-  id: string;
-  email: string | null;
-  role: string;
-  status: string;
-  created_at: string | null;
-  name: string | null;
-  rating: number | null;
-  completed_orders_count: number;
-  avatar_url: string | null;
-  phone: string | null;
-  telegram_chat_id: string | null;
-}
+import { useAdminUsers, UserProfile } from '@/hooks/use-admin-users';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const AdminDashboard = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    users,
+    allUsers,
+    isLoading,
+    filters,
+    updateFilters,
+    deleteUser,
+    restoreUser,
+    updateRole,
+    updateStatus,
+    updateOrdersCount,
+  } = useAdminUsers();
+  
   const [editingOrdersCount, setEditingOrdersCount] = useState<string | null>(null);
   const [newOrdersCount, setNewOrdersCount] = useState<string>('');
   const [viewingUser, setViewingUser] = useState<UserProfile | null>(null);
+  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
   const isMobile = useIsMobile();
 
   const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Админ';
@@ -44,45 +52,9 @@ const AdminDashboard = () => {
     ? { collapsible: true, defaultOpen: false } 
     : { collapsible: false, defaultOpen: true };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching users:', error);
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось загрузить список пользователей',
-        variant: 'destructive',
-      });
-    } else {
-      setUsers(data || []);
-    }
-    setIsLoading(false);
-  };
-
   const handleRoleChange = async (userId: string, newRole: string) => {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ role: newRole })
-      .eq('id', userId);
-
-    if (error) {
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось обновить роль',
-        variant: 'destructive',
-      });
-    } else {
-      setUsers(users.map(u => 
-        u.id === userId ? { ...u, role: newRole } : u
-      ));
+    const success = await updateRole(userId, newRole);
+    if (success) {
       toast({
         title: 'Роль обновлена',
         description: `Роль пользователя изменена на ${getRoleLabel(newRole)}`,
@@ -91,24 +63,49 @@ const AdminDashboard = () => {
   };
 
   const handleStatusChange = async (userId: string, newStatus: string) => {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ status: newStatus })
-      .eq('id', userId);
-
-    if (error) {
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось обновить статус',
-        variant: 'destructive',
-      });
-    } else {
-      setUsers(users.map(u => 
-        u.id === userId ? { ...u, status: newStatus } : u
-      ));
+    const success = await updateStatus(userId, newStatus);
+    if (success) {
       toast({
         title: 'Статус обновлен',
         description: newStatus === 'approved' ? 'Пользователь одобрен' : 'Пользователь на модерации',
+      });
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    const result = await deleteUser(userToDelete.id);
+    
+    if (result.success) {
+      toast({
+        title: 'Пользователь удалён',
+        description: 'Пользователь был деактивирован',
+      });
+    } else {
+      toast({
+        title: 'Ошибка',
+        description: result.error || 'Не удалось удалить пользователя',
+        variant: 'destructive',
+      });
+    }
+    
+    setUserToDelete(null);
+  };
+
+  const handleRestoreUser = async (userId: string) => {
+    const result = await restoreUser(userId);
+    
+    if (result.success) {
+      toast({
+        title: 'Пользователь восстановлен',
+        description: 'Пользователь снова активен',
+      });
+    } else {
+      toast({
+        title: 'Ошибка',
+        description: result.error || 'Не удалось восстановить пользователя',
+        variant: 'destructive',
       });
     }
   };
@@ -168,21 +165,8 @@ const AdminDashboard = () => {
       return;
     }
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ completed_orders_count: count })
-      .eq('id', userId);
-
-    if (error) {
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось обновить количество уборок',
-        variant: 'destructive',
-      });
-    } else {
-      setUsers(users.map(u =>
-        u.id === userId ? { ...u, completed_orders_count: count } : u
-      ));
+    const success = await updateOrdersCount(userId, count);
+    if (success) {
       toast({
         title: 'Успешно',
         description: 'Количество уборок обновлено',
@@ -192,8 +176,8 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleViewProfile = (user: UserProfile) => {
-    setViewingUser(user);
+  const handleViewProfile = (userProfile: UserProfile) => {
+    setViewingUser(userProfile);
   };
 
   return (
@@ -210,15 +194,15 @@ const AdminDashboard = () => {
         </div>
 
         {/* Stats Overview */}
-        <div className="grid gap-4 md:grid-cols-3 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+        <div className="grid gap-4 md:grid-cols-4 animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <div className="p-4 rounded-lg bg-card border border-border shadow-card">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
                 <Users className="w-5 h-5 text-accent-foreground" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">{users.length}</p>
-                <p className="text-sm text-muted-foreground">Всего пользователей</p>
+                <p className="text-2xl font-bold text-foreground">{allUsers.filter(u => u.is_active).length}</p>
+                <p className="text-sm text-muted-foreground">Активных</p>
               </div>
             </div>
           </div>
@@ -229,7 +213,7 @@ const AdminDashboard = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">
-                  {users.filter(u => u.status === 'pending').length}
+                  {allUsers.filter(u => u.status === 'pending' && u.is_active).length}
                 </p>
                 <p className="text-sm text-muted-foreground">На модерации</p>
               </div>
@@ -242,12 +226,83 @@ const AdminDashboard = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">
-                  {users.filter(u => u.status === 'approved').length}
+                  {allUsers.filter(u => u.status === 'approved' && u.is_active).length}
                 </p>
                 <p className="text-sm text-muted-foreground">Одобрено</p>
               </div>
             </div>
           </div>
+          <div className="p-4 rounded-lg bg-card border border-border shadow-card">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-destructive/15 flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-destructive" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">
+                  {allUsers.filter(u => !u.is_active).length}
+                </p>
+                <p className="text-sm text-muted-foreground">Удалённых</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-3 items-center animate-slide-up" style={{ animationDelay: '0.15s' }}>
+          <Select
+            value={filters.role || 'all'}
+            onValueChange={(value) => updateFilters({ role: value === 'all' ? null : value })}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Все роли" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все роли</SelectItem>
+              <SelectItem value="cleaner">Клинер</SelectItem>
+              <SelectItem value="manager">Менеджер</SelectItem>
+              <SelectItem value="admin">Админ</SelectItem>
+              <SelectItem value="demo_manager">Demo Менеджер</SelectItem>
+              <SelectItem value="demo_cleaner">Demo Клинер</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.status || 'all'}
+            onValueChange={(value) => updateFilters({ status: value === 'all' ? null : value })}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Все статусы" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все статусы</SelectItem>
+              <SelectItem value="pending">На модерации</SelectItem>
+              <SelectItem value="approved">Одобрен</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.userType}
+            onValueChange={(value: 'all' | 'demo' | 'real') => updateFilters({ userType: value })}
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Тип" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все</SelectItem>
+              <SelectItem value="real">Реальные</SelectItem>
+              <SelectItem value="demo">Demo</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant={filters.showInactive ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => updateFilters({ showInactive: !filters.showInactive })}
+            className="gap-1"
+          >
+            <Trash2 className="w-4 h-4" />
+            {filters.showInactive ? 'Скрыть удалённых' : 'Показать удалённых'}
+          </Button>
         </div>
 
         {/* Users List */}
@@ -343,6 +398,14 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
+                      {/* Inactive Badge */}
+                      {!u.is_active && (
+                        <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          Удалён
+                        </Badge>
+                      )}
+
                       {/* View Profile Button */}
                       <Button
                         size="sm"
@@ -355,87 +418,115 @@ const AdminDashboard = () => {
                       </Button>
 
                       {/* Status Badge */}
-                      {u.status === 'pending' ? (
-                        <Badge variant="outline" className="bg-status-pending/10 text-status-pending border-status-pending/30">
-                          <Clock className="w-3 h-3 mr-1" />
-                          На модерации
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-status-active/10 text-status-active border-status-active/30">
-                          <CheckCircle2 className="w-3 h-3 mr-1" />
-                          Одобрен
-                        </Badge>
+                      {u.is_active && (
+                        u.status === 'pending' ? (
+                          <Badge variant="outline" className="bg-status-pending/10 text-status-pending border-status-pending/30">
+                            <Clock className="w-3 h-3 mr-1" />
+                            На модерации
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-status-active/10 text-status-active border-status-active/30">
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Одобрен
+                          </Badge>
+                        )
                       )}
 
                       {/* Status Toggle Button */}
-                      {u.status === 'pending' ? (
+                      {u.is_active && (
+                        u.status === 'pending' ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-status-active/50 text-status-active hover:bg-status-active/10"
+                            onClick={() => handleStatusChange(u.id, 'approved')}
+                          >
+                            <UserCheck className="w-4 h-4 mr-1" />
+                            Одобрить
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-status-pending"
+                            onClick={() => handleStatusChange(u.id, 'pending')}
+                          >
+                            <Clock className="w-4 h-4 mr-1" />
+                            На модерацию
+                          </Button>
+                        )
+                      )}
+
+                      {/* Role Selector */}
+                      {u.is_active && (
+                        <Select
+                          value={u.role}
+                          onValueChange={(value) => handleRoleChange(u.id, value)}
+                        >
+                          <SelectTrigger className="w-36">
+                            <SelectValue>
+                              <div className="flex items-center gap-2">
+                                {getRoleIcon(u.role)}
+                                <span>{getRoleLabel(u.role)}</span>
+                              </div>
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cleaner">
+                              <div className="flex items-center gap-2">
+                                <Brush className="w-3 h-3" />
+                                Клинер
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="manager">
+                              <div className="flex items-center gap-2">
+                                <Briefcase className="w-3 h-3" />
+                                Менеджер
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="admin">
+                              <div className="flex items-center gap-2">
+                                <Shield className="w-3 h-3" />
+                                Админ
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="demo_manager">
+                              <div className="flex items-center gap-2">
+                                <FlaskConical className="w-3 h-3 text-purple-500" />
+                                Demo Менеджер
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="demo_cleaner">
+                              <div className="flex items-center gap-2">
+                                <FlaskConical className="w-3 h-3 text-purple-500" />
+                                Demo Клинер
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+
+                      {/* Delete / Restore Button */}
+                      {u.is_active ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setUserToDelete(u)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      ) : (
                         <Button
                           size="sm"
                           variant="outline"
                           className="border-status-active/50 text-status-active hover:bg-status-active/10"
-                          onClick={() => handleStatusChange(u.id, 'approved')}
+                          onClick={() => handleRestoreUser(u.id)}
                         >
-                          <UserCheck className="w-4 h-4 mr-1" />
-                          Одобрить
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-muted-foreground hover:text-status-pending"
-                          onClick={() => handleStatusChange(u.id, 'pending')}
-                        >
-                          <Clock className="w-4 h-4 mr-1" />
-                          На модерацию
+                          <RotateCcw className="w-4 h-4 mr-1" />
+                          Восстановить
                         </Button>
                       )}
-
-                      {/* Role Selector */}
-                      <Select
-                        value={u.role}
-                        onValueChange={(value) => handleRoleChange(u.id, value)}
-                      >
-                        <SelectTrigger className="w-36">
-                          <SelectValue>
-                            <div className="flex items-center gap-2">
-                              {getRoleIcon(u.role)}
-                              <span>{getRoleLabel(u.role)}</span>
-                            </div>
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="cleaner">
-                            <div className="flex items-center gap-2">
-                              <Brush className="w-3 h-3" />
-                              Клинер
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="manager">
-                            <div className="flex items-center gap-2">
-                              <Briefcase className="w-3 h-3" />
-                              Менеджер
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="admin">
-                            <div className="flex items-center gap-2">
-                              <Shield className="w-3 h-3" />
-                              Админ
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="demo_manager">
-                            <div className="flex items-center gap-2">
-                              <FlaskConical className="w-3 h-3 text-purple-500" />
-                              Demo Менеджер
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="demo_cleaner">
-                            <div className="flex items-center gap-2">
-                              <FlaskConical className="w-3 h-3 text-purple-500" />
-                              Demo Клинер
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
                   </div>
                 ))}
@@ -490,6 +581,28 @@ const AdminDashboard = () => {
         open={!!viewingUser}
         onOpenChange={(open) => !open && setViewingUser(null)}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить пользователя?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Пользователь <strong>{userToDelete?.name || userToDelete?.email}</strong> будет деактивирован. 
+              Вы сможете восстановить его позже.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };

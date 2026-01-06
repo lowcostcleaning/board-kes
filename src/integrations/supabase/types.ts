@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          notification_type: string
+          read_at: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          user_email: string
+          user_id: string
+          user_role: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notification_type?: string
+          read_at?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_email: string
+          user_id: string
+          user_role: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notification_type?: string
+          read_at?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_email?: string
+          user_id?: string
+          user_role?: string
+        }
+        Relationships: []
+      }
       cleaner_unavailability: {
         Row: {
           cleaner_id: string
@@ -245,6 +284,7 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string
+          is_active: boolean
           name: string | null
           phone: string | null
           price_one_plus_one: number | null
@@ -262,6 +302,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id: string
+          is_active?: boolean
           name?: string | null
           phone?: string | null
           price_one_plus_one?: number | null
@@ -279,6 +320,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          is_active?: boolean
           name?: string | null
           phone?: string | null
           price_one_plus_one?: number | null

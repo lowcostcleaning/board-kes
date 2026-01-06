@@ -30,6 +30,7 @@ interface UserProfile {
   avatar_url?: string | null;
   rating?: number | null;
   completed_orders_count?: number;
+  is_active?: boolean;
 }
 
 interface ViewUserProfileDialogProps {
@@ -41,8 +42,10 @@ interface ViewUserProfileDialogProps {
 const getRoleIcon = (role: string) => {
   switch (role) {
     case 'cleaner':
+    case 'demo_cleaner':
       return <Brush className="w-4 h-4" />;
     case 'manager':
+    case 'demo_manager':
       return <Briefcase className="w-4 h-4" />;
     case 'admin':
       return <Shield className="w-4 h-4" />;
@@ -59,6 +62,10 @@ const getRoleLabel = (role: string) => {
       return 'Менеджер';
     case 'admin':
       return 'Администратор';
+    case 'demo_manager':
+      return 'Demo Менеджер';
+    case 'demo_cleaner':
+      return 'Demo Клинер';
     default:
       return role;
   }
@@ -139,7 +146,7 @@ export const ViewUserProfileDialog = ({
           </div>
 
           {/* Cleaner Stats */}
-          {user.role === 'cleaner' && (
+          {(user.role === 'cleaner' || user.role === 'demo_cleaner') && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-muted-foreground">Статистика</h4>
               
