@@ -207,6 +207,8 @@ export type Database = {
           complex_name: string
           created_at: string
           id: string
+          is_archived: boolean
+          residential_complex_id: string | null
           updated_at: string
           user_id: string
         }
@@ -216,6 +218,8 @@ export type Database = {
           complex_name: string
           created_at?: string
           id?: string
+          is_archived?: boolean
+          residential_complex_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -225,10 +229,20 @@ export type Database = {
           complex_name?: string
           created_at?: string
           id?: string
+          is_archived?: boolean
+          residential_complex_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "objects_residential_complex_id_fkey"
+            columns: ["residential_complex_id"]
+            isOneToOne: false
+            referencedRelation: "residential_complexes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       orders: {
         Row: {
@@ -365,6 +379,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      residential_complexes: {
+        Row: {
+          city: string | null
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
     }
     Views: {
