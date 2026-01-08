@@ -19,6 +19,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -392,3 +393,5 @@ export const EditOrderDialog = ({
     </>
   );
 };
+
+export const EditObjectDialog = EditOrderDialog;
