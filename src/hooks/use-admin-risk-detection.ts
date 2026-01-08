@@ -13,7 +13,7 @@ export interface ProblematicOrder extends OrderRow {
   cleaner_name: string | null;
   cleaner_email: string | null;
   object_name: string;
-  risk_type: 'no_cleaner_assigned' | 'unconfirmed_order' | 'no_report' | 'report_no_photos' | 'delayed_order';
+  risk_type: 'no_cleaner_assigned' | 'unconfirmed_order' | 'no_report' | 'delayed_order';
   risk_description: string;
   risk_severity: 'high' | 'medium' | 'low';
   hours_overdue: number | null;
@@ -36,12 +36,12 @@ export interface ProblematicOrder extends OrderRow {
     changed_by_name: string | null;
     reason: string | null;
   }>;
+  // report_history is intentionally left nullable — presence of a report is determined ONLY
+  // by completion_reports existence (no logic based on report_files).
   report_history: {
     report_id: string;
     submitted_at: string;
     description: string | null;
-    has_photos: boolean;
-    has_videos: boolean;
     files_count: number;
   } | null;
 }
@@ -51,7 +51,6 @@ interface RiskCounters {
   noCleaner: number;
   unconfirmed: number;
   noReport: number;
-  noPhotos: number;
   delayed: number;
 }
 
@@ -65,17 +64,22 @@ export const useAdminRiskDetection = () => {
     noCleaner: 0,
     unconfirmed: 0,
     noReport: 0,
-    noPhotos: 0,
     delayed: 0,
   });
 
   const fetchProblematicOrders = useCallback(async () => {
     setIsLoading(true);
     try {
-      // 1. Get orders with reports using NOT EXISTS pattern
-      // Using raw query to ensure NOT EXISTS logic is applied correctly
-      const ordersWithReportsResult = await supabase.rpc('get_orders_with_reports' as any);
-      const ordersWithReports = new Set<string>((ordersWithReportsResult.data || []).map((r: any) => r.order_id));
+      // 1. Get set of order IDs that have at least one completion_reports row.
+      const { data: reportsData, error: reportsError } = await supabase
+        .from('completion_reports')
+        .select('order_id');
+
+      if (reportsError) {
+        throw reportsError;
+      }
+
+      const ordersWithReports = new Set<string>((reportsData || []).map((r: any) => r.order_id));
 
       // 2. Fetch all orders for other risk checks
       const { data: ordersData, error: ordersError } = await supabase
@@ -93,23 +97,8 @@ export const useAdminRiskDetection = () => {
         .from('objects')
         .select('id, complex_name, apartment_number');
 
-      const { data: reportsData } = await supabase
-        .from('completion_reports')
-        .select('*');
-
-      const { data: reportFilesData } = await supabase
-        .from('report_files')
-        .select('*');
-
       const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
       const objectsMap = new Map((objectsData || []).map(o => [o.id, o]));
-      const reportsMap = new Map((reportsData || []).map(r => [r.order_id, r]));
-      const reportFilesMap = new Map<string, typeof reportFilesData>();
-      (reportFilesData || []).forEach(f => {
-        const files = reportFilesMap.get(f.report_id) || [];
-        files.push(f);
-        reportFilesMap.set(f.report_id, files);
-      });
 
       const problems: ProblematicOrder[] = [];
       const now = new Date();
@@ -118,8 +107,6 @@ export const useAdminRiskDetection = () => {
         const manager = profilesMap.get(order.manager_id);
         const cleaner = order.cleaner_id ? profilesMap.get(order.cleaner_id) : null;
         const object = objectsMap.get(order.object_id);
-        const report = reportsMap.get(order.id);
-        const reportFiles = report ? reportFilesMap.get(report.id) || [] : [];
 
         const scheduledDateTime = new Date(`${order.scheduled_date}T${order.scheduled_time}`);
         const hoursOverdue = differenceInHours(now, scheduledDateTime);
@@ -164,8 +151,7 @@ export const useAdminRiskDetection = () => {
           continue;
         }
 
-        // Risk 3: Completed but NO report exists (using NOT EXISTS pattern)
-        // An order has NO report if it's not in the ordersWithReports set
+        // Risk 3: Completed but NO completion_reports row exists (single source of truth)
         if (order.status === 'completed' && !ordersWithReports.has(order.id)) {
           problems.push({
             ...order,
@@ -175,7 +161,7 @@ export const useAdminRiskDetection = () => {
             cleaner_email: cleaner?.email || null,
             object_name: object ? `${object.complex_name}, кв. ${object.apartment_number}` : 'Неизвестный объект',
             risk_type: 'no_report',
-            risk_description: 'Уборка выполнена без отчёта',
+            risk_description: 'Уборка выполнена без отчёта (нет записи в completion_reports)',
             risk_severity: 'medium',
             hours_overdue: null,
             assignment_history: [],
@@ -185,34 +171,7 @@ export const useAdminRiskDetection = () => {
           continue;
         }
 
-        // Risk 4: Report exists but has no photos
-        if (report && reportFiles.length === 0) {
-          problems.push({
-            ...order,
-            manager_name: manager?.name || null,
-            manager_email: manager?.email || null,
-            cleaner_name: cleaner?.name || null,
-            cleaner_email: cleaner?.email || null,
-            object_name: object ? `${object.complex_name}, кв. ${object.apartment_number}` : 'Неизвестный объект',
-            risk_type: 'report_no_photos',
-            risk_description: 'Отчёт без фотографий',
-            risk_severity: 'low',
-            hours_overdue: null,
-            assignment_history: [],
-            schedule_history: [],
-            report_history: {
-              report_id: report.id,
-              submitted_at: report.created_at,
-              description: report.description,
-              has_photos: false,
-              has_videos: false,
-              files_count: 0,
-            },
-          });
-          continue;
-        }
-
-        // Risk 5: Delayed order (confirmed but not completed after scheduled time + 4 hours)
+        // Risk 4: Delayed order (confirmed but not completed after scheduled time + 4 hours)
         if (order.status === 'confirmed' && isAfter(now, addHours(scheduledDateTime, 4))) {
           problems.push({
             ...order,
@@ -238,7 +197,6 @@ export const useAdminRiskDetection = () => {
         noCleaner: problems.filter(p => p.risk_type === 'no_cleaner_assigned').length,
         unconfirmed: problems.filter(p => p.risk_type === 'unconfirmed_order').length,
         noReport: problems.filter(p => p.risk_type === 'no_report').length,
-        noPhotos: problems.filter(p => p.risk_type === 'report_no_photos').length,
         delayed: problems.filter(p => p.risk_type === 'delayed_order').length,
       });
 
@@ -303,6 +261,7 @@ export const useAdminRiskDetection = () => {
 
       let report_history: ProblematicOrder['report_history'] = null;
       if (report) {
+        // Only record that a report exists and basic metadata; do NOT use report_files presence to determine has_report.
         const { data: files } = await supabase
           .from('report_files')
           .select('*')
@@ -312,8 +271,6 @@ export const useAdminRiskDetection = () => {
           report_id: report.id,
           submitted_at: report.created_at,
           description: report.description,
-          has_photos: files?.some(f => f.file_type === 'image') || false,
-          has_videos: files?.some(f => f.file_type === 'video') || false,
           files_count: files?.length || 0,
         };
       }
