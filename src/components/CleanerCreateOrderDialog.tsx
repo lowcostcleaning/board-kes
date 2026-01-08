@@ -121,9 +121,6 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   }, [selectedDate, cleanerOrders]);
 
   const fetchCleaners = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
     let query = supabase
       .from('profiles')
       .select('id, email, name, avatar_url')
@@ -145,13 +142,12 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   const fetchObjectsForManager = async () => {
     if (!selectedManager) return;
 
-    let query = supabase
+    // Fetch objects only for the selected manager
+    const { data, error } = await supabase
       .from('objects')
       .select('*')
       .eq('user_id', selectedManager)
       .order('created_at', { ascending: false });
-
-    const { data, error } = await query;
 
     if (!error && data) {
       setObjects(data);
@@ -223,7 +219,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     setCleanerUnavailableDates([]);
     setBusyTimeSlots([]);
     setSortBy('name');
-    setObjects([]);
+    setObjects([]); // Clear objects when resetting
   };
 
   const handleCleanerSelect = (managerId: string) => {
