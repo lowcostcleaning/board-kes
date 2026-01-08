@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { EditObjectDialog } from './EditObjectDialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PropertyObject {
   id: string;
@@ -12,6 +13,9 @@ interface PropertyObject {
   apartment_number: string;
   apartment_type: string | null;
   created_at: string;
+  user_id: string;
+  residential_complex_id: string | null;
+  residential_complex_name: string | null;
 }
 
 interface ObjectsListProps {
@@ -34,6 +38,8 @@ const getApartmentTypeLabel = (type: string | null) => {
 };
 
 export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsListProps) => {
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
   const [objects, setObjects] = useState<PropertyObject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editObject, setEditObject] = useState<PropertyObject | null>(null);
@@ -43,11 +49,28 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
     try {
       const { data, error } = await supabase
         .from('objects')
-        .select('*')
+        .select(`
+          *,
+          residential_complexes (
+            id,
+            name
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setObjects(data || []);
+      if (!data) {
+        setObjects([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const mapped = data.map((obj: any) => ({
+        ...obj,
+        residential_complex_name: obj.residential_complexes?.name || null,
+      }));
+
+      setObjects(mapped);
     } catch (error: any) {
       toast({
         title: 'Ошибка',
@@ -65,7 +88,7 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
 
   const handleDelete = async (id: string) => {
     if (disabled) return;
-    
+
     try {
       const { error } = await supabase.from('objects').delete().eq('id', id);
       if (error) throw error;
@@ -104,60 +127,75 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
   }
 
   return (
-    <div className="space-y-2">
-      {objects.map((obj) => (
-        <div
-          key={obj.id}
-          className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors gap-2"
-        >
-          <div className="flex flex-col gap-1 min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-primary flex-shrink-0" />
-              <span className="text-sm font-medium truncate">{obj.complex_name}</span>
+    <>
+      <div className="space-y-2">
+        {objects.map((obj) => (
+          <div
+            key={obj.id}
+            className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors gap-2"
+          >
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-primary flex-shrink-0" />
+                <span className="text-sm font-medium truncate">{obj.complex_name}</span>
+                {!obj.residential_complex_id && (
+                  <Badge variant="outline" className="text-xs">
+                    Без ЖК
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                <Home className="w-3 h-3 flex-shrink-0" />
+                <span className="truncate">{obj.apartment_number}</span>
+              </div>
+              {obj.apartment_type && (
+                <Badge variant="secondary" className="text-xs w-fit">
+                  <LayoutGrid className="w-3 h-3 mr-1" />
+                  {getApartmentTypeLabel(obj.apartment_type)}
+                </Badge>
+              )}
+              {obj.residential_complex_name && (
+                <p className="text-xs text-muted-foreground">Связан с ЖК: {obj.residential_complex_name}</p>
+              )}
             </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Home className="w-3 h-3 flex-shrink-0" />
-              <span className="text-sm truncate">{obj.apartment_number}</span>
-            </div>
-            {obj.apartment_type && (
-              <Badge variant="secondary" className="text-xs w-fit">
-                <LayoutGrid className="w-3 h-3 mr-1" />
-                {getApartmentTypeLabel(obj.apartment_type)}
-              </Badge>
+            {!disabled && (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-primary"
+                  onClick={() => {
+                    setEditObject(obj);
+                    setEditDialogOpen(true);
+                  }}
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  onClick={() => handleDelete(obj.id)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             )}
           </div>
-          {!disabled && (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-primary"
-                onClick={() => {
-                  setEditObject(obj);
-                  setEditDialogOpen(true);
-                }}
-              >
-                <Pencil className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                onClick={() => handleDelete(obj.id)}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
-        </div>
-      ))}
+        ))}
+      </div>
 
       <EditObjectDialog
-        object={editObject}
+        order={null}
         open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        onObjectUpdated={onRefresh}
+        onOpenChange={(open) => !open && setEditDialogOpen(false)}
+        onSuccess={() => {
+          setEditDialogOpen(false);
+          onRefresh();
+        }}
+        canDelete={false}
+        canEditComplex={isAdmin}
       />
-    </div>
+    </>
   );
 };

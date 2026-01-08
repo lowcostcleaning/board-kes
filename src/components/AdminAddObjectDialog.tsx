@@ -30,6 +30,11 @@ interface Manager {
   avatar_url: string | null;
 }
 
+interface ResidentialComplex {
+  id: string;
+  name: string;
+}
+
 interface AdminAddObjectDialogProps {
   onObjectAdded: () => void;
 }
@@ -44,6 +49,8 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
   const [open, setOpen] = useState(false);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [selectedManager, setSelectedManager] = useState('');
+  const [complexes, setComplexes] = useState<ResidentialComplex[]>([]);
+  const [selectedComplexId, setSelectedComplexId] = useState('');
   const [complexName, setComplexName] = useState('');
   const [apartmentNumber, setApartmentNumber] = useState('');
   const [apartmentType, setApartmentType] = useState<string>('');
@@ -55,25 +62,46 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
     }
   }, [open]);
 
+  useEffect(() => {
+    if (selectedManager) {
+      fetchComplexesForManager(selectedManager);
+    } else {
+      setComplexes([]);
+      setSelectedComplexId('');
+    }
+  }, [selectedManager]);
+
   const fetchManagers = async () => {
     const { data, error } = await supabase
       .from('profiles')
       .select('id, email, name, avatar_url')
-      .eq('role', 'manager')
-      .eq('status', 'approved');
+      .eq('status', 'approved')
+      .in('role', ['manager', 'demo_manager'])
+      .order('name');
 
     if (!error && data) {
       setManagers(data);
     }
   };
 
+  const fetchComplexesForManager = async (managerId: string) => {
+    const { data } = await supabase
+      .from('residential_complexes')
+      .select('id, name')
+      .eq('manager_id', managerId)
+      .order('name');
+
+    setComplexes(data || []);
+    setSelectedComplexId('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedManager || !complexName.trim() || !apartmentNumber.trim() || !apartmentType) {
+
+    if (!selectedManager || !apartmentNumber.trim() || !apartmentType) {
       toast({
         title: 'Ошибка',
-        description: 'Заполните все поля',
+        description: 'Выберите менеджера, ЖК и заполните все поля',
         variant: 'destructive',
       });
       return;
@@ -82,11 +110,14 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
     setIsLoading(true);
 
     try {
+      const selectedComplex = complexes.find((complex) => complex.id === selectedComplexId);
+
       const { error } = await supabase.from('objects').insert({
         user_id: selectedManager,
-        complex_name: complexName.trim(),
+        complex_name: selectedComplex?.name || complexName.trim() || 'Без ЖК',
         apartment_number: apartmentNumber.trim(),
         apartment_type: apartmentType,
+        residential_complex_id: selectedComplexId || null,
       });
 
       if (error) throw error;
@@ -98,6 +129,7 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
 
       setSelectedManager('');
       setComplexName('');
+      setSelectedComplexId('');
       setApartmentNumber('');
       setApartmentType('');
       setOpen(false);
@@ -113,7 +145,7 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
     }
   };
 
-  const selectedManagerData = managers.find(m => m.id === selectedManager);
+  const selectedComplex = complexes.find((complex) => complex.id === selectedComplexId);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -128,7 +160,7 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
         <DialogHeader>
           <DialogTitle>Добавить объект</DialogTitle>
           <DialogDescription>
-            Выберите менеджера и укажите данные объекта
+            Выберите менеджера, ЖК и укажите данные объекта
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -141,10 +173,8 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
               <Select value={selectedManager} onValueChange={setSelectedManager}>
                 <SelectTrigger className="bg-muted/50">
                   <SelectValue placeholder="Выберите менеджера">
-                    {selectedManagerData && (
-                      <div className="flex items-center gap-2">
-                        <span>{selectedManagerData.name || selectedManagerData.email}</span>
-                      </div>
+                    {selectedManager && (
+                      <span>{managers.find((m) => m.id === selectedManager)?.name}</span>
                     )}
                   </SelectValue>
                 </SelectTrigger>
@@ -165,19 +195,51 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                ЖК
+              </Label>
+              <Select value={selectedComplexId} onValueChange={setSelectedComplexId} disabled={!selectedManager}>
+                <SelectTrigger className="bg-muted/50">
+                  <SelectValue>
+                    {selectedComplex
+                      ? selectedComplex.name
+                      : 'Выберите ЖК или оставьте Без ЖК'}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Без ЖК</SelectItem>
+                  {complexes.length > 0
+                    ? complexes.map((complex) => (
+                        <SelectItem key={complex.id} value={complex.id}>
+                          {complex.name}
+                        </SelectItem>
+                      ))
+                    : (
+                      <SelectItem value="" disabled={!selectedManager}>
+                        {selectedManager ? 'У менеджера нет ЖК' : 'Выберите менеджера'}
+                      </SelectItem>
+                    )}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="complex" className="flex items-center gap-2">
                 <Building2 className="w-4 h-4" />
-                ЖК
+                Название ЖК (если нужно)
               </Label>
               <Input
                 id="complex"
                 value={complexName}
                 onChange={(e) => setComplexName(e.target.value)}
-                placeholder="Orbi City"
+                placeholder={selectedComplex ? selectedComplex.name : 'Например, Orbi City'}
                 className="bg-muted/50"
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="apartment" className="flex items-center gap-2">
                 <Home className="w-4 h-4" />
@@ -214,7 +276,7 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
             <Button type="button" variant="outline" onClick={() => setOpen(false)} className="w-full sm:w-auto">
               Отмена
             </Button>
-            <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
+            <Button type="submit" disabled={isLoading || !selectedManager || !apartmentNumber.trim()}>
               {isLoading ? 'Добавление...' : 'Добавить'}
             </Button>
           </DialogFooter>

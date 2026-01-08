@@ -423,18 +423,21 @@ export type Database = {
           city: string | null
           created_at: string
           id: string
+          manager_id: string | null
           name: string
         }
         Insert: {
           city?: string | null
           created_at?: string
           id?: string
+          manager_id?: string | null
           name: string
         }
         Update: {
           city?: string | null
           created_at?: string
           id?: string
+          manager_id?: string | null
           name?: string
         }
         Relationships: []

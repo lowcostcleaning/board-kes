@@ -15,7 +15,6 @@ export interface AdminObject {
   is_archived: boolean;
   created_at: string;
   updated_at: string;
-  // Joined data
   owner_name: string | null;
   owner_email: string | null;
   residential_complex_name: string | null;
@@ -31,16 +30,18 @@ export interface ResidentialComplex {
 
 export interface ObjectFilters {
   managerId: string | null;
-  residentialComplexId: string | null;
+  residentialComplexId: string | null | 'none';
   status: 'all' | 'active' | 'archived';
   search: string;
+  withoutComplex: boolean;
 }
 
 const defaultFilters: ObjectFilters = {
   managerId: null,
   residentialComplexId: null,
-  status: 'active', // Default to active objects
+  status: 'active',
   search: '',
+  withoutComplex: false,
 };
 
 export const useAdminObjects = () => {
@@ -53,11 +54,9 @@ export const useAdminObjects = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<ObjectFilters>(defaultFilters);
 
-  // Fetch all objects with owner and residential complex info
   const fetchObjects = useCallback(async () => {
     setIsLoading(true);
-    
-    // Fetch objects
+
     const { data: objectsData, error: objectsError } = await supabase
       .from('objects')
       .select('*')
@@ -74,26 +73,23 @@ export const useAdminObjects = () => {
       return;
     }
 
-    // Fetch profiles for owners (managers)
     const { data: profilesData } = await supabase
       .from('profiles')
       .select('id, name, email, role')
       .or('role.eq.manager,role.eq.demo_manager');
 
-    // Fetch residential complexes
     const { data: complexesData } = await supabase
       .from('residential_complexes')
       .select('*')
       .order('name');
 
-    const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
-    const complexesMap = new Map((complexesData || []).map(c => [c.id, c]));
+    const profilesMap = new Map((profilesData || []).map((p) => [p.id, p]));
+    const complexesMap = new Map((complexesData || []).map((c) => [c.id, c]));
 
-    // Map objects with joined data
-    const mappedObjects: AdminObject[] = (objectsData || []).map(obj => {
+    const mappedObjects: AdminObject[] = (objectsData || []).map((obj) => {
       const owner = profilesMap.get(obj.user_id);
       const complex = obj.residential_complex_id ? complexesMap.get(obj.residential_complex_id) : null;
-      
+
       return {
         ...obj,
         is_archived: obj.is_archived ?? false,
@@ -106,40 +102,40 @@ export const useAdminObjects = () => {
 
     setObjects(mappedObjects);
     setResidentialComplexes(complexesData || []);
-    
-    // Set managers list
     setManagers(profilesData || []);
-    
     setIsLoading(false);
   }, [toast]);
 
-  // Apply filters
+  useEffect(() => {
+    fetchObjects();
+  }, [fetchObjects]);
+
   useEffect(() => {
     let result = [...objects];
 
-    // Filter by manager
     if (filters.managerId) {
-      result = result.filter(obj => obj.user_id === filters.managerId);
+      result = result.filter((obj) => obj.user_id === filters.managerId);
     }
 
-    // Filter by residential complex
-    if (filters.residentialComplexId) {
-      result = result.filter(obj => obj.residential_complex_id === filters.residentialComplexId);
-    } else if (filters.residentialComplexId === 'none') {
-      result = result.filter(obj => obj.residential_complex_id === null);
+    if (filters.residentialComplexId === 'none') {
+      result = result.filter((obj) => obj.residential_complex_id === null);
+    } else if (filters.residentialComplexId && filters.residentialComplexId !== 'none') {
+      result = result.filter((obj) => obj.residential_complex_id === filters.residentialComplexId);
     }
 
-    // Filter by status
     if (filters.status === 'active') {
-      result = result.filter(obj => !obj.is_archived);
+      result = result.filter((obj) => !obj.is_archived);
     } else if (filters.status === 'archived') {
-      result = result.filter(obj => obj.is_archived);
+      result = result.filter((obj) => obj.is_archived);
     }
 
-    // Filter by search
+    if (filters.withoutComplex) {
+      result = result.filter((obj) => !obj.residential_complex_id);
+    }
+
     if (filters.search) {
       const search = filters.search.toLowerCase();
-      result = result.filter(obj => 
+      result = result.filter((obj) =>
         obj.complex_name.toLowerCase().includes(search) ||
         obj.apartment_number.toLowerCase().includes(search) ||
         obj.owner_name?.toLowerCase().includes(search) ||
@@ -150,22 +146,14 @@ export const useAdminObjects = () => {
     setFilteredObjects(result);
   }, [objects, filters]);
 
-  // Load on mount
-  useEffect(() => {
-    fetchObjects();
-  }, [fetchObjects]);
-
-  // Update filters
   const updateFilters = useCallback((newFilters: Partial<ObjectFilters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
+    setFilters((prev) => ({ ...prev, ...newFilters }));
   }, []);
 
-  // Reset filters
   const resetFilters = useCallback(() => {
     setFilters(defaultFilters);
   }, []);
 
-  // CRUD for residential complexes (No audit log needed here as it's configuration)
   const createResidentialComplex = useCallback(async (name: string, city?: string): Promise<ResidentialComplex | null> => {
     const { data, error } = await supabase
       .from('residential_complexes')
@@ -182,7 +170,7 @@ export const useAdminObjects = () => {
       return null;
     }
 
-    setResidentialComplexes(prev => [...prev, data]);
+    setResidentialComplexes((prev) => [...prev, data]);
     return data;
   }, [toast]);
 
@@ -201,15 +189,14 @@ export const useAdminObjects = () => {
       return false;
     }
 
-    setResidentialComplexes(prev => prev.map(c => 
-      c.id === id ? { ...c, name, city: city || null } : c
-    ));
+    setResidentialComplexes((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, name, city: city || null } : c))
+    );
     return true;
   }, [toast]);
 
   const deleteResidentialComplex = useCallback(async (id: string): Promise<boolean> => {
-    // Check if any objects are using this complex
-    const linkedObjects = objects.filter(obj => obj.residential_complex_id === id);
+    const linkedObjects = objects.filter((obj) => obj.residential_complex_id === id);
     if (linkedObjects.length > 0) {
       toast({
         title: 'Ошибка',
@@ -233,11 +220,10 @@ export const useAdminObjects = () => {
       return false;
     }
 
-    setResidentialComplexes(prev => prev.filter(c => c.id !== id));
+    setResidentialComplexes((prev) => prev.filter((c) => c.id !== id));
     return true;
   }, [objects, toast]);
 
-  // Update object's residential complex (No audit log needed here)
   const updateObjectComplex = useCallback(async (objectId: string, complexId: string | null): Promise<boolean> => {
     const { error } = await supabase
       .from('objects')
@@ -253,22 +239,17 @@ export const useAdminObjects = () => {
       return false;
     }
 
-    // Refresh to get updated data
     fetchObjects();
     return true;
   }, [fetchObjects, toast]);
 
-  // Archive/unarchive object (TASK 2 & 1)
   const toggleObjectArchived = useCallback(async (objectId: string, archived: boolean): Promise<boolean> => {
     if (!user?.id) return false;
-    
-    const objectToUpdate = objects.find(o => o.id === objectId);
+
+    const objectToUpdate = objects.find((o) => o.id === objectId);
     if (!objectToUpdate) return false;
 
-    if (archived === false) {
-      // Restoring object, no checks needed
-    } else {
-      // Archiving object: Check for future orders
+    if (archived) {
       const { count: futureOrdersCount, error: ordersError } = await supabase
         .from('orders')
         .select('id', { count: 'exact', head: true })
@@ -310,16 +291,15 @@ export const useAdminObjects = () => {
       return false;
     }
 
-    // Audit Log
-    await logAdminAction(user.id, archived ? 'archive_object' : 'restore_object', 'object', objectId, { 
+    await logAdminAction(user.id, archived ? 'archive_object' : 'restore_object', 'object', objectId, {
       complex_name: objectToUpdate.complex_name,
       apartment_number: objectToUpdate.apartment_number,
       new_status: archived ? 'archived' : 'active'
     });
 
-    setObjects(prev => prev.map(obj => 
-      obj.id === objectId ? { ...obj, is_archived: archived } : obj
-    ));
+    setObjects((prev) =>
+      prev.map((obj) => (obj.id === objectId ? { ...obj, is_archived: archived } : obj))
+    );
     return true;
   }, [user?.id, objects, toast]);
 

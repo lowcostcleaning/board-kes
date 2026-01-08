@@ -60,7 +60,7 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
       toast({ title: 'Ошибка', description: 'Введите название ЖК', variant: 'destructive' });
       return;
     }
-    
+
     const result = await createResidentialComplex(complexName.trim(), complexCity.trim());
     if (result) {
       toast({ title: 'ЖК создан', description: `${result.name} успешно добавлен` });
@@ -136,7 +136,6 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Residential Complexes Management */}
       <div className="p-4 rounded-lg bg-card border border-border">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold flex items-center gap-2">
@@ -186,7 +185,6 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
         )}
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[200px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -217,7 +215,9 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
 
         <Select
           value={filters.residentialComplexId || 'all'}
-          onValueChange={(value) => updateFilters({ residentialComplexId: value === 'all' ? null : value })}
+          onValueChange={(value) =>
+            updateFilters({ residentialComplexId: value === 'all' ? null : value === 'none' ? 'none' : value })
+          }
         >
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Все ЖК" />
@@ -245,14 +245,21 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
           </SelectContent>
         </Select>
 
-        {(filters.search || filters.managerId || filters.residentialComplexId || filters.status !== 'active') && (
+        <Button
+          variant={filters.withoutComplex ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => updateFilters({ withoutComplex: !filters.withoutComplex })}
+        >
+          Без ЖК
+        </Button>
+
+        {(filters.search || filters.managerId || filters.residentialComplexId || filters.status !== 'active' || filters.withoutComplex) && (
           <Button variant="ghost" size="sm" onClick={resetFilters}>
             Сбросить
           </Button>
         )}
       </div>
 
-      {/* Objects List */}
       <div className="space-y-3">
         {objects.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
@@ -270,92 +277,33 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
                 <div className="flex items-center gap-2">
                   <Home className="w-4 h-4 text-muted-foreground" />
                   <span className="font-medium">{obj.complex_name}, кв. {obj.apartment_number}</span>
-                  {obj.apartment_type && (
-                    <Badge variant="outline">{obj.apartment_type}</Badge>
-                  )}
-                  {obj.is_archived && (
+                  {obj.residential_complex_id ? (
+                    <Badge variant="outline">
+                      ЖК: {obj.residential_complex_name || 'Неизвестный'}
+                    </Badge>
+                  ) : (
                     <Badge variant="secondary" className="bg-muted">
-                      <Archive className="w-3 h-3 mr-1" />
-                      Архив
+                      <MapPin className="w-3 h-3 mr-1" />
+                      Без ЖК
                     </Badge>
                   )}
-                </div>
-                
-                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <User className="w-3 h-3" />
-                    {obj.owner_name || obj.owner_email || 'Неизвестный владелец'}
-                  </span>
-                  
-                  {obj.residential_complex_name ? (
-                    <span className="flex items-center gap-1">
-                      <Building2 className="w-3 h-3" />
-                      {obj.residential_complex_name}
-                      {obj.residential_complex_city && ` (${obj.residential_complex_city})`}
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-amber-500">
-                      <MapPin className="w-3 h-3" />
-                      Без ЖК
-                    </span>
+                  {obj.apartment_type && (
+                    <Badge variant="outline" className="text-xs">
+                      {obj.apartment_type}
+                    </Badge>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                {/* Assign residential complex */}
-                {assigningComplex === obj.id ? (
-                  <div className="flex items-center gap-1">
-                    <Select
-                      value={obj.residential_complex_id || 'none'}
-                      onValueChange={(value) => handleAssignComplex(obj.id, value === 'none' ? null : value)}
-                      disabled={isReadOnlyMode}
-                    >
-                      <SelectTrigger className="w-40">
-                        <SelectValue placeholder="Выберите ЖК" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Без ЖК</SelectItem>
-                        {residentialComplexes.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button size="icon" variant="ghost" onClick={() => setAssigningComplex(null)} disabled={isReadOnlyMode}>
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setAssigningComplex(obj.id)}
-                    disabled={isReadOnlyMode}
-                  >
-                    <Building2 className="w-4 h-4 mr-1" />
-                    ЖК
-                  </Button>
-                )}
-
-                {/* Archive / Restore */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
-                  variant={obj.is_archived ? 'outline' : 'ghost'}
-                  onClick={() => handleToggleArchive(obj.id, obj.is_archived)}
-                  className={obj.is_archived ? 'border-status-active/50 text-status-active' : 'text-muted-foreground'}
+                  variant="outline"
+                  onClick={() => handleAssignComplex(obj.id, obj.residential_complex_id)}
                   disabled={isReadOnlyMode}
                 >
-                  {obj.is_archived ? (
-                    <>
-                      <ArchiveRestore className="w-4 h-4 mr-1" />
-                      Восстановить
-                    </>
-                  ) : (
-                    <>
-                      <Archive className="w-4 h-4 mr-1" />
-                      В архив
-                    </>
-                  )}
+                  <Building2 className="w-4 h-4 mr-1" />
+                  ЖК
                 </Button>
               </div>
             </div>
@@ -363,7 +311,6 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
         )}
       </div>
 
-      {/* Create/Edit Complex Dialog */}
       <Dialog open={showComplexDialog || !!editingComplex} onOpenChange={(open) => {
         if (!open) {
           setShowComplexDialog(false);

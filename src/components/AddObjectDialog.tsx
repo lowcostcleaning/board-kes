@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -9,8 +9,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -18,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Plus, Building2, Home, LayoutGrid } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -33,20 +33,64 @@ const APARTMENT_TYPES = [
   { value: '2+1', label: '2+1' },
 ];
 
+interface ResidentialComplex {
+  id: string;
+  name: string;
+}
+
 export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProps) => {
   const [open, setOpen] = useState(false);
-  const [complexName, setComplexName] = useState('');
   const [apartmentNumber, setApartmentNumber] = useState('');
   const [apartmentType, setApartmentType] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [complexes, setComplexes] = useState<ResidentialComplex[]>([]);
+  const [selectedComplexId, setSelectedComplexId] = useState('');
+  const [isLoadingComplexes, setIsLoadingComplexes] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      fetchComplexes();
+    }
+  }, [open]);
+
+  const fetchComplexes = async () => {
+    setIsLoadingComplexes(true);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setComplexes([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('residential_complexes')
+        .select('id, name')
+        .eq('manager_id', user.id)
+        .order('name');
+
+      if (error) throw error;
+      setComplexes(data || []);
+    } catch (error: any) {
+      console.error('Error fetching complexes:', error);
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось загрузить ЖК',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingComplexes(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!complexName.trim() || !apartmentNumber.trim() || !apartmentType) {
+
+    if (!selectedComplexId || !apartmentNumber.trim() || !apartmentType) {
       toast({
         title: 'Ошибка',
-        description: 'Заполните все поля',
+        description: 'Выберите ЖК и заполните все поля',
         variant: 'destructive',
       });
       return;
@@ -56,16 +100,16 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('Пользователь не авторизован');
-      }
+      if (!user) throw new Error('Пользователь не авторизован');
+
+      const selectedComplex = complexes.find((complex) => complex.id === selectedComplexId);
 
       const { error } = await supabase.from('objects').insert({
         user_id: user.id,
-        complex_name: complexName.trim(),
+        complex_name: selectedComplex?.name || 'Без ЖК',
         apartment_number: apartmentNumber.trim(),
         apartment_type: apartmentType,
+        residential_complex_id: selectedComplexId,
       });
 
       if (error) throw error;
@@ -75,9 +119,9 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
         description: 'Объект добавлен',
       });
 
-      setComplexName('');
       setApartmentNumber('');
       setApartmentType('');
+      setSelectedComplexId('');
       setOpen(false);
       onObjectAdded();
     } catch (error: any) {
@@ -91,6 +135,8 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
     }
   };
 
+  const complexesAvailable = complexes.length > 0;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -102,24 +148,40 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
         <DialogHeader>
           <DialogTitle>Добавить объект</DialogTitle>
           <DialogDescription>
-            Укажите жилой комплекс, номер и тип апартамента
+            Выберите ЖК и укажите номер апартамента
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="complex" className="flex items-center gap-2">
+              <Label className="flex items-center gap-2">
                 <Building2 className="w-4 h-4" />
                 ЖК
               </Label>
-              <Input
-                id="complex"
-                value={complexName}
-                onChange={(e) => setComplexName(e.target.value)}
-                placeholder="Orbi City"
-                className="bg-muted/50"
-              />
+              <Select value={selectedComplexId} onValueChange={setSelectedComplexId}>
+                <SelectTrigger className="bg-muted/50">
+                  <SelectValue>
+                    {isLoadingComplexes ? 'Загрузка...' : 'Выберите ЖК'}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {complexesAvailable ? (
+                    complexes.map((complex) => (
+                      <SelectItem key={complex.id} value={complex.id}>
+                        {complex.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="" disabled>
+                      {isLoadingComplexes
+                        ? 'ЖК загружаются...'
+                        : 'Нет ЖК — обратитесь к администратору'}
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="apartment" className="flex items-center gap-2">
                 <Home className="w-4 h-4" />
@@ -156,7 +218,12 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Отмена
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button
+              type="submit"
+              disabled={
+                isLoading || !selectedComplexId || !complexesAvailable || apartmentType === ''
+              }
+            >
               {isLoading ? 'Добавление...' : 'Добавить'}
             </Button>
           </DialogFooter>
