@@ -15,7 +15,11 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
-export const AdminObjectsTab = () => {
+interface AdminObjectsTabProps {
+  isReadOnlyMode: boolean;
+}
+
+export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
   const { toast } = useToast();
   const {
     objects,
@@ -38,7 +42,20 @@ export const AdminObjectsTab = () => {
   const [complexCity, setComplexCity] = useState('');
   const [assigningComplex, setAssigningComplex] = useState<string | null>(null);
 
+  const checkReadOnly = () => {
+    if (isReadOnlyMode) {
+      toast({
+        title: 'Режим только для чтения',
+        description: 'Действие заблокировано. Отключите режим аудита.',
+        variant: 'destructive',
+      });
+      return true;
+    }
+    return false;
+  };
+
   const handleCreateComplex = async () => {
+    if (checkReadOnly()) return;
     if (!complexName.trim()) {
       toast({ title: 'Ошибка', description: 'Введите название ЖК', variant: 'destructive' });
       return;
@@ -54,6 +71,7 @@ export const AdminObjectsTab = () => {
   };
 
   const handleUpdateComplex = async () => {
+    if (checkReadOnly()) return;
     if (!editingComplex || !complexName.trim()) return;
     
     const success = await updateResidentialComplex(editingComplex.id, complexName.trim(), complexCity.trim());
@@ -66,6 +84,7 @@ export const AdminObjectsTab = () => {
   };
 
   const handleDeleteComplex = async (complex: ResidentialComplex) => {
+    if (checkReadOnly()) return;
     const success = await deleteResidentialComplex(complex.id);
     if (success) {
       toast({ title: 'ЖК удалён' });
@@ -73,6 +92,7 @@ export const AdminObjectsTab = () => {
   };
 
   const handleToggleArchive = async (objectId: string, currentArchived: boolean) => {
+    if (checkReadOnly()) return;
     const success = await toggleObjectArchived(objectId, !currentArchived);
     if (success) {
       toast({ 
@@ -82,6 +102,7 @@ export const AdminObjectsTab = () => {
   };
 
   const handleAssignComplex = async (objectId: string, complexId: string | null) => {
+    if (checkReadOnly()) return;
     const success = await updateObjectComplex(objectId, complexId);
     if (success) {
       toast({ title: 'ЖК объекта обновлён' });
@@ -90,6 +111,7 @@ export const AdminObjectsTab = () => {
   };
 
   const openCreateComplexDialog = () => {
+    if (checkReadOnly()) return;
     setEditingComplex(null);
     setComplexName('');
     setComplexCity('');
@@ -97,6 +119,7 @@ export const AdminObjectsTab = () => {
   };
 
   const openEditComplexDialog = (complex: ResidentialComplex) => {
+    if (checkReadOnly()) return;
     setEditingComplex(complex);
     setComplexName(complex.name);
     setComplexCity(complex.city || '');
@@ -120,7 +143,7 @@ export const AdminObjectsTab = () => {
             <Building2 className="w-4 h-4" />
             Жилые комплексы
           </h3>
-          <Button size="sm" onClick={openCreateComplexDialog}>
+          <Button size="sm" onClick={openCreateComplexDialog} disabled={isReadOnlyMode}>
             <Plus className="w-4 h-4 mr-1" />
             Добавить ЖК
           </Button>
@@ -144,6 +167,7 @@ export const AdminObjectsTab = () => {
                   variant="ghost"
                   className="h-4 w-4 ml-1"
                   onClick={() => openEditComplexDialog(complex)}
+                  disabled={isReadOnlyMode}
                 >
                   <Edit2 className="w-3 h-3" />
                 </Button>
@@ -152,6 +176,7 @@ export const AdminObjectsTab = () => {
                   variant="ghost"
                   className="h-4 w-4 text-destructive"
                   onClick={() => handleDeleteComplex(complex)}
+                  disabled={isReadOnlyMode}
                 >
                   <Trash2 className="w-3 h-3" />
                 </Button>
@@ -220,7 +245,7 @@ export const AdminObjectsTab = () => {
           </SelectContent>
         </Select>
 
-        {(filters.search || filters.managerId || filters.residentialComplexId || filters.status !== 'all') && (
+        {(filters.search || filters.managerId || filters.residentialComplexId || filters.status !== 'active') && (
           <Button variant="ghost" size="sm" onClick={resetFilters}>
             Сбросить
           </Button>
@@ -284,6 +309,7 @@ export const AdminObjectsTab = () => {
                     <Select
                       value={obj.residential_complex_id || 'none'}
                       onValueChange={(value) => handleAssignComplex(obj.id, value === 'none' ? null : value)}
+                      disabled={isReadOnlyMode}
                     >
                       <SelectTrigger className="w-40">
                         <SelectValue placeholder="Выберите ЖК" />
@@ -295,7 +321,7 @@ export const AdminObjectsTab = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button size="icon" variant="ghost" onClick={() => setAssigningComplex(null)}>
+                    <Button size="icon" variant="ghost" onClick={() => setAssigningComplex(null)} disabled={isReadOnlyMode}>
                       <X className="w-4 h-4" />
                     </Button>
                   </div>
@@ -304,6 +330,7 @@ export const AdminObjectsTab = () => {
                     size="sm"
                     variant="outline"
                     onClick={() => setAssigningComplex(obj.id)}
+                    disabled={isReadOnlyMode}
                   >
                     <Building2 className="w-4 h-4 mr-1" />
                     ЖК
@@ -316,6 +343,7 @@ export const AdminObjectsTab = () => {
                   variant={obj.is_archived ? 'outline' : 'ghost'}
                   onClick={() => handleToggleArchive(obj.id, obj.is_archived)}
                   className={obj.is_archived ? 'border-status-active/50 text-status-active' : 'text-muted-foreground'}
+                  disabled={isReadOnlyMode}
                 >
                   {obj.is_archived ? (
                     <>
@@ -355,6 +383,7 @@ export const AdminObjectsTab = () => {
                 value={complexName}
                 onChange={(e) => setComplexName(e.target.value)}
                 placeholder="Название жилого комплекса"
+                disabled={isReadOnlyMode}
               />
             </div>
             <div className="space-y-2">
@@ -363,6 +392,7 @@ export const AdminObjectsTab = () => {
                 value={complexCity}
                 onChange={(e) => setComplexCity(e.target.value)}
                 placeholder="Город (опционально)"
+                disabled={isReadOnlyMode}
               />
             </div>
           </div>
@@ -370,10 +400,10 @@ export const AdminObjectsTab = () => {
             <Button variant="outline" onClick={() => {
               setShowComplexDialog(false);
               setEditingComplex(null);
-            }}>
+            }} disabled={isReadOnlyMode}>
               Отмена
             </Button>
-            <Button onClick={editingComplex ? handleUpdateComplex : handleCreateComplex}>
+            <Button onClick={editingComplex ? handleUpdateComplex : handleCreateComplex} disabled={isReadOnlyMode}>
               {editingComplex ? 'Сохранить' : 'Создать'}
             </Button>
           </DialogFooter>
