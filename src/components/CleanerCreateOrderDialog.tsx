@@ -78,7 +78,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   const [step, setStep] = useState<'manager' | 'calendar' | 'details'>('manager');
   const [managers, setManagers] = useState<Manager[]>([]);
   const [objects, setObjects] = useState<PropertyObject[]>([]);
-  const [selectedManager, setSelectedManager] = useState<string>('');
+  const [selectedManager, setSelectedManager] = useState<string | null>(null);
   const [selectedObject, setSelectedObject] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>('');
@@ -98,10 +98,9 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   // Fetch objects when manager is selected
   useEffect(() => {
     if (selectedManager) {
-      setObjects([]); // Clear objects first
-      fetchObjectsForManager();
-      fetchCleanerOrders();
-      fetchCleanerUnavailability();
+      fetchObjectsForManager(selectedManager);
+    } else {
+      setObjects([]);
     }
   }, [selectedManager]);
 
@@ -122,7 +121,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     } else {
       setBusyTimeSlots([]);
     }
-  }, [selectedDate, cleanerOrders]);
+  }, [selectedDate, cleanerOrders, selectedTime]);
 
   const fetchCleaners = async () => {
     let query = supabase
@@ -143,18 +142,16 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     }
   };
 
-  const fetchObjectsForManager = async () => {
-    if (!selectedManager) return;
-
-    console.log('Fetching objects for manager:', selectedManager);
+  const fetchObjectsForManager = async (managerId: string) => {
+    console.log('Fetching objects for manager:', managerId);
     
     const { data, error } = await supabase
       .from('objects')
       .select('id, complex_name, apartment_number, apartment_type, user_id')
-      .eq('user_id', selectedManager)
+      .eq('user_id', managerId)
       .order('created_at', { ascending: false });
 
-    console.log('Objects fetched:', data);
+    console.log('Objects fetched:', data?.length);
     console.log('Error:', error);
 
     if (!error && data) {
@@ -207,11 +204,25 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     return cleanerUnavailableDates.some(u => isSameDay(new Date(u.date), date));
   };
 
+  const resetForm = () => {
+    setStep('manager');
+    setSelectedManager(null);
+    setSelectedObject('');
+    setSelectedDate(undefined);
+    setSelectedTime('');
+    setCleanerOrders([]);
+    setCleanerUnavailableDates([]);
+    setBusyTimeSlots([]);
+    setSortBy('name');
+    setObjects([]);
+  };
+
   const handleCleanerSelect = (managerId: string) => {
     setSelectedManager(managerId);
     setSelectedObject('');
     setSelectedDate(undefined);
     setSelectedTime('');
+    setObjects([]);
     setStep('calendar');
   };
 
@@ -276,15 +287,8 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
         description: 'Заявка создана',
       });
 
-      // Close dialog after success
       setOpen(false);
-      // Reset form for next time
-      setStep('manager');
-      setSelectedManager('');
-      setSelectedObject('');
-      setSelectedDate(undefined);
-      setSelectedTime('');
-      setObjects([]);
+      resetForm();
       onOrderCreated();
     } catch (error: any) {
       toast({
@@ -304,7 +308,12 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   today.setHours(0, 0, 0, 0);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen) {
+        resetForm();
+      }
+      setOpen(isOpen);
+    }}>
       <DialogTrigger asChild>
         <Button size="sm" disabled={disabled} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
@@ -379,7 +388,11 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
             </div>
             <Button 
               variant="outline" 
-              onClick={() => setStep('manager')}
+              onClick={() => {
+                setSelectedManager(null);
+                setObjects([]);
+                setStep('manager');
+              }}
               className="rounded-[14px]"
             >
               Назад
