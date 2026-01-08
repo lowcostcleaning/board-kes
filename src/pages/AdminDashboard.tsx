@@ -6,12 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Users, Shield, UserCheck, Clock, Brush, Briefcase, CheckCircle2, Star, Edit2, Check, X, Eye, FlaskConical, Trash2, RotateCcw } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Users, Shield, UserCheck, Clock, Brush, Briefcase, CheckCircle2, Star, Edit2, Check, X, Eye, FlaskConical, Trash2, RotateCcw, Building2, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { UserAvatar } from '@/components/UserAvatar';
 import { ViewUserProfileDialog } from '@/components/ViewUserProfileDialog';
 import { useAdminUsers, UserProfile } from '@/hooks/use-admin-users';
+import { AdminObjectsTab } from '@/components/AdminObjectsTab';
+import { AdminCleanerCalendarTab } from '@/components/AdminCleanerCalendarTab';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +46,7 @@ const AdminDashboard = () => {
   const [newOrdersCount, setNewOrdersCount] = useState<string>('');
   const [viewingUser, setViewingUser] = useState<UserProfile | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
+  const [activeTab, setActiveTab] = useState('users');
   const isMobile = useIsMobile();
 
   const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Админ';
@@ -193,62 +197,81 @@ const AdminDashboard = () => {
           </p>
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid gap-4 md:grid-cols-4 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <div className="p-4 rounded-lg bg-card border border-border shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
-                <Users className="w-5 h-5 text-accent-foreground" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{allUsers.filter(u => u.is_active).length}</p>
-                <p className="text-sm text-muted-foreground">Активных</p>
-              </div>
-            </div>
-          </div>
-          <div className="p-4 rounded-lg bg-card border border-border shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-status-pending/15 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-status-pending" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">
-                  {allUsers.filter(u => u.status === 'pending' && u.is_active).length}
-                </p>
-                <p className="text-sm text-muted-foreground">На модерации</p>
-              </div>
-            </div>
-          </div>
-          <div className="p-4 rounded-lg bg-card border border-border shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-status-active/15 flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5 text-status-active" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">
-                  {allUsers.filter(u => u.status === 'approved' && u.is_active).length}
-                </p>
-                <p className="text-sm text-muted-foreground">Одобрено</p>
-              </div>
-            </div>
-          </div>
-          <div className="p-4 rounded-lg bg-card border border-border shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-destructive/15 flex items-center justify-center">
-                <Trash2 className="w-5 h-5 text-destructive" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">
-                  {allUsers.filter(u => !u.is_active).length}
-                </p>
-                <p className="text-sm text-muted-foreground">Удалённых</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
+          <TabsList className="grid w-full grid-cols-3 max-w-md">
+            <TabsTrigger value="users" className="gap-1">
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">Пользователи</span>
+            </TabsTrigger>
+            <TabsTrigger value="objects" className="gap-1">
+              <Building2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Объекты</span>
+            </TabsTrigger>
+            <TabsTrigger value="calendar" className="gap-1">
+              <Calendar className="w-4 h-4" />
+              <span className="hidden sm:inline">Календарь</span>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-3 items-center animate-slide-up" style={{ animationDelay: '0.15s' }}>
+          {/* Users Tab */}
+          <TabsContent value="users" className="space-y-6 mt-6">
+            {/* Stats Overview */}
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="p-4 rounded-lg bg-card border border-border shadow-card">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
+                    <Users className="w-5 h-5 text-accent-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{allUsers.filter(u => u.is_active).length}</p>
+                    <p className="text-sm text-muted-foreground">Активных</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 rounded-lg bg-card border border-border shadow-card">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-status-pending/15 flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-status-pending" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">
+                      {allUsers.filter(u => u.status === 'pending' && u.is_active).length}
+                    </p>
+                    <p className="text-sm text-muted-foreground">На модерации</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 rounded-lg bg-card border border-border shadow-card">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-status-active/15 flex items-center justify-center">
+                    <CheckCircle2 className="w-5 h-5 text-status-active" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">
+                      {allUsers.filter(u => u.status === 'approved' && u.is_active).length}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Одобрено</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 rounded-lg bg-card border border-border shadow-card">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-destructive/15 flex items-center justify-center">
+                    <Trash2 className="w-5 h-5 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">
+                      {allUsers.filter(u => !u.is_active).length}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Удалённых</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-3 items-center">
           <Select
             value={filters.role || 'all'}
             onValueChange={(value) => updateFilters({ role: value === 'all' ? null : value })}
@@ -305,9 +328,8 @@ const AdminDashboard = () => {
           </Button>
         </div>
 
-        {/* Users List */}
-        <div style={{ animationDelay: '0.2s' }}>
-          <DashboardCard title="Пользователи" icon={Users} {...cardProps}>
+            {/* Users List */}
+            <DashboardCard title="Пользователи" icon={Users} {...cardProps}>
             {isLoading ? (
               <div className="flex items-center justify-center p-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -533,47 +555,56 @@ const AdminDashboard = () => {
               </div>
             )}
           </DashboardCard>
-        </div>
 
-        {/* Roles Management */}
-        <div style={{ animationDelay: '0.3s' }}>
-          <DashboardCard title="Управление ролями" icon={Shield} {...cardProps}>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Управляйте ролями пользователей. Роль админа можно назначить только из этой панели.
-              </p>
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Brush className="w-4 h-4 text-primary" />
-                    <span className="font-medium">Клинер</span>
+            {/* Roles Management */}
+            <DashboardCard title="Управление ролями" icon={Shield} {...cardProps}>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Управляйте ролями пользователей. Роль админа можно назначить только из этой панели.
+                </p>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Brush className="w-4 h-4 text-primary" />
+                      <span className="font-medium">Клинер</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Просмотр назначенных уборок и календаря
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Просмотр назначенных уборок и календаря
-                  </p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Briefcase className="w-4 h-4 text-primary" />
-                    <span className="font-medium">Менеджер</span>
+                  <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Briefcase className="w-4 h-4 text-primary" />
+                      <span className="font-medium">Менеджер</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Управление объектами и заказами
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Управление объектами и заказами
-                  </p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Shield className="w-4 h-4 text-primary" />
-                    <span className="font-medium">Админ</span>
+                  <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Shield className="w-4 h-4 text-primary" />
+                      <span className="font-medium">Админ</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Полный доступ к системе
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Полный доступ к системе
-                  </p>
                 </div>
               </div>
-            </div>
-          </DashboardCard>
-        </div>
+            </DashboardCard>
+          </TabsContent>
+
+          {/* Objects Tab */}
+          <TabsContent value="objects" className="mt-6">
+            <AdminObjectsTab />
+          </TabsContent>
+
+          {/* Calendar Tab */}
+          <TabsContent value="calendar" className="mt-6">
+            <AdminCleanerCalendarTab />
+          </TabsContent>
+        </Tabs>
       </div>
 
       <ViewUserProfileDialog
