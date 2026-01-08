@@ -5,7 +5,7 @@ import { ru } from 'date-fns/locale';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Eye } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { ViewReportDialog } from './ViewReportDialog';
 
 interface ReportRow {
@@ -28,7 +28,7 @@ interface JoinedReport {
 }
 
 const AdminReportsTab: React.FC = () => {
-  const { toast: appToast } = toast ? toast() : { toast: undefined }; // keep TS happy if useToast signature differs
+  const { toast } = useToast();
   const [reports, setReports] = useState<JoinedReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewOrderId, setViewOrderId] = useState<string | null>(null);
@@ -36,30 +36,24 @@ const AdminReportsTab: React.FC = () => {
   const fetchReports = async () => {
     setLoading(true);
     try {
-      // Fetch reports
       const { data: reportsData, error: reportsError } = await supabase
         .from('completion_reports')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (reportsError) throw reportsError;
-
       const reportsList: ReportRow[] = reportsData || [];
 
-      // Fetch related orders, objects, profiles in bulk
       const orderIds = Array.from(new Set(reportsList.map(r => r.order_id))).filter(Boolean);
-
       let ordersMap = new Map<string, any>();
       if (orderIds.length > 0) {
         const { data: ordersData } = await supabase
           .from('orders')
           .select('id, scheduled_date, scheduled_time, object_id, cleaner_id, manager_id')
           .in('id', orderIds);
-
         (ordersData || []).forEach((o) => ordersMap.set(o.id, o));
       }
 
-      // Collect object ids and profile ids
       const objectIds = Array.from(new Set((Array.from(ordersMap.values()).map((o: any) => o.object_id)).filter(Boolean)));
       const profileIds = Array.from(new Set((Array.from(ordersMap.values()).flatMap((o: any) => [o.cleaner_id, o.manager_id])).filter(Boolean)));
 
@@ -69,7 +63,6 @@ const AdminReportsTab: React.FC = () => {
           .from('objects')
           .select('id, complex_name, apartment_number')
           .in('id', objectIds);
-
         (objectsData || []).forEach((o) => objectsMap.set(o.id, o));
       }
 
@@ -79,7 +72,6 @@ const AdminReportsTab: React.FC = () => {
           .from('profiles')
           .select('id, name, email')
           .in('id', profileIds);
-
         (profilesData || []).forEach((p) => profilesMap.set(p.id, p));
       }
 
@@ -105,13 +97,11 @@ const AdminReportsTab: React.FC = () => {
       setReports(joined);
     } catch (err: any) {
       console.error('Error loading reports:', err);
-      if (appToast) {
-        appToast({
-          title: 'Ошибка',
-          description: err.message || 'Не удалось загрузить отчёты',
-          variant: 'destructive',
-        });
-      }
+      toast({
+        title: 'Ошибка',
+        description: err?.message || 'Не удалось загрузить отчёты',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -119,6 +109,7 @@ const AdminReportsTab: React.FC = () => {
 
   useEffect(() => {
     fetchReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
