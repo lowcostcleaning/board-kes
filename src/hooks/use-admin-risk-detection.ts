@@ -158,7 +158,8 @@ export const useAdminRiskDetection = () => {
           continue;
         }
 
-        // Risk 3: Completed but no report
+        // Risk 3: Completed but no report in completion_reports
+        // A report exists if there's at least ONE record in completion_reports
         if (order.status === 'completed' && !report) {
           problems.push({
             ...order,
@@ -178,7 +179,8 @@ export const useAdminRiskDetection = () => {
           continue;
         }
 
-        // Risk 4: Report has no photos
+        // Risk 4: Report exists but has no photos
+        // A report exists (completion_reports record) but no image files attached
         if (report && reportFiles.length === 0) {
           problems.push({
             ...order,

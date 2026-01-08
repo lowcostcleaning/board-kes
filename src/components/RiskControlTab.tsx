@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { format, differenceInHours, subHours } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { AlertTriangle, AlertCircle, CheckCircle2, Clock, User, MapPin, FileText, Eye, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, AlertCircle, CheckCircle2, Clock, User, MapPin, FileText, Eye, ShieldAlert, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -15,7 +15,7 @@ import { useState } from 'react';
 const riskTypeConfig: Record<string, { icon: typeof AlertTriangle; color: string; label: string }> = {
   no_cleaner_assigned: { icon: AlertTriangle, color: 'text-red-500', label: 'Нет клинера' },
   no_report: { icon: FileText, color: 'text-amber-500', label: 'Нет отчёта' },
-  report_no_photos: { icon: FileText, color: 'text-orange-500', label: 'Отчёт без фото' },
+  report_no_photos: { icon: Image, color: 'text-orange-500', label: 'Отчёт без фото' },
   unconfirmed_order: { icon: Clock, color: 'text-amber-500', label: 'Не подтверждён' },
   delayed_order: { icon: AlertCircle, color: 'text-red-500', label: 'Просрочен' },
 };
@@ -62,14 +62,6 @@ export const RiskControlTab = () => {
     // For now, we'll show a placeholder
     setSelectedUser({ id: userId });
     setShowUserDialog(true);
-  };
-
-  const handleViewAccountability = async (order: any) => {
-    const trail = await fetchAccountabilityTrail(order.id);
-    if (trail) {
-      // Show accountability trail in a dialog or expand the order
-      console.log('Accountability trail:', trail);
-    }
   };
 
   if (isLoading) {
@@ -283,7 +275,21 @@ const RiskOrdersList = ({ orders, onViewReport, onViewUser }: RiskOrdersListProp
 
               {/* Actions */}
               <div className="flex lg:flex-col gap-2">
-                {order.status === 'completed' && (
+                {/* Show "View Report" button for orders that have a report (report_no_photos type) */}
+                {order.risk_type === 'report_no_photos' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onViewReport(order)}
+                    className="gap-1"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Отчёт загружен
+                  </Button>
+                )}
+                
+                {/* Show "Отчёт" button for completed orders to view their report */}
+                {order.status === 'completed' && order.risk_type !== 'report_no_photos' && (
                   <Button
                     size="sm"
                     variant="outline"
