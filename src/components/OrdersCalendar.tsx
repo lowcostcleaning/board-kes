@@ -109,7 +109,7 @@ export const OrdersCalendar = ({
 
   const getDayBackground = (dayOrders: OrderForCalendar[], isSelected: boolean, isUnavailable: boolean) => {
     if (isSelected) return 'bg-primary/20';
-    if (isUnavailable) return 'bg-destructive/10 dark:bg-destructive/20'; // Changed to red background
+    if (isUnavailable) return 'bg-destructive/10 dark:bg-destructive/20'; // Red background
     if (dayOrders.length === 0) return 'bg-[#f5f5f5] dark:bg-muted/40';
     
     const hasConfirmedOrCompleted = dayOrders.some(o => o.status === 'confirmed' || o.status === 'completed');
@@ -223,7 +223,7 @@ export const OrdersCalendar = ({
                     "text-sm font-medium transition-colors duration-200",
                     isToday && "text-primary font-semibold",
                     isSelected && "text-primary font-semibold",
-                    isUnavailable && "text-destructive dark:text-destructive-foreground" // Changed text color for better contrast
+                    isUnavailable && "text-destructive dark:text-destructive-foreground" // Red text
                   )}
                 >
                   {format(date, 'd')}
