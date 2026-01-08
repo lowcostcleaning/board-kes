@@ -31,7 +31,8 @@ import {
   MapPin,
   Loader2,
   Lock,
-  AlertTriangle
+  AlertTriangle,
+  ShieldAlert
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -41,6 +42,7 @@ import { useAdminUsers, UserProfile } from '@/hooks/use-admin-users';
 import { useAdminDashboard } from '@/hooks/use-admin-dashboard';
 import { AdminObjectsTab } from '@/components/AdminObjectsTab';
 import { AdminCleanerCalendarTab } from '@/components/AdminCleanerCalendarTab';
+import { RiskControlTab } from '@/components/RiskControlTab';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -273,7 +275,7 @@ const AdminDashboard = () => {
             </p>
           </div>
           
-          {/* Read-Only Toggle (TASK 4) */}
+          {/* Read-Only Toggle */}
           <div className="flex items-center space-x-2 p-2 rounded-lg bg-muted/50">
             <Lock className="w-4 h-4 text-muted-foreground" />
             <Label htmlFor="read-only-mode" className="text-sm whitespace-nowrap">
@@ -289,7 +291,7 @@ const AdminDashboard = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+          <TabsList className="grid w-full grid-cols-5 max-w-2xl">
             <TabsTrigger value="users" className="gap-1">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Пользователи</span>
@@ -301,6 +303,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="calendar" className="gap-1">
               <Calendar className="w-4 h-4" />
               <span className="hidden sm:inline">Календарь</span>
+            </TabsTrigger>
+            <TabsTrigger value="risk" className="gap-1">
+              <ShieldAlert className="w-4 h-4" />
+              <span className="hidden sm:inline">Риски</span>
             </TabsTrigger>
             <TabsTrigger value="notifications" className="gap-1 relative">
               <Bell className="w-4 h-4" />
@@ -757,9 +763,14 @@ const AdminDashboard = () => {
             <AdminCleanerCalendarTab />
           </TabsContent>
 
+          {/* Risk Control Tab */}
+          <TabsContent value="risk" className="mt-6">
+            <RiskControlTab />
+          </TabsContent>
+
           {/* Notifications Tab */}
           <TabsContent value="notifications" className="mt-6">
-            {/* Overdue Counter (TASK 3) */}
+            {/* Overdue Counter */}
             {counters.overdueNotifications > 0 && (
               <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
