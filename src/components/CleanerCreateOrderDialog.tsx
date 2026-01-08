@@ -90,13 +90,13 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
 
   useEffect(() => {
     if (open) {
-      fetchObjects();
       fetchCleaners();
     }
   }, [open, isDemoCleaner]);
 
   useEffect(() => {
     if (selectedManager) {
+      fetchObjectsForManager();
       fetchCleanerOrders();
       fetchCleanerUnavailability();
     }
@@ -120,51 +120,9 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     }
   }, [selectedDate, cleanerOrders]);
 
-  const fetchObjects = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    // For demo cleaners, only fetch objects belonging to demo managers
-    let query = supabase
-      .from('objects')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (isDemoCleaner) {
-      // Get demo managers first
-      const { data: demoManagers } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('role', 'demo_manager');
-
-      if (demoManagers && demoManagers.length > 0) {
-        const demoManagerIds = demoManagers.map(m => m.id);
-        query = query.in('user_id', demoManagerIds);
-      } else {
-        // If no demo managers, return empty array
-        setObjects([]);
-        return;
-      }
-    }
-
-    const { data, error } = await query;
-
-    if (!error && data) {
-      setObjects(data);
-    }
-  };
-
   const fetchCleaners = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    const isDemoManagerView = profileData?.role === 'demo_manager';
 
     let query = supabase
       .from('profiles')
@@ -181,6 +139,22 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
 
     if (!error && data) {
       setManagers(data);
+    }
+  };
+
+  const fetchObjectsForManager = async () => {
+    if (!selectedManager) return;
+
+    let query = supabase
+      .from('objects')
+      .select('*')
+      .eq('user_id', selectedManager)
+      .order('created_at', { ascending: false });
+
+    const { data, error } = await query;
+
+    if (!error && data) {
+      setObjects(data);
     }
   };
 
@@ -249,6 +223,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     setCleanerUnavailableDates([]);
     setBusyTimeSlots([]);
     setSortBy('name');
+    setObjects([]);
   };
 
   const handleCleanerSelect = (managerId: string) => {
