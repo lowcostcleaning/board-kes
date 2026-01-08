@@ -121,10 +121,33 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   }, [selectedDate, cleanerOrders]);
 
   const fetchObjects = async () => {
-    const { data, error } = await supabase
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // For demo cleaners, only fetch objects belonging to demo managers
+    let query = supabase
       .from('objects')
       .select('*')
       .order('created_at', { ascending: false });
+
+    if (isDemoCleaner) {
+      // Get demo managers first
+      const { data: demoManagers } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'demo_manager');
+
+      if (demoManagers && demoManagers.length > 0) {
+        const demoManagerIds = demoManagers.map(m => m.id);
+        query = query.in('user_id', demoManagerIds);
+      } else {
+        // If no demo managers, return empty array
+        setObjects([]);
+        return;
+      }
+    }
+
+    const { data, error } = await query;
 
     if (!error && data) {
       setObjects(data);
