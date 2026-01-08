@@ -36,7 +36,7 @@ export interface ObjectFilters {
 const defaultFilters: ObjectFilters = {
   managerId: null,
   residentialComplexId: null,
-  status: 'all',
+  status: 'active', // Default to active objects
   search: '',
 };
 
@@ -70,10 +70,11 @@ export const useAdminObjects = () => {
       return;
     }
 
-    // Fetch profiles for owners
+    // Fetch profiles for owners (managers)
     const { data: profilesData } = await supabase
       .from('profiles')
-      .select('id, name, email');
+      .select('id, name, email, role')
+      .or('role.eq.manager,role.eq.demo_manager');
 
     // Fetch residential complexes
     const { data: complexesData } = await supabase
@@ -102,10 +103,8 @@ export const useAdminObjects = () => {
     setObjects(mappedObjects);
     setResidentialComplexes(complexesData || []);
     
-    // Extract unique managers
-    const uniqueManagers = Array.from(profilesMap.values())
-      .filter(p => objectsData?.some(obj => obj.user_id === p.id));
-    setManagers(uniqueManagers);
+    // Set managers list
+    setManagers(profilesData || []);
     
     setIsLoading(false);
   }, [toast]);
@@ -122,6 +121,8 @@ export const useAdminObjects = () => {
     // Filter by residential complex
     if (filters.residentialComplexId) {
       result = result.filter(obj => obj.residential_complex_id === filters.residentialComplexId);
+    } else if (filters.residentialComplexId === 'none') {
+      result = result.filter(obj => obj.residential_complex_id === null);
     }
 
     // Filter by status

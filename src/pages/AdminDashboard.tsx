@@ -7,12 +7,34 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Shield, UserCheck, Clock, Brush, Briefcase, CheckCircle2, Star, Edit2, Check, X, Eye, FlaskConical, Trash2, RotateCcw, Building2, Calendar } from 'lucide-react';
+import { 
+  Users, 
+  Shield, 
+  UserCheck, 
+  Clock, 
+  Brush, 
+  Briefcase, 
+  CheckCircle2, 
+  Star, 
+  Edit2, 
+  Check, 
+  X, 
+  Eye, 
+  FlaskConical, 
+  Trash2, 
+  RotateCcw, 
+  Building2, 
+  Calendar, 
+  Bell,
+  MapPin,
+  Loader2
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { UserAvatar } from '@/components/UserAvatar';
 import { ViewUserProfileDialog } from '@/components/ViewUserProfileDialog';
 import { useAdminUsers, UserProfile } from '@/hooks/use-admin-users';
+import { useAdminDashboard } from '@/hooks/use-admin-dashboard';
 import { AdminObjectsTab } from '@/components/AdminObjectsTab';
 import { AdminCleanerCalendarTab } from '@/components/AdminCleanerCalendarTab';
 import {
@@ -25,6 +47,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 const AdminDashboard = () => {
   const { user, profile } = useAuth();
@@ -32,15 +57,23 @@ const AdminDashboard = () => {
   const {
     users,
     allUsers,
-    isLoading,
-    filters,
-    updateFilters,
+    isLoading: isLoadingUsers,
+    filters: userFilters,
+    updateFilters: updateUserFilters,
     deleteUser,
     restoreUser,
     updateRole,
     updateStatus,
     updateOrdersCount,
   } = useAdminUsers();
+  
+  const {
+    counters,
+    isLoadingCounters,
+    notifications,
+    isUpdatingNotification,
+    resolveNotification,
+  } = useAdminDashboard();
   
   const [editingOrdersCount, setEditingOrdersCount] = useState<string | null>(null);
   const [newOrdersCount, setNewOrdersCount] = useState<string>('');
@@ -184,6 +217,12 @@ const AdminDashboard = () => {
     setViewingUser(userProfile);
   };
 
+  const handleResolveNotification = (notification: any, action: 'approved' | 'rejected') => {
+    if (user?.id) {
+      resolveNotification(notification, action, user.id);
+    }
+  };
+
   return (
     <DashboardLayout title="Панель администратора">
       <div className="space-y-6">
@@ -193,13 +232,13 @@ const AdminDashboard = () => {
             Добро пожаловать, {displayName}!
           </h1>
           <p className="text-muted-foreground">
-            Управляйте пользователями и их ролями.
+            Управляйте пользователями, объектами и заказами.
           </p>
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <TabsList className="grid w-full grid-cols-3 max-w-md">
+          <TabsList className="grid w-full grid-cols-4 max-w-2xl">
             <TabsTrigger value="users" className="gap-1">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Пользователи</span>
@@ -212,59 +251,112 @@ const AdminDashboard = () => {
               <Calendar className="w-4 h-4" />
               <span className="hidden sm:inline">Календарь</span>
             </TabsTrigger>
+            <TabsTrigger value="notifications" className="gap-1 relative">
+              <Bell className="w-4 h-4" />
+              <span className="hidden sm:inline">Уведомления</span>
+              {notifications.length > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
+                >
+                  {notifications.length}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           {/* Users Tab */}
           <TabsContent value="users" className="space-y-6 mt-6">
-            {/* Stats Overview */}
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="p-4 rounded-lg bg-card border border-border shadow-card">
+            {/* Stats Overview (Counters) */}
+            <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
+              <div className="p-3 rounded-lg bg-card border border-border shadow-card">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
-                    <Users className="w-5 h-5 text-accent-foreground" />
+                  <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
+                    <Users className="w-4 h-4 text-accent-foreground" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-foreground">{allUsers.filter(u => u.is_active).length}</p>
-                    <p className="text-sm text-muted-foreground">Активных</p>
+                    <p className="text-xl font-bold text-foreground">
+                      {isLoadingCounters ? <Loader2 className="w-4 h-4 animate-spin" /> : counters.totalUsers}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Всего (Акт.)</p>
                   </div>
                 </div>
               </div>
-              <div className="p-4 rounded-lg bg-card border border-border shadow-card">
+              <div className="p-3 rounded-lg bg-card border border-border shadow-card">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-status-pending/15 flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-status-pending" />
+                  <div className="w-8 h-8 rounded-lg bg-status-pending/15 flex items-center justify-center">
+                    <Clock className="w-4 h-4 text-status-pending" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-foreground">
-                      {allUsers.filter(u => u.status === 'pending' && u.is_active).length}
+                    <p className="text-xl font-bold text-foreground">
+                      {isLoadingCounters ? <Loader2 className="w-4 h-4 animate-spin" /> : counters.pendingUsers}
                     </p>
-                    <p className="text-sm text-muted-foreground">На модерации</p>
+                    <p className="text-xs text-muted-foreground">На модерации</p>
                   </div>
                 </div>
               </div>
-              <div className="p-4 rounded-lg bg-card border border-border shadow-card">
+              <div className="p-3 rounded-lg bg-card border border-border shadow-card">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-status-active/15 flex items-center justify-center">
-                    <CheckCircle2 className="w-5 h-5 text-status-active" />
+                  <div className="w-8 h-8 rounded-lg bg-status-active/15 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-status-active" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-foreground">
-                      {allUsers.filter(u => u.status === 'approved' && u.is_active).length}
+                    <p className="text-xl font-bold text-foreground">
+                      {isLoadingCounters ? <Loader2 className="w-4 h-4 animate-spin" /> : counters.approvedUsers}
                     </p>
-                    <p className="text-sm text-muted-foreground">Одобрено</p>
+                    <p className="text-xs text-muted-foreground">Одобрено</p>
                   </div>
                 </div>
               </div>
-              <div className="p-4 rounded-lg bg-card border border-border shadow-card">
+              <div className="p-3 rounded-lg bg-card border border-border shadow-card">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-destructive/15 flex items-center justify-center">
-                    <Trash2 className="w-5 h-5 text-destructive" />
+                  <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+                    <Brush className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-foreground">
-                      {allUsers.filter(u => !u.is_active).length}
+                    <p className="text-xl font-bold text-foreground">
+                      {isLoadingCounters ? <Loader2 className="w-4 h-4 animate-spin" /> : counters.totalCleaners}
                     </p>
-                    <p className="text-sm text-muted-foreground">Удалённых</p>
+                    <p className="text-xs text-muted-foreground">Клинеров</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-card border border-border shadow-card">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
+                    <Brush className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-foreground">
+                      {isLoadingCounters ? <Loader2 className="w-4 h-4 animate-spin" /> : counters.cleanersActiveToday}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Клинеров сегодня</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-card border border-border shadow-card">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                    <MapPin className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-foreground">
+                      {isLoadingCounters ? <Loader2 className="w-4 h-4 animate-spin" /> : counters.totalObjects}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Всего объектов</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-card border border-border shadow-card">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+                    <MapPin className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-foreground">
+                      {isLoadingCounters ? <Loader2 className="w-4 h-4 animate-spin" /> : counters.activeObjects}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Активных объектов</p>
                   </div>
                 </div>
               </div>
@@ -272,65 +364,65 @@ const AdminDashboard = () => {
 
             {/* Filters */}
             <div className="flex flex-wrap gap-3 items-center">
-          <Select
-            value={filters.role || 'all'}
-            onValueChange={(value) => updateFilters({ role: value === 'all' ? null : value })}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Все роли" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все роли</SelectItem>
-              <SelectItem value="cleaner">Клинер</SelectItem>
-              <SelectItem value="manager">Менеджер</SelectItem>
-              <SelectItem value="admin">Админ</SelectItem>
-              <SelectItem value="demo_manager">Demo Менеджер</SelectItem>
-              <SelectItem value="demo_cleaner">Demo Клинер</SelectItem>
-            </SelectContent>
-          </Select>
+              <Select
+                value={userFilters.role || 'all'}
+                onValueChange={(value) => updateUserFilters({ role: value === 'all' ? null : value })}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Все роли" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все роли</SelectItem>
+                  <SelectItem value="cleaner">Клинер</SelectItem>
+                  <SelectItem value="manager">Менеджер</SelectItem>
+                  <SelectItem value="admin">Админ</SelectItem>
+                  <SelectItem value="demo_manager">Demo Менеджер</SelectItem>
+                  <SelectItem value="demo_cleaner">Demo Клинер</SelectItem>
+                </SelectContent>
+              </Select>
 
-          <Select
-            value={filters.status || 'all'}
-            onValueChange={(value) => updateFilters({ status: value === 'all' ? null : value })}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Все статусы" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все статусы</SelectItem>
-              <SelectItem value="pending">На модерации</SelectItem>
-              <SelectItem value="approved">Одобрен</SelectItem>
-            </SelectContent>
-          </Select>
+              <Select
+                value={userFilters.status || 'all'}
+                onValueChange={(value) => updateUserFilters({ status: value === 'all' ? null : value })}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Все статусы" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все статусы</SelectItem>
+                  <SelectItem value="pending">На модерации</SelectItem>
+                  <SelectItem value="approved">Одобрен</SelectItem>
+                </SelectContent>
+              </Select>
 
-          <Select
-            value={filters.userType}
-            onValueChange={(value: 'all' | 'demo' | 'real') => updateFilters({ userType: value })}
-          >
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Тип" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все</SelectItem>
-              <SelectItem value="real">Реальные</SelectItem>
-              <SelectItem value="demo">Demo</SelectItem>
-            </SelectContent>
-          </Select>
+              <Select
+                value={userFilters.userType}
+                onValueChange={(value: 'all' | 'demo' | 'real') => updateUserFilters({ userType: value })}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Тип" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все</SelectItem>
+                  <SelectItem value="real">Реальные</SelectItem>
+                  <SelectItem value="demo">Demo</SelectItem>
+                </SelectContent>
+              </Select>
 
-          <Button
-            variant={filters.showInactive ? 'secondary' : 'outline'}
-            size="sm"
-            onClick={() => updateFilters({ showInactive: !filters.showInactive })}
-            className="gap-1"
-          >
-            <Trash2 className="w-4 h-4" />
-            {filters.showInactive ? 'Скрыть удалённых' : 'Показать удалённых'}
-          </Button>
-        </div>
+              <Button
+                variant={userFilters.showInactive ? 'secondary' : 'outline'}
+                size="sm"
+                onClick={() => updateUserFilters({ showInactive: !userFilters.showInactive })}
+                className="gap-1"
+              >
+                <Trash2 className="w-4 h-4" />
+                {userFilters.showInactive ? 'Скрыть удалённых' : 'Показать удалённых'}
+              </Button>
+            </div>
 
             {/* Users List */}
             <DashboardCard title="Пользователи" icon={Users} {...cardProps}>
-            {isLoading ? (
+            {isLoadingUsers ? (
               <div className="flex items-center justify-center p-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
@@ -603,6 +695,74 @@ const AdminDashboard = () => {
           {/* Calendar Tab */}
           <TabsContent value="calendar" className="mt-6">
             <AdminCleanerCalendarTab />
+          </TabsContent>
+
+          {/* Notifications Tab */}
+          <TabsContent value="notifications" className="mt-6">
+            <DashboardCard title="Очередь уведомлений" icon={Bell} {...cardProps}>
+              {isLoadingCounters ? (
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : notifications.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center p-4">
+                  Нет ожидающих уведомлений
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {notifications.map((notif) => (
+                    <div
+                      key={notif.id}
+                      className={cn(
+                        "p-4 rounded-lg border border-status-pending/30 bg-status-pending/10 space-y-2",
+                        isUpdatingNotification && "opacity-60 pointer-events-none"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-status-pending" />
+                          <span className="font-medium text-sm">
+                            Новая регистрация
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(notif.created_at), 'd MMM HH:mm', { locale: ru })}
+                        </span>
+                      </div>
+                      
+                      <div className="text-sm">
+                        <p className="font-semibold">{notif.user_email}</p>
+                        <p className="text-muted-foreground text-xs capitalize">
+                          Роль: {getRoleLabel(notif.user_role)}
+                        </p>
+                      </div>
+
+                      <div className="flex gap-2 pt-2 border-t border-status-pending/20">
+                        <Button
+                          size="sm"
+                          className="flex-1 bg-status-active hover:bg-status-active/90"
+                          onClick={() => handleResolveNotification(notif, 'approved')}
+                          disabled={isUpdatingNotification}
+                        >
+                          <Check className="w-4 h-4 mr-1" />
+                          Одобрить
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 text-destructive hover:bg-destructive/10"
+                          onClick={() => handleResolveNotification(notif, 'rejected')}
+                          disabled={isUpdatingNotification}
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Отклонить
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </DashboardCard>
           </TabsContent>
         </Tabs>
       </div>

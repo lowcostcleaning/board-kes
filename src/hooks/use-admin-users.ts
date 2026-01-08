@@ -86,9 +86,9 @@ export const useAdminUsers = () => {
 
     // Filter by user type (demo/real)
     if (filters.userType === 'demo') {
-      result = result.filter(u => u.role === 'demo_manager' || u.role === 'demo_cleaner');
+      result = result.filter(u => u.role.startsWith('demo_'));
     } else if (filters.userType === 'real') {
-      result = result.filter(u => u.role !== 'demo_manager' && u.role !== 'demo_cleaner');
+      result = result.filter(u => !u.role.startsWith('demo_'));
     }
 
     setFilteredUsers(result);

@@ -220,7 +220,7 @@ export const AdminObjectsTab = () => {
           </SelectContent>
         </Select>
 
-        {(filters.search || filters.managerId || filters.residentialComplexId || filters.status !== 'all') && (
+        {(filters.search || filters.managerId || filters.residentialComplexId || filters.status !== 'active') && (
           <Button variant="ghost" size="sm" onClick={resetFilters}>
             Сбросить
           </Button>
