@@ -109,7 +109,7 @@ export const OrdersCalendar = ({
 
   const getDayBackground = (dayOrders: OrderForCalendar[], isSelected: boolean, isUnavailable: boolean) => {
     if (isSelected) return 'bg-primary/20';
-    if (isUnavailable) return 'bg-destructive/10 dark:bg-destructive/20'; // Red background
+    if (isUnavailable) return 'bg-slate-200 dark:bg-slate-700/50';
     if (dayOrders.length === 0) return 'bg-[#f5f5f5] dark:bg-muted/40';
     
     const hasConfirmedOrCompleted = dayOrders.some(o => o.status === 'confirmed' || o.status === 'completed');
@@ -215,7 +215,7 @@ export const OrdersCalendar = ({
               >
                 {isUnavailable && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-full h-[1px] bg-destructive dark:bg-destructive/80 rotate-45 transform origin-center" style={{ width: '60%' }} />
+                    <div className="w-full h-[1px] bg-slate-400 dark:bg-slate-500 rotate-45 transform origin-center" style={{ width: '60%' }} />
                   </div>
                 )}
                 <span
@@ -223,7 +223,7 @@ export const OrdersCalendar = ({
                     "text-sm font-medium transition-colors duration-200",
                     isToday && "text-primary font-semibold",
                     isSelected && "text-primary font-semibold",
-                    isUnavailable && "text-destructive dark:text-destructive-foreground" // Red text
+                    isUnavailable && "text-slate-500 dark:text-slate-400"
                   )}
                 >
                   {format(date, 'd')}
@@ -261,9 +261,9 @@ export const OrdersCalendar = ({
             <span>Подтверждён</span>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
-            <div className="w-3 h-3 rounded bg-destructive/10 dark:bg-destructive/20 relative">
+            <div className="w-3 h-3 rounded bg-slate-200 dark:bg-slate-700/50 relative">
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-[60%] h-[1px] bg-destructive rotate-45" />
+                <div className="w-[60%] h-[1px] bg-slate-400 rotate-45" />
               </div>
             </div>
             <span>Недоступен</span>

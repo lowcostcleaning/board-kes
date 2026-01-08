@@ -199,7 +199,7 @@ export const AdminCleanerCalendarTab = () => {
                   {events.unavailability.slice(0, 2).map(u => (
                     <div
                       key={u.id}
-                      className="text-xs p-1 rounded bg-destructive/10 text-destructive border border-destructive/30 truncate"
+                      className="text-xs p-1 rounded bg-destructive/10 text-destructive truncate"
                       title={`${u.cleaner_name || 'Клинер'}: ${u.reason || 'Недоступен'}`}
                     >
                       <CalendarOff className="w-3 h-3 inline mr-1" />
