@@ -150,6 +150,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   ) => {
     setProfileError(null);
     const redirectUrl = `${window.location.origin}/`;
+    const sanitizedRole = role === 'manager' ? 'manager' : 'cleaner';
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -158,7 +159,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         emailRedirectTo: redirectUrl,
         data: {
           name,
-          role,
+          role: sanitizedRole,
         },
       },
     });
@@ -172,8 +173,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { error: profileInsertError } = await supabase.from('profiles').insert({
         id: data.user.id,
         email,
-        role,
+        role: sanitizedRole,
         status: 'pending',
+        is_active: true,
       });
 
       if (profileInsertError) {
