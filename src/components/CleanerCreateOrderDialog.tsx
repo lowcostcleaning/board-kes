@@ -23,6 +23,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Calendar } from '@/components/ui/calendar';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PropertyObject {
   id: string;
@@ -70,8 +71,11 @@ const getApartmentTypeLabel = (type: string | null) => {
 };
 
 export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCreateOrderDialogProps) => {
+  const { profile } = useAuth();
+  const isDemoCleaner = profile?.role === 'demo_cleaner';
+
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<'manager' | 'object' | 'datetime'>('manager');
+  const [step, setStep] = useState<'manager' | 'calendar' | 'details'>('manager');
   const [managers, setManagers] = useState<Manager[]>([]);
   const [objects, setObjects] = useState<PropertyObject[]>([]);
   const [selectedManager, setSelectedManager] = useState<string>('');
@@ -79,28 +83,29 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
-  const [myOrders, setMyOrders] = useState<CleanerOrder[]>([]);
-  const [myUnavailableDates, setMyUnavailableDates] = useState<UnavailableDate[]>([]);
+  const [cleanerOrders, setCleanerOrders] = useState<CleanerOrder[]>([]);
+  const [cleanerUnavailableDates, setCleanerUnavailableDates] = useState<UnavailableDate[]>([]);
   const [busyTimeSlots, setBusyTimeSlots] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<string>('name');
 
   useEffect(() => {
     if (open) {
-      fetchManagers();
-      fetchMyOrders();
-      fetchMyUnavailability();
+      fetchObjects();
+      fetchCleaners();
     }
-  }, [open]);
+  }, [open, isDemoCleaner]);
 
   useEffect(() => {
     if (selectedManager) {
-      fetchManagerObjects();
+      fetchCleanerOrders();
+      fetchCleanerUnavailability();
     }
   }, [selectedManager]);
 
   useEffect(() => {
-    if (selectedDate && myOrders.length > 0) {
+    if (selectedDate && cleanerOrders.length > 0) {
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      const busySlots = myOrders
+      const busySlots = cleanerOrders
         .filter(order => 
           order.scheduled_date === dateStr && 
           order.status !== 'cancelled'
@@ -113,33 +118,50 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     } else {
       setBusyTimeSlots([]);
     }
-  }, [selectedDate, myOrders]);
+  }, [selectedDate, cleanerOrders]);
 
-  const fetchManagers = async () => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, email, name, avatar_url')
-      .eq('role', 'manager')
-      .eq('status', 'approved');
-
-    if (!error && data) {
-      setManagers(data);
-    }
-  };
-
-  const fetchManagerObjects = async () => {
+  const fetchObjects = async () => {
     const { data, error } = await supabase
       .from('objects')
       .select('*')
-      .eq('user_id', selectedManager)
-      .order('complex_name', { ascending: true });
+      .order('created_at', { ascending: false });
 
     if (!error && data) {
       setObjects(data);
     }
   };
 
-  const fetchMyOrders = async () => {
+  const fetchCleaners = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const isDemoManagerView = profileData?.role === 'demo_manager';
+
+    let query = supabase
+      .from('profiles')
+      .select('id, email, name, avatar_url')
+      .eq('status', 'approved');
+
+    if (isDemoCleaner) {
+      query = query.eq('role', 'demo_manager');
+    } else {
+      query = query.eq('role', 'manager');
+    }
+
+    const { data, error } = await query;
+
+    if (!error && data) {
+      setManagers(data);
+    }
+  };
+
+  const fetchCleanerOrders = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -149,11 +171,11 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
       .eq('cleaner_id', user.id);
 
     if (!error && data) {
-      setMyOrders(data);
+      setCleanerOrders(data);
     }
   };
 
-  const fetchMyUnavailability = async () => {
+  const fetchCleanerUnavailability = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -163,12 +185,35 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
       .eq('cleaner_id', user.id);
 
     if (!error && data) {
-      setMyUnavailableDates(data);
+      setCleanerUnavailableDates(data);
     }
   };
 
+  const sortedCleaners = useMemo(() => {
+    const sorted = [...managers];
+    switch (sortBy) {
+      case 'rating_desc':
+        return sorted.sort((a, b) => 0);
+      case 'rating_asc':
+        return sorted.sort((a, b) => 0);
+      case 'orders_desc':
+        return sorted.sort((a, b) => 0);
+      case 'orders_asc':
+        return sorted.sort((a, b) => 0);
+      case 'price_asc':
+        return sorted.sort((a, b) => 0);
+      case 'price_desc':
+        return sorted.sort((a, b) => 0);
+      case 'name':
+      default:
+        return sorted.sort((a, b) => 
+          (a.name || a.email || '').localeCompare(b.name || b.email || '')
+        );
+    }
+  }, [managers, sortBy]);
+
   const isDateUnavailable = (date: Date): boolean => {
-    return myUnavailableDates.some(u => isSameDay(new Date(u.date), date));
+    return cleanerUnavailableDates.some(u => isSameDay(new Date(u.date), date));
   };
 
   const resetForm = () => {
@@ -177,32 +222,28 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     setSelectedObject('');
     setSelectedDate(undefined);
     setSelectedTime('');
-    setObjects([]);
+    setCleanerOrders([]);
+    setCleanerUnavailableDates([]);
     setBusyTimeSlots([]);
+    setSortBy('name');
   };
 
-  const handleManagerSelect = (managerId: string) => {
+  const handleCleanerSelect = (managerId: string) => {
     setSelectedManager(managerId);
-    setSelectedObject('');
-    setStep('object');
+    setStep('calendar');
   };
 
-  const handleObjectSelect = (objectId: string) => {
-    setSelectedObject(objectId);
-    setStep('datetime');
-  };
-
-  const handleDateSelect = (date: Date | undefined) => {
-    if (!date) return;
+  const handleDateSelect = (date: Date) => {
     if (isDateUnavailable(date)) {
       toast({
         title: 'Дата недоступна',
-        description: 'Вы отметили эту дату как недоступную',
+        description: 'Клинер недоступен в выбранную дату',
         variant: 'destructive',
       });
       return;
     }
     setSelectedDate(date);
+    setStep('details');
   };
 
   const handleSubmit = async () => {
@@ -218,7 +259,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     if (isDateUnavailable(selectedDate)) {
       toast({
         title: 'Ошибка',
-        description: 'Вы отметили эту дату как недоступную',
+        description: 'Клинер недоступен в выбранную дату',
         variant: 'destructive',
       });
       return;
@@ -234,8 +275,8 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
       }
 
       const { error } = await supabase.from('orders').insert({
-        manager_id: selectedManager,
-        cleaner_id: user.id,
+        manager_id: user.id,
+        cleaner_id: selectedManager,
         object_id: selectedObject,
         scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
         scheduled_time: selectedTime,
@@ -243,14 +284,14 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
 
       if (error) {
         if (error.message.includes('недоступен')) {
-          throw new Error('Дата недоступна');
+          throw new Error('Клинер недоступен в выбранную дату');
         }
         throw error;
       }
 
       toast({
         title: 'Успешно',
-        description: 'Уборка создана',
+        description: 'Заявка создана',
       });
 
       resetForm();
@@ -259,7 +300,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     } catch (error: any) {
       toast({
         title: 'Ошибка',
-        description: error.message || 'Не удалось создать уборку',
+        description: error.message || 'Не удалось создать заявку',
         variant: 'destructive',
       });
     } finally {
@@ -267,10 +308,10 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     }
   };
 
-  const selectedManagerData = managers.find(m => m.id === selectedManager);
   const selectedObjectData = objects.find(o => o.id === selectedObject);
-  const filteredObjects = objects.filter(o => o.user_id === selectedManager);
-  
+  const selectedCleanerData = managers.find(c => c.id === selectedManager);
+  const selectedPrice = null;
+
   const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time));
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -299,10 +340,10 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                 </p>
               ) : (
                 <div className="space-y-2 max-h-[50vh] overflow-y-auto">
-                  {managers.map((manager) => (
+                  {sortedCleaners.map((manager) => (
                     <button
                       key={manager.id}
-                      onClick={() => handleManagerSelect(manager.id)}
+                      onClick={() => handleCleanerSelect(manager.id)}
                       className="w-full flex items-center gap-3 p-3 rounded-[14px] bg-muted/50 hover:bg-muted transition-all duration-300 text-left active:scale-[0.98]"
                     >
                       <UserAvatar
@@ -327,154 +368,183 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
           </>
         )}
 
-        {step === 'object' && (
+        {step === 'calendar' && (
           <>
             <DialogHeader>
-              <DialogTitle className="text-center text-base sm:text-lg">Выберите объект</DialogTitle>
-              {selectedManagerData && (
-                <p className="text-sm text-muted-foreground text-center mt-1 truncate">
-                  {selectedManagerData.name || selectedManagerData.email?.split('@')[0]}
-                </p>
+              <DialogTitle className="text-center">Выберите дату</DialogTitle>
+            {selectedCleanerData && (
+              <p className="text-sm text-muted-foreground text-center mt-1">
+                Расписание: {selectedCleanerData.name || selectedCleanerData.email?.split('@')[0]}
+              </p>
               )}
             </DialogHeader>
-            <div className="py-3 sm:py-4">
-              {filteredObjects.length === 0 ? (
-                <p className="text-center text-muted-foreground text-sm">
-                  Нет доступных объектов
+            <div className="py-4">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateSelect}
+                disabled={(date) => date < today || isDateUnavailable(date)}
+                locale={ru}
+                className="rounded-md border p-2 sm:p-3"
+              />
+              {cleanerUnavailableDates.length > 0 && (
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Перечёркнутые даты — клинер недоступен
                 </p>
-              ) : (
-                <div className="space-y-2 max-h-[50vh] overflow-y-auto">
-                  {filteredObjects.map((obj) => (
-                    <button
-                      key={obj.id}
-                      onClick={() => handleObjectSelect(obj.id)}
-                      className="w-full flex items-center gap-3 p-3 rounded-[14px] bg-muted/50 hover:bg-muted transition-all duration-300 text-left active:scale-[0.98]"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Building2 className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium block truncate">
-                          {obj.complex_name}
-                        </span>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Home className="w-3 h-3 flex-shrink-0" />
-                          <span className="truncate">{obj.apartment_number}</span>
-                          {obj.apartment_type && (
-                            <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] flex-shrink-0">
-                              {getApartmentTypeLabel(obj.apartment_type)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
               )}
             </div>
             <Button 
               variant="outline" 
               onClick={() => setStep('manager')}
-              className="rounded-[14px] w-full"
+              className="rounded-[14px]"
             >
               Назад
             </Button>
           </>
         )}
 
-        {step === 'datetime' && (
+        {step === 'details' && (
           <>
-            <DialogHeader className="text-center space-y-2">
-              <DialogTitle className="text-base sm:text-lg">Выберите дату и время</DialogTitle>
-              {selectedObjectData && (
-                <p className="text-sm text-muted-foreground truncate">
-                  {selectedObjectData.complex_name} - {selectedObjectData.apartment_number}
+            <DialogHeader className="text-center space-y-3">
+              <div className="mx-auto w-16 h-16 rounded-[18px] bg-primary/10 flex items-center justify-center">
+                <Building2 className="w-8 h-8 text-primary" />
+              </div>
+              <DialogTitle>Уборка апартаментов</DialogTitle>
+              {selectedDate && (
+                <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
+                  <CalendarIcon className="w-4 h-4" />
+                  {format(selectedDate, 'd MMMM yyyy г.', { locale: ru })}
                 </p>
               )}
             </DialogHeader>
             
-            <div className="py-3 sm:py-4 space-y-4">
-              <div className="flex justify-center">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDateSelect}
-                  disabled={(date) => date < today || isDateUnavailable(date)}
-                  locale={ru}
-                  className="rounded-md border p-2 sm:p-3"
-                />
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Время
+                </Label>
+                {availableTimeSlots.length === 0 ? (
+                  <p className="text-sm text-destructive p-3 rounded-[14px] bg-destructive/10">
+                    Все слоты заняты на эту дату. Выберите другую дату.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {TIME_SLOTS.map((time) => {
+                      const isBusy = busyTimeSlots.includes(time);
+                      const isSelected = selectedTime === time;
+                      return (
+                        <button
+                          key={time}
+                          onClick={() => !isBusy && setSelectedTime(time)}
+                          disabled={isBusy}
+                          className={cn(
+                            "p-2 rounded-lg text-sm font-medium transition-all",
+                            isSelected 
+                              ? "bg-primary text-primary-foreground" 
+                              : isBusy 
+                                ? "bg-muted/30 text-muted-foreground line-through cursor-not-allowed" 
+                                : "bg-muted/50 hover:bg-muted"
+                          )}
+                        >
+                          {time}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
-              {selectedDate && (
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-sm">
-                    <Clock className="w-4 h-4" />
-                    Время
-                  </Label>
-                  {availableTimeSlots.length === 0 ? (
-                    <p className="text-sm text-destructive p-3 rounded-[14px] bg-destructive/10">
-                      Все слоты заняты. Выберите другую дату.
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Объект
+                </Label>
+                <Select value={selectedObject} onValueChange={setSelectedObject}>
+                  <SelectTrigger className="bg-[#f5f5f5] dark:bg-muted/40 rounded-[14px] border-0">
+                    <SelectValue placeholder="Выберите объект" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background rounded-[14px]">
+                    {objects.map((obj) => (
+                      <SelectItem key={obj.id} value={obj.id} className="rounded-lg">
+                        {obj.complex_name} - {obj.apartment_number}
+                        {obj.apartment_type && (
+                          <span className="ml-1 text-muted-foreground">
+                            ({getApartmentTypeLabel(obj.apartment_type)})
+                          </span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedObjectData && (
+                <div className="space-y-3 pt-2">
+                  <div className="p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40">
+                    <Label className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <Building2 className="w-3 h-3" />
+                      ЖК
+                    </Label>
+                    <p className="text-sm">{selectedObjectData.complex_name}</p>
+                  </div>
+                  <div className="p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40">
+                    <Label className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <Home className="w-3 h-3" />
+                      Апартамент
+                    </Label>
+                    <p className="text-sm">
+                      {selectedObjectData.apartment_number}
+                      {selectedObjectData.apartment_type && (
+                        <span className="ml-2 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                          {getApartmentTypeLabel(selectedObjectData.apartment_type)}
+                        </span>
+                      )}
                     </p>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-2">
-                      {TIME_SLOTS.map((time) => {
-                        const isBusy = busyTimeSlots.includes(time);
-                        const isSelected = selectedTime === time;
-                        return (
-                          <button
-                            key={time}
-                            onClick={() => !isBusy && setSelectedTime(time)}
-                            disabled={isBusy}
-                            className={cn(
-                              "p-2 rounded-lg text-sm font-medium transition-all",
-                              isSelected 
-                                ? "bg-primary text-primary-foreground" 
-                                : isBusy 
-                                  ? "bg-muted/30 text-muted-foreground line-through cursor-not-allowed" 
-                                  : "bg-muted/50 hover:bg-muted"
-                            )}
-                          >
-                            {time}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                  </div>
                 </div>
               )}
 
-              {selectedDate && selectedTime && (
-                <div className="p-3 rounded-[14px] bg-muted/50 space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <CalendarIcon className="w-4 h-4 text-primary flex-shrink-0" />
-                    <span className="font-medium">
-                      {format(selectedDate, 'd MMMM yyyy', { locale: ru })}
-                    </span>
-                    <span className="text-muted-foreground">в {selectedTime}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <User className="w-3 h-3 flex-shrink-0" />
-                    <span className="truncate">{selectedManagerData?.name || selectedManagerData?.email}</span>
+              {selectedCleanerData && (
+                <div className="p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40">
+                  <Label className="flex items-center gap-2 text-muted-foreground mb-2">
+                    Клинер
+                  </Label>
+                  <div className="flex items-center gap-3">
+                    <UserAvatar
+                      avatarUrl={selectedCleanerData.avatar_url}
+                      name={selectedCleanerData.name}
+                      email={selectedCleanerData.email}
+                      size="sm"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">
+                        {selectedCleanerData.name || selectedCleanerData.email?.split('@')[0]}
+                      </p>
+                      <span className="text-xs text-muted-foreground">
+                        Менеджер
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex gap-2">
               <Button 
                 variant="outline" 
-                onClick={() => setStep('object')} 
-                className="flex-1 rounded-[14px]"
+                onClick={() => setStep('calendar')} 
+                className="flex-1 rounded-[14px] transition-all duration-300"
               >
                 Назад
               </Button>
               <Button 
                 onClick={handleSubmit} 
-                disabled={isLoading || !selectedTime || !selectedDate}
-                className="flex-1 bg-primary hover:bg-primary/90 rounded-[14px]"
+                disabled={isLoading || !selectedTime || !selectedObject}
+                className="flex-1 bg-primary hover:bg-primary/90 rounded-[14px] transition-all duration-300"
               >
                 <Send className="w-4 h-4 mr-2" />
-                {isLoading ? 'Создание...' : 'Создать'}
+                {isLoading ? 'Создание...' : 'Отправить'}
               </Button>
             </div>
           </>
