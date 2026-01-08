@@ -91,14 +91,19 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   useEffect(() => {
     if (open) {
       fetchCleaners();
+      // Reset form when dialog opens
+      resetForm();
     }
-  }, [open, isDemoCleaner]);
+  }, [open]);
 
   useEffect(() => {
     if (selectedManager) {
       fetchObjectsForManager();
       fetchCleanerOrders();
       fetchCleanerUnavailability();
+    } else {
+      // Clear objects when no manager is selected
+      setObjects([]);
     }
   }, [selectedManager]);
 
@@ -118,7 +123,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     } else {
       setBusyTimeSlots([]);
     }
-  }, [selectedDate, cleanerOrders]);
+  }, [selectedDate, cleanerOrders, selectedTime]);
 
   const fetchCleaners = async () => {
     let query = supabase
@@ -140,7 +145,10 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   };
 
   const fetchObjectsForManager = async () => {
-    if (!selectedManager) return;
+    if (!selectedManager) {
+      setObjects([]);
+      return;
+    }
 
     // Fetch objects only for the selected manager
     const { data, error } = await supabase
@@ -151,6 +159,10 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
 
     if (!error && data) {
       setObjects(data);
+      // Reset selected object when objects change
+      setSelectedObject('');
+    } else {
+      setObjects([]);
     }
   };
 
@@ -219,7 +231,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     setCleanerUnavailableDates([]);
     setBusyTimeSlots([]);
     setSortBy('name');
-    setObjects([]); // Clear objects when resetting
+    setObjects([]);
   };
 
   const handleCleanerSelect = (managerId: string) => {
@@ -454,9 +466,9 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                   <Building2 className="w-4 h-4" />
                   Объект
                 </Label>
-                <Select value={selectedObject} onValueChange={setSelectedObject}>
+                <Select value={selectedObject} onValueChange={setSelectedObject} disabled={objects.length === 0}>
                   <SelectTrigger className="bg-[#f5f5f5] dark:bg-muted/40 rounded-[14px] border-0">
-                    <SelectValue placeholder="Выберите объект" />
+                    <SelectValue placeholder={objects.length === 0 ? "Нет объектов" : "Выберите объект"} />
                   </SelectTrigger>
                   <SelectContent className="bg-background rounded-[14px]">
                     {objects.map((obj) => (
