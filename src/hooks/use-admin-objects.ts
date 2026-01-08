@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { logAdminAction } from '@/utils/admin-audit';
-import { useAuth } from '@/contexts/AuthContext';
-import { isFuture, format } from 'date-fns';
 
 export interface AdminObject {
   id: string;
@@ -39,13 +36,12 @@ export interface ObjectFilters {
 const defaultFilters: ObjectFilters = {
   managerId: null,
   residentialComplexId: null,
-  status: 'active', // Default to active objects
+  status: 'all',
   search: '',
 };
 
 export const useAdminObjects = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
   const [objects, setObjects] = useState<AdminObject[]>([]);
   const [filteredObjects, setFilteredObjects] = useState<AdminObject[]>([]);
   const [residentialComplexes, setResidentialComplexes] = useState<ResidentialComplex[]>([]);
@@ -74,11 +70,10 @@ export const useAdminObjects = () => {
       return;
     }
 
-    // Fetch profiles for owners (managers)
+    // Fetch profiles for owners
     const { data: profilesData } = await supabase
       .from('profiles')
-      .select('id, name, email, role')
-      .or('role.eq.manager,role.eq.demo_manager');
+      .select('id, name, email');
 
     // Fetch residential complexes
     const { data: complexesData } = await supabase
@@ -107,8 +102,10 @@ export const useAdminObjects = () => {
     setObjects(mappedObjects);
     setResidentialComplexes(complexesData || []);
     
-    // Set managers list
-    setManagers(profilesData || []);
+    // Extract unique managers
+    const uniqueManagers = Array.from(profilesMap.values())
+      .filter(p => objectsData?.some(obj => obj.user_id === p.id));
+    setManagers(uniqueManagers);
     
     setIsLoading(false);
   }, [toast]);
@@ -125,8 +122,6 @@ export const useAdminObjects = () => {
     // Filter by residential complex
     if (filters.residentialComplexId) {
       result = result.filter(obj => obj.residential_complex_id === filters.residentialComplexId);
-    } else if (filters.residentialComplexId === 'none') {
-      result = result.filter(obj => obj.residential_complex_id === null);
     }
 
     // Filter by status
@@ -165,7 +160,7 @@ export const useAdminObjects = () => {
     setFilters(defaultFilters);
   }, []);
 
-  // CRUD for residential complexes (No audit log needed here as it's configuration)
+  // CRUD for residential complexes
   const createResidentialComplex = useCallback(async (name: string, city?: string): Promise<ResidentialComplex | null> => {
     const { data, error } = await supabase
       .from('residential_complexes')
@@ -237,7 +232,7 @@ export const useAdminObjects = () => {
     return true;
   }, [objects, toast]);
 
-  // Update object's residential complex (No audit log needed here)
+  // Update object's residential complex
   const updateObjectComplex = useCallback(async (objectId: string, complexId: string | null): Promise<boolean> => {
     const { error } = await supabase
       .from('objects')
@@ -258,44 +253,8 @@ export const useAdminObjects = () => {
     return true;
   }, [fetchObjects, toast]);
 
-  // Archive/unarchive object (TASK 2 & 1)
+  // Archive/unarchive object
   const toggleObjectArchived = useCallback(async (objectId: string, archived: boolean): Promise<boolean> => {
-    if (!user?.id) return false;
-    
-    const objectToUpdate = objects.find(o => o.id === objectId);
-    if (!objectToUpdate) return false;
-
-    if (archived === false) {
-      // Restoring object, no checks needed
-    } else {
-      // Archiving object: Check for future orders
-      const { count: futureOrdersCount, error: ordersError } = await supabase
-        .from('orders')
-        .select('id', { count: 'exact', head: true })
-        .eq('object_id', objectId)
-        .in('status', ['pending', 'confirmed'])
-        .gte('scheduled_date', format(new Date(), 'yyyy-MM-dd'));
-
-      if (ordersError) {
-        console.error('Error checking future orders:', ordersError);
-        toast({
-          title: 'Ошибка',
-          description: 'Ошибка проверки будущих заказов',
-          variant: 'destructive',
-        });
-        return false;
-      }
-
-      if ((futureOrdersCount || 0) > 0) {
-        toast({
-          title: 'Невозможно архивировать',
-          description: `У объекта есть ${futureOrdersCount} активных будущих заказа(ов). Отмените их сначала.`,
-          variant: 'destructive',
-        });
-        return false;
-      }
-    }
-
     const { error } = await supabase
       .from('objects')
       .update({ is_archived: archived })
@@ -310,18 +269,11 @@ export const useAdminObjects = () => {
       return false;
     }
 
-    // Audit Log
-    await logAdminAction(user.id, archived ? 'archive_object' : 'restore_object', 'object', objectId, { 
-      complex_name: objectToUpdate.complex_name,
-      apartment_number: objectToUpdate.apartment_number,
-      new_status: archived ? 'archived' : 'active'
-    });
-
     setObjects(prev => prev.map(obj => 
       obj.id === objectId ? { ...obj, is_archived: archived } : obj
     ));
     return true;
-  }, [user?.id, objects, toast]);
+  }, [toast]);
 
   return {
     objects: filteredObjects,
