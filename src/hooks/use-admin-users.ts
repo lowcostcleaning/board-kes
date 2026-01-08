@@ -24,7 +24,6 @@ export interface UserFilters {
   status: string | null;
   userType: 'all' | 'demo' | 'real';
   showInactive: boolean;
-  search: string;
 }
 
 const defaultFilters: UserFilters = {
@@ -32,7 +31,6 @@ const defaultFilters: UserFilters = {
   status: null,
   userType: 'all',
   showInactive: false,
-  search: '',
 };
 
 export const useAdminUsers = () => {
@@ -43,6 +41,7 @@ export const useAdminUsers = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<UserFilters>(defaultFilters);
 
+  // Fetch all users from database
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
@@ -59,6 +58,7 @@ export const useAdminUsers = () => {
       });
       setUsers([]);
     } else {
+      // Map database response to include is_active with default true for backwards compatibility
       const mappedUsers = (data || []).map(user => ({
         ...user,
         is_active: user.is_active ?? true,
@@ -68,53 +68,55 @@ export const useAdminUsers = () => {
     setIsLoading(false);
   }, [toast]);
 
+  // Apply filters to users
   useEffect(() => {
     let result = [...users];
 
+    // Filter by is_active (soft delete)
     if (!filters.showInactive) {
       result = result.filter(u => u.is_active);
     }
 
+    // Filter by role
     if (filters.role) {
       result = result.filter(u => u.role === filters.role);
     }
 
+    // Filter by status
     if (filters.status) {
       result = result.filter(u => u.status === filters.status);
     }
 
+    // Filter by user type (demo/real)
     if (filters.userType === 'demo') {
       result = result.filter(u => u.role.startsWith('demo_'));
     } else if (filters.userType === 'real') {
       result = result.filter(u => !u.role.startsWith('demo_'));
     }
 
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      result = result.filter(u => 
-        u.email?.toLowerCase().includes(search) ||
-        u.name?.toLowerCase().includes(search)
-      );
-    }
-
     setFilteredUsers(result);
   }, [users, filters]);
 
+  // Load users on mount
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
+  // Update filters
   const updateFilters = useCallback((newFilters: Partial<UserFilters>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
   }, []);
 
+  // Reset filters
   const resetFilters = useCallback(() => {
     setFilters(defaultFilters);
   }, []);
 
+  // Soft delete user
   const deleteUser = useCallback(async (userId: string): Promise<{ success: boolean; error?: string }> => {
     if (!user?.id) return { success: false, error: 'Admin not authenticated' };
 
+    // 1. Check if user has assigned objects
     const { data: objectsData, error: objectsError } = await supabase
       .from('objects')
       .select('id')
@@ -133,6 +135,7 @@ export const useAdminUsers = () => {
       };
     }
 
+    // 2. Check if user has assigned orders (as cleaner or manager)
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select('id')
@@ -151,6 +154,7 @@ export const useAdminUsers = () => {
       };
     }
 
+    // 3. Check if cleaner has unavailability records
     const { data: unavailData, error: unavailError } = await supabase
       .from('cleaner_unavailability')
       .select('id')
@@ -169,6 +173,7 @@ export const useAdminUsers = () => {
       };
     }
 
+    // 4. Perform soft delete
     const { error: updateError } = await supabase
       .from('profiles')
       .update({ is_active: false })
@@ -179,6 +184,7 @@ export const useAdminUsers = () => {
       return { success: false, error: 'Ошибка при удалении пользователя' };
     }
 
+    // 5. Audit Log
     const userProfile = users.find(u => u.id === userId);
     await logAdminAction(user.id, 'deactivate_user', 'user', userId, { 
       email: userProfile?.email, 
@@ -186,6 +192,7 @@ export const useAdminUsers = () => {
       new_status: false 
     });
 
+    // Update local state
     setUsers(prev => prev.map(u => 
       u.id === userId ? { ...u, is_active: false } : u
     ));
@@ -193,6 +200,7 @@ export const useAdminUsers = () => {
     return { success: true };
   }, [user?.id, users, toast]);
 
+  // Restore user (undo soft delete)
   const restoreUser = useCallback(async (userId: string): Promise<{ success: boolean; error?: string }> => {
     if (!user?.id) return { success: false, error: 'Admin not authenticated' };
 
@@ -206,6 +214,7 @@ export const useAdminUsers = () => {
       return { success: false, error: 'Ошибка при восстановлении пользователя' };
     }
 
+    // Audit Log
     const userProfile = users.find(u => u.id === userId);
     await logAdminAction(user.id, 'restore_user', 'user', userId, { 
       email: userProfile?.email, 
@@ -213,6 +222,7 @@ export const useAdminUsers = () => {
       new_status: true 
     });
 
+    // Update local state
     setUsers(prev => prev.map(u => 
       u.id === userId ? { ...u, is_active: true } : u
     ));
@@ -220,6 +230,7 @@ export const useAdminUsers = () => {
     return { success: true };
   }, [user?.id, users, toast]);
 
+  // Update user role
   const updateRole = useCallback(async (userId: string, newRole: string): Promise<boolean> => {
     if (!user?.id) return false;
 
@@ -239,6 +250,7 @@ export const useAdminUsers = () => {
       return false;
     }
 
+    // Audit Log
     await logAdminAction(user.id, 'update_role', 'user', userId, { 
       old_role: oldRole, 
       new_role: newRole 
@@ -250,6 +262,7 @@ export const useAdminUsers = () => {
     return true;
   }, [user?.id, users, toast]);
 
+  // Update user status
   const updateStatus = useCallback(async (userId: string, newStatus: string): Promise<boolean> => {
     if (!user?.id) return false;
 
@@ -269,6 +282,7 @@ export const useAdminUsers = () => {
       return false;
     }
 
+    // Audit Log
     await logAdminAction(user.id, `update_status_${newStatus}`, 'user', userId, { 
       old_status: oldStatus, 
       new_status: newStatus 
@@ -280,6 +294,7 @@ export const useAdminUsers = () => {
     return true;
   }, [user?.id, users, toast]);
 
+  // Update completed orders count
   const updateOrdersCount = useCallback(async (userId: string, count: number): Promise<boolean> => {
     if (!user?.id) return false;
 
@@ -299,6 +314,7 @@ export const useAdminUsers = () => {
       return false;
     }
 
+    // Audit Log
     await logAdminAction(user.id, 'update_orders_count', 'user', userId, { 
       old_count: oldCount, 
       new_count: count 
