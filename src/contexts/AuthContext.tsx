@@ -54,7 +54,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // profiles.id = auth.user.id, read profiles.role
   const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
     setProfileError(null);
-
     const { data, error } = await supabase
       .from('profiles')
       .select('id, email, role, status')
@@ -90,9 +89,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Set up auth state listener FIRST
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, currentSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
 
@@ -139,7 +136,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       password,
     });
 
-    return { error: error ? new Error(error.message) : null };
+    return {
+      error: error ? new Error(error.message) : null,
+    };
   };
 
   const register = async (
@@ -150,6 +149,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   ) => {
     setProfileError(null);
     const redirectUrl = `${window.location.origin}/`;
+    
+    // Sanitize role to only allow cleaner or manager
     const sanitizedRole = role === 'manager' ? 'manager' : 'cleaner';
 
     const { data, error } = await supabase.auth.signUp({
@@ -165,7 +166,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
 
     if (error) {
-      return { error: new Error(error.message) };
+      return {
+        error: new Error(error.message),
+      };
     }
 
     // Create profile in profiles table on registration
@@ -180,11 +183,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (profileInsertError) {
         console.error('Error creating profile:', profileInsertError);
-        return { error: new Error(profileInsertError.message) };
+        return {
+          error: new Error(profileInsertError.message),
+        };
       }
     }
 
-    return { error: null };
+    return {
+      error: null,
+    };
   };
 
   const logout = async () => {
