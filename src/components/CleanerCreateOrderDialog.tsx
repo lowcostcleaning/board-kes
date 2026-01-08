@@ -88,25 +88,24 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   const [busyTimeSlots, setBusyTimeSlots] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>('name');
 
+  // Load managers when dialog opens
   useEffect(() => {
     if (open) {
       fetchCleaners();
-      // Reset form when dialog opens
-      resetForm();
     }
-  }, [open]);
+  }, [open, isDemoCleaner]);
 
+  // Fetch objects when manager is selected
   useEffect(() => {
     if (selectedManager) {
+      setObjects([]); // Clear objects first
       fetchObjectsForManager();
       fetchCleanerOrders();
       fetchCleanerUnavailability();
-    } else {
-      // Clear objects when no manager is selected
-      setObjects([]);
     }
   }, [selectedManager]);
 
+  // Update busy time slots when date changes
   useEffect(() => {
     if (selectedDate && cleanerOrders.length > 0) {
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -123,7 +122,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     } else {
       setBusyTimeSlots([]);
     }
-  }, [selectedDate, cleanerOrders, selectedTime]);
+  }, [selectedDate, cleanerOrders]);
 
   const fetchCleaners = async () => {
     let query = supabase
@@ -145,22 +144,21 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   };
 
   const fetchObjectsForManager = async () => {
-    if (!selectedManager) {
-      setObjects([]);
-      return;
-    }
+    if (!selectedManager) return;
 
-    // Fetch objects only for the selected manager
+    console.log('Fetching objects for manager:', selectedManager);
+    
     const { data, error } = await supabase
       .from('objects')
-      .select('*')
+      .select('id, complex_name, apartment_number, apartment_type, user_id')
       .eq('user_id', selectedManager)
       .order('created_at', { ascending: false });
 
+    console.log('Objects fetched:', data);
+    console.log('Error:', error);
+
     if (!error && data) {
       setObjects(data);
-      // Reset selected object when objects change
-      setSelectedObject('');
     } else {
       setObjects([]);
     }
@@ -197,18 +195,6 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   const sortedCleaners = useMemo(() => {
     const sorted = [...managers];
     switch (sortBy) {
-      case 'rating_desc':
-        return sorted.sort((a, b) => 0);
-      case 'rating_asc':
-        return sorted.sort((a, b) => 0);
-      case 'orders_desc':
-        return sorted.sort((a, b) => 0);
-      case 'orders_asc':
-        return sorted.sort((a, b) => 0);
-      case 'price_asc':
-        return sorted.sort((a, b) => 0);
-      case 'price_desc':
-        return sorted.sort((a, b) => 0);
       case 'name':
       default:
         return sorted.sort((a, b) => 
@@ -221,21 +207,11 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     return cleanerUnavailableDates.some(u => isSameDay(new Date(u.date), date));
   };
 
-  const resetForm = () => {
-    setStep('manager');
-    setSelectedManager('');
+  const handleCleanerSelect = (managerId: string) => {
+    setSelectedManager(managerId);
     setSelectedObject('');
     setSelectedDate(undefined);
     setSelectedTime('');
-    setCleanerOrders([]);
-    setCleanerUnavailableDates([]);
-    setBusyTimeSlots([]);
-    setSortBy('name');
-    setObjects([]);
-  };
-
-  const handleCleanerSelect = (managerId: string) => {
-    setSelectedManager(managerId);
     setStep('calendar');
   };
 
@@ -300,8 +276,15 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
         description: 'Заявка создана',
       });
 
-      resetForm();
+      // Close dialog after success
       setOpen(false);
+      // Reset form for next time
+      setStep('manager');
+      setSelectedManager('');
+      setSelectedObject('');
+      setSelectedDate(undefined);
+      setSelectedTime('');
+      setObjects([]);
       onOrderCreated();
     } catch (error: any) {
       toast({
@@ -316,17 +299,12 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
 
   const selectedObjectData = objects.find(o => o.id === selectedObject);
   const selectedCleanerData = managers.find(c => c.id === selectedManager);
-  const selectedPrice = null;
-
   const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time));
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
-      setOpen(isOpen);
-      if (!isOpen) resetForm();
-    }}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" disabled={disabled} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
@@ -466,21 +444,27 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                   <Building2 className="w-4 h-4" />
                   Объект
                 </Label>
-                <Select value={selectedObject} onValueChange={setSelectedObject} disabled={objects.length === 0}>
+                <Select value={selectedObject} onValueChange={setSelectedObject}>
                   <SelectTrigger className="bg-[#f5f5f5] dark:bg-muted/40 rounded-[14px] border-0">
-                    <SelectValue placeholder={objects.length === 0 ? "Нет объектов" : "Выберите объект"} />
+                    <SelectValue placeholder="Выберите объект" />
                   </SelectTrigger>
                   <SelectContent className="bg-background rounded-[14px]">
-                    {objects.map((obj) => (
-                      <SelectItem key={obj.id} value={obj.id} className="rounded-lg">
-                        {obj.complex_name} - {obj.apartment_number}
-                        {obj.apartment_type && (
-                          <span className="ml-1 text-muted-foreground">
-                            ({getApartmentTypeLabel(obj.apartment_type)})
-                          </span>
-                        )}
-                      </SelectItem>
-                    ))}
+                    {objects.length === 0 ? (
+                      <div className="p-2 text-center text-sm text-muted-foreground">
+                        У этого менеджера нет объектов
+                      </div>
+                    ) : (
+                      objects.map((obj) => (
+                        <SelectItem key={obj.id} value={obj.id} className="rounded-lg">
+                          {obj.complex_name} - {obj.apartment_number}
+                          {obj.apartment_type && (
+                            <span className="ml-1 text-muted-foreground">
+                              ({getApartmentTypeLabel(obj.apartment_type)})
+                            </span>
+                          )}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -514,7 +498,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
               {selectedCleanerData && (
                 <div className="p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40">
                   <Label className="flex items-center gap-2 text-muted-foreground mb-2">
-                    Клинер
+                    Менеджер
                   </Label>
                   <div className="flex items-center gap-3">
                     <UserAvatar
@@ -527,9 +511,6 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                       <p className="text-sm font-medium">
                         {selectedCleanerData.name || selectedCleanerData.email?.split('@')[0]}
                       </p>
-                      <span className="text-xs text-muted-foreground">
-                        Менеджер
-                      </span>
                     </div>
                   </div>
                 </div>
