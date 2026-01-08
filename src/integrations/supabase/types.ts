@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          admin_id: string | null
+          action_type: string
+          entity_type: string
+          entity_id: string | null
+          metadata: Json | null
+          created_at: string
+          id: string
+        }
+        Insert: {
+          admin_id?: string | null
+          action_type: string
+          entity_type: string
+          entity_id?: string | null
+          metadata?: Json | null
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          admin_id?: string | null
+          action_type?: string
+          entity_type?: string
+          entity_id?: string | null
+          metadata?: Json | null
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_notifications: {
         Row: {
           created_at: string

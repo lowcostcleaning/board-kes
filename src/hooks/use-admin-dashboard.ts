@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, isBefore, subHours } from 'date-fns';
+import { logAdminAction } from '@/utils/admin-audit';
 
 export interface AdminNotification {
   id: string;
@@ -21,6 +22,7 @@ export interface AdminCounters {
   activeObjects: number;
   totalCleaners: number;
   cleanersActiveToday: number;
+  overdueNotifications: number; // New counter
 }
 
 export const useAdminDashboard = () => {
@@ -33,6 +35,7 @@ export const useAdminDashboard = () => {
     activeObjects: 0,
     totalCleaners: 0,
     cleanersActiveToday: 0,
+    overdueNotifications: 0,
   });
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [isLoadingCounters, setIsLoadingCounters] = useState(true);
@@ -85,6 +88,14 @@ export const useAdminDashboard = () => {
       
       const activeCleanersToday = new Set(todayOrders?.map(o => o.cleaner_id) || []).size;
 
+      // 4. Overdue Notifications (TASK 3)
+      const twentyFourHoursAgo = subHours(new Date(), 24).toISOString();
+      const { count: overdueCount } = await supabase
+        .from('admin_notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending')
+        .lt('created_at', twentyFourHoursAgo);
+
       setCounters({
         totalUsers: totalUsersCount || 0,
         pendingUsers: pendingUsersCount || 0,
@@ -93,6 +104,7 @@ export const useAdminDashboard = () => {
         activeObjects: activeObjectsCount || 0,
         totalCleaners: totalCleanersCount || 0,
         cleanersActiveToday: activeCleanersToday,
+        overdueNotifications: overdueCount || 0,
       });
     } catch (error) {
       console.error('Error fetching admin counters:', error);
@@ -134,6 +146,7 @@ export const useAdminDashboard = () => {
         },
         () => {
           fetchNotifications();
+          fetchCounters(); // Also refresh counters when notifications change
         }
       )
       .subscribe();
@@ -141,7 +154,7 @@ export const useAdminDashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchNotifications]);
+  }, [fetchNotifications, fetchCounters]);
 
   // Real-time subscription for profile/object changes to update counters
   useEffect(() => {
@@ -222,7 +235,14 @@ export const useAdminDashboard = () => {
         if (profileError) throw profileError;
       }
       
-      // 3. Refresh local state
+      // 3. Audit Log (TASK 1)
+      await logAdminAction(resolverId, `resolve_notification_${action}`, 'notification', notification.id, {
+        user_id: notification.user_id,
+        user_email: notification.user_email,
+        notification_type: notification.notification_type,
+      });
+
+      // 4. Refresh local state
       fetchNotifications();
       fetchCounters();
 

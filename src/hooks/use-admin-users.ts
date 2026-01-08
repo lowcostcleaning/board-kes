@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { logAdminAction } from '@/utils/admin-audit';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface UserProfile {
   id: string;
@@ -33,6 +35,7 @@ const defaultFilters: UserFilters = {
 
 export const useAdminUsers = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,7 +114,9 @@ export const useAdminUsers = () => {
 
   // Soft delete user
   const deleteUser = useCallback(async (userId: string): Promise<{ success: boolean; error?: string }> => {
-    // Check if user has assigned objects
+    if (!user?.id) return { success: false, error: 'Admin not authenticated' };
+
+    // 1. Check if user has assigned objects
     const { data: objectsData, error: objectsError } = await supabase
       .from('objects')
       .select('id')
@@ -130,7 +135,7 @@ export const useAdminUsers = () => {
       };
     }
 
-    // Check if user has assigned orders (as cleaner or manager)
+    // 2. Check if user has assigned orders (as cleaner or manager)
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select('id')
@@ -149,7 +154,7 @@ export const useAdminUsers = () => {
       };
     }
 
-    // Check if cleaner has unavailability records
+    // 3. Check if cleaner has unavailability records
     const { data: unavailData, error: unavailError } = await supabase
       .from('cleaner_unavailability')
       .select('id')
@@ -168,7 +173,7 @@ export const useAdminUsers = () => {
       };
     }
 
-    // Perform soft delete
+    // 4. Perform soft delete
     const { error: updateError } = await supabase
       .from('profiles')
       .update({ is_active: false })
@@ -179,16 +184,26 @@ export const useAdminUsers = () => {
       return { success: false, error: 'Ошибка при удалении пользователя' };
     }
 
+    // 5. Audit Log
+    const userProfile = users.find(u => u.id === userId);
+    await logAdminAction(user.id, 'deactivate_user', 'user', userId, { 
+      email: userProfile?.email, 
+      old_status: userProfile?.is_active, 
+      new_status: false 
+    });
+
     // Update local state
     setUsers(prev => prev.map(u => 
       u.id === userId ? { ...u, is_active: false } : u
     ));
 
     return { success: true };
-  }, []);
+  }, [user?.id, users, toast]);
 
   // Restore user (undo soft delete)
   const restoreUser = useCallback(async (userId: string): Promise<{ success: boolean; error?: string }> => {
+    if (!user?.id) return { success: false, error: 'Admin not authenticated' };
+
     const { error: updateError } = await supabase
       .from('profiles')
       .update({ is_active: true })
@@ -199,16 +214,28 @@ export const useAdminUsers = () => {
       return { success: false, error: 'Ошибка при восстановлении пользователя' };
     }
 
+    // Audit Log
+    const userProfile = users.find(u => u.id === userId);
+    await logAdminAction(user.id, 'restore_user', 'user', userId, { 
+      email: userProfile?.email, 
+      old_status: userProfile?.is_active, 
+      new_status: true 
+    });
+
     // Update local state
     setUsers(prev => prev.map(u => 
       u.id === userId ? { ...u, is_active: true } : u
     ));
 
     return { success: true };
-  }, []);
+  }, [user?.id, users, toast]);
 
   // Update user role
   const updateRole = useCallback(async (userId: string, newRole: string): Promise<boolean> => {
+    if (!user?.id) return false;
+
+    const oldRole = users.find(u => u.id === userId)?.role;
+
     const { error } = await supabase
       .from('profiles')
       .update({ role: newRole })
@@ -223,14 +250,24 @@ export const useAdminUsers = () => {
       return false;
     }
 
+    // Audit Log
+    await logAdminAction(user.id, 'update_role', 'user', userId, { 
+      old_role: oldRole, 
+      new_role: newRole 
+    });
+
     setUsers(prev => prev.map(u => 
       u.id === userId ? { ...u, role: newRole } : u
     ));
     return true;
-  }, [toast]);
+  }, [user?.id, users, toast]);
 
   // Update user status
   const updateStatus = useCallback(async (userId: string, newStatus: string): Promise<boolean> => {
+    if (!user?.id) return false;
+
+    const oldStatus = users.find(u => u.id === userId)?.status;
+
     const { error } = await supabase
       .from('profiles')
       .update({ status: newStatus })
@@ -245,14 +282,24 @@ export const useAdminUsers = () => {
       return false;
     }
 
+    // Audit Log
+    await logAdminAction(user.id, `update_status_${newStatus}`, 'user', userId, { 
+      old_status: oldStatus, 
+      new_status: newStatus 
+    });
+
     setUsers(prev => prev.map(u => 
       u.id === userId ? { ...u, status: newStatus } : u
     ));
     return true;
-  }, [toast]);
+  }, [user?.id, users, toast]);
 
   // Update completed orders count
   const updateOrdersCount = useCallback(async (userId: string, count: number): Promise<boolean> => {
+    if (!user?.id) return false;
+
+    const oldCount = users.find(u => u.id === userId)?.completed_orders_count;
+
     const { error } = await supabase
       .from('profiles')
       .update({ completed_orders_count: count })
@@ -267,11 +314,17 @@ export const useAdminUsers = () => {
       return false;
     }
 
+    // Audit Log
+    await logAdminAction(user.id, 'update_orders_count', 'user', userId, { 
+      old_count: oldCount, 
+      new_count: count 
+    });
+
     setUsers(prev => prev.map(u => 
       u.id === userId ? { ...u, completed_orders_count: count } : u
     ));
     return true;
-  }, [toast]);
+  }, [user?.id, users, toast]);
 
   return {
     users: filteredUsers,

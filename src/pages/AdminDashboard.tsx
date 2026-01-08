@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { 
   Users, 
   Shield, 
@@ -27,7 +29,9 @@ import {
   Calendar, 
   Bell,
   MapPin,
-  Loader2
+  Loader2,
+  Lock,
+  AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -47,13 +51,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { format } from 'date-fns';
+import { format, subHours } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 const AdminDashboard = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  
+  const [isReadOnlyMode, setIsReadOnlyMode] = useState(false);
+
   const {
     users,
     allUsers,
@@ -89,7 +96,20 @@ const AdminDashboard = () => {
     ? { collapsible: true, defaultOpen: false } 
     : { collapsible: false, defaultOpen: true };
 
+  const checkReadOnly = () => {
+    if (isReadOnlyMode) {
+      toast({
+        title: 'Режим только для чтения',
+        description: 'Действие заблокировано. Отключите режим аудита.',
+        variant: 'destructive',
+      });
+      return true;
+    }
+    return false;
+  };
+
   const handleRoleChange = async (userId: string, newRole: string) => {
+    if (checkReadOnly()) return;
     const success = await updateRole(userId, newRole);
     if (success) {
       toast({
@@ -100,6 +120,7 @@ const AdminDashboard = () => {
   };
 
   const handleStatusChange = async (userId: string, newStatus: string) => {
+    if (checkReadOnly()) return;
     const success = await updateStatus(userId, newStatus);
     if (success) {
       toast({
@@ -110,6 +131,7 @@ const AdminDashboard = () => {
   };
 
   const handleDeleteUser = async () => {
+    if (checkReadOnly()) return;
     if (!userToDelete) return;
     
     const result = await deleteUser(userToDelete.id);
@@ -131,6 +153,7 @@ const AdminDashboard = () => {
   };
 
   const handleRestoreUser = async (userId: string) => {
+    if (checkReadOnly()) return;
     const result = await restoreUser(userId);
     
     if (result.success) {
@@ -182,6 +205,7 @@ const AdminDashboard = () => {
   };
 
   const handleStartEditOrdersCount = (userId: string, currentCount: number) => {
+    if (checkReadOnly()) return;
     setEditingOrdersCount(userId);
     setNewOrdersCount(currentCount.toString());
   };
@@ -192,6 +216,7 @@ const AdminDashboard = () => {
   };
 
   const handleSaveOrdersCount = async (userId: string) => {
+    if (checkReadOnly()) return;
     const count = parseInt(newOrdersCount, 10);
     if (isNaN(count) || count < 0) {
       toast({
@@ -218,6 +243,7 @@ const AdminDashboard = () => {
   };
 
   const handleResolveNotification = (notification: any, action: 'approved' | 'rejected') => {
+    if (checkReadOnly()) return;
     if (user?.id) {
       resolveNotification(notification, action, user.id);
     }
@@ -226,14 +252,39 @@ const AdminDashboard = () => {
   return (
     <DashboardLayout title="Панель администратора">
       <div className="space-y-6">
+        {/* Read-Only Mode Banner */}
+        {isReadOnlyMode && (
+          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 flex items-center gap-3">
+            <Lock className="w-5 h-5 text-destructive flex-shrink-0" />
+            <p className="text-sm font-medium text-destructive">
+              Включен режим "Только для чтения" (Аудит). Все действия по изменению данных заблокированы.
+            </p>
+          </div>
+        )}
+
         {/* Welcome Section */}
-        <div className="animate-fade-in">
-          <h1 className="text-2xl font-bold text-foreground mb-1">
-            Добро пожаловать, {displayName}!
-          </h1>
-          <p className="text-muted-foreground">
-            Управляйте пользователями, объектами и заказами.
-          </p>
+        <div className="animate-fade-in flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground mb-1">
+              Добро пожаловать, {displayName}!
+            </h1>
+            <p className="text-muted-foreground">
+              Управляйте пользователями, объектами и заказами.
+            </p>
+          </div>
+          
+          {/* Read-Only Toggle (TASK 4) */}
+          <div className="flex items-center space-x-2 p-2 rounded-lg bg-muted/50">
+            <Lock className="w-4 h-4 text-muted-foreground" />
+            <Label htmlFor="read-only-mode" className="text-sm whitespace-nowrap">
+              Только чтение
+            </Label>
+            <Switch
+              id="read-only-mode"
+              checked={isReadOnlyMode}
+              onCheckedChange={setIsReadOnlyMode}
+            />
+          </div>
         </div>
 
         {/* Tabs */}
@@ -473,12 +524,14 @@ const AdminDashboard = () => {
                                     onChange={(e) => setNewOrdersCount(e.target.value)}
                                     className="w-16 h-6 text-xs px-2"
                                     min={0}
+                                    disabled={isReadOnlyMode}
                                   />
                                   <Button
                                     size="icon"
                                     variant="ghost"
                                     className="h-6 w-6"
                                     onClick={() => handleSaveOrdersCount(u.id)}
+                                    disabled={isReadOnlyMode}
                                   >
                                     <Check className="w-3 h-3 text-status-active" />
                                   </Button>
@@ -487,6 +540,7 @@ const AdminDashboard = () => {
                                     variant="ghost"
                                     className="h-6 w-6"
                                     onClick={handleCancelEditOrdersCount}
+                                    disabled={isReadOnlyMode}
                                   >
                                     <X className="w-3 h-3 text-destructive" />
                                   </Button>
@@ -501,6 +555,7 @@ const AdminDashboard = () => {
                                     variant="ghost"
                                     className="h-5 w-5"
                                     onClick={() => handleStartEditOrdersCount(u.id, u.completed_orders_count)}
+                                    disabled={isReadOnlyMode}
                                   >
                                     <Edit2 className="w-3 h-3" />
                                   </Button>
@@ -554,6 +609,7 @@ const AdminDashboard = () => {
                             variant="outline"
                             className="border-status-active/50 text-status-active hover:bg-status-active/10"
                             onClick={() => handleStatusChange(u.id, 'approved')}
+                            disabled={isReadOnlyMode}
                           >
                             <UserCheck className="w-4 h-4 mr-1" />
                             Одобрить
@@ -564,6 +620,7 @@ const AdminDashboard = () => {
                             variant="ghost"
                             className="text-muted-foreground hover:text-status-pending"
                             onClick={() => handleStatusChange(u.id, 'pending')}
+                            disabled={isReadOnlyMode}
                           >
                             <Clock className="w-4 h-4 mr-1" />
                             На модерацию
@@ -576,6 +633,7 @@ const AdminDashboard = () => {
                         <Select
                           value={u.role}
                           onValueChange={(value) => handleRoleChange(u.id, value)}
+                          disabled={isReadOnlyMode}
                         >
                           <SelectTrigger className="w-36">
                             <SelectValue>
@@ -627,6 +685,7 @@ const AdminDashboard = () => {
                           variant="ghost"
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
                           onClick={() => setUserToDelete(u)}
+                          disabled={isReadOnlyMode}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -636,6 +695,7 @@ const AdminDashboard = () => {
                           variant="outline"
                           className="border-status-active/50 text-status-active hover:bg-status-active/10"
                           onClick={() => handleRestoreUser(u.id)}
+                          disabled={isReadOnlyMode}
                         >
                           <RotateCcw className="w-4 h-4 mr-1" />
                           Восстановить
@@ -689,7 +749,7 @@ const AdminDashboard = () => {
 
           {/* Objects Tab */}
           <TabsContent value="objects" className="mt-6">
-            <AdminObjectsTab />
+            <AdminObjectsTab isReadOnlyMode={isReadOnlyMode} />
           </TabsContent>
 
           {/* Calendar Tab */}
@@ -699,6 +759,21 @@ const AdminDashboard = () => {
 
           {/* Notifications Tab */}
           <TabsContent value="notifications" className="mt-6">
+            {/* Overdue Counter (TASK 3) */}
+            {counters.overdueNotifications > 0 && (
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-destructive" />
+                  <span className="text-sm font-medium text-destructive">
+                    Просроченные действия:
+                  </span>
+                </div>
+                <Badge variant="destructive" className="text-base font-bold">
+                  {counters.overdueNotifications}
+                </Badge>
+              </div>
+            )}
+
             <DashboardCard title="Очередь уведомлений" icon={Bell} {...cardProps}>
               {isLoadingCounters ? (
                 <div className="flex items-center justify-center p-8">
@@ -710,56 +785,64 @@ const AdminDashboard = () => {
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {notifications.map((notif) => (
-                    <div
-                      key={notif.id}
-                      className={cn(
-                        "p-4 rounded-lg border border-status-pending/30 bg-status-pending/10 space-y-2",
-                        isUpdatingNotification && "opacity-60 pointer-events-none"
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-status-pending" />
-                          <span className="font-medium text-sm">
-                            Новая регистрация
+                  {notifications.map((notif) => {
+                    const isOverdue = counters.overdueNotifications > 0 && 
+                      new Date(notif.created_at) < subHours(new Date(), 24);
+
+                    return (
+                      <div
+                        key={notif.id}
+                        className={cn(
+                          "p-4 rounded-lg border space-y-2",
+                          isOverdue 
+                            ? "border-destructive/50 bg-destructive/10" 
+                            : "border-status-pending/30 bg-status-pending/10",
+                          isUpdatingNotification && "opacity-60 pointer-events-none"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Clock className={cn("w-4 h-4", isOverdue ? "text-destructive" : "text-status-pending")} />
+                            <span className="font-medium text-sm">
+                              Новая регистрация
+                            </span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(notif.created_at), 'd MMM HH:mm', { locale: ru })}
                           </span>
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(notif.created_at), 'd MMM HH:mm', { locale: ru })}
-                        </span>
-                      </div>
-                      
-                      <div className="text-sm">
-                        <p className="font-semibold">{notif.user_email}</p>
-                        <p className="text-muted-foreground text-xs capitalize">
-                          Роль: {getRoleLabel(notif.user_role)}
-                        </p>
-                      </div>
+                        
+                        <div className="text-sm">
+                          <p className="font-semibold">{notif.user_email}</p>
+                          <p className="text-muted-foreground text-xs capitalize">
+                            Роль: {getRoleLabel(notif.user_role)}
+                          </p>
+                        </div>
 
-                      <div className="flex gap-2 pt-2 border-t border-status-pending/20">
-                        <Button
-                          size="sm"
-                          className="flex-1 bg-status-active hover:bg-status-active/90"
-                          onClick={() => handleResolveNotification(notif, 'approved')}
-                          disabled={isUpdatingNotification}
-                        >
-                          <Check className="w-4 h-4 mr-1" />
-                          Одобрить
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 text-destructive hover:bg-destructive/10"
-                          onClick={() => handleResolveNotification(notif, 'rejected')}
-                          disabled={isUpdatingNotification}
-                        >
-                          <X className="w-4 h-4 mr-1" />
-                          Отклонить
-                        </Button>
+                        <div className="flex gap-2 pt-2 border-t border-status-pending/20">
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-status-active hover:bg-status-active/90"
+                            onClick={() => handleResolveNotification(notif, 'approved')}
+                            disabled={isUpdatingNotification || isReadOnlyMode}
+                          >
+                            <Check className="w-4 h-4 mr-1" />
+                            Одобрить
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 text-destructive hover:bg-destructive/10"
+                            onClick={() => handleResolveNotification(notif, 'rejected')}
+                            disabled={isUpdatingNotification || isReadOnlyMode}
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Отклонить
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </DashboardCard>
@@ -788,6 +871,7 @@ const AdminDashboard = () => {
             <AlertDialogAction
               onClick={handleDeleteUser}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isReadOnlyMode}
             >
               Удалить
             </AlertDialogAction>
