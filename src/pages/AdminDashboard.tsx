@@ -5,10 +5,15 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Users, Building2, Calendar, ShieldAlert, Bell, FileText } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
-import AdminObjectsTab from '@/components/AdminObjectsTab';
-import AdminCleanerCalendarTab from '@/components/AdminCleanerCalendarTab';
-import RiskControlTab from '@/components/RiskControlTab';
-import AdminReportsTab from '../components/AdminReportsTab'; // use relative path to avoid TS resolution issues
+
+// Use named imports for components that export named symbols
+import { AdminObjectsTab } from '@/components/AdminObjectsTab';
+import { AdminCleanerCalendarTab } from '@/components/AdminCleanerCalendarTab';
+import { RiskControlTab } from '@/components/RiskControlTab';
+
+// AdminReportsTab is a default export (read-only reports tab)
+import AdminReportsTab from '@/components/AdminReportsTab';
+
 import { ViewUserProfileDialog } from '@/components/ViewUserProfileDialog';
 import { useAdminUsers } from '@/hooks/use-admin-users';
 import { useAdminDashboard } from '@/hooks/use-admin-dashboard';
@@ -85,13 +90,7 @@ const AdminDashboard: React.FC = () => {
           </TabsList>
 
           <TabsContent value="users" className="mt-6">
-            {/* Users management is handled by existing hook & components elsewhere.
-                Keep the original users UI intact by reusing existing logic where appropriate.
-                Here we only provide a placeholder container to avoid changing other code. */}
-            {/* If the original users UI is in another component file, it will be shown here. */}
-            {/* For brevity we rely on the existing useAdminUsers hook to drive any child components. */}
             <div className="space-y-4">
-              {/* Placeholder: a small summary */}
               <h3 className="text-lg font-semibold">Пользователи ({adminUsers.allUsers.length})</h3>
             </div>
           </TabsContent>
