@@ -78,6 +78,10 @@ export const ViewUserProfileDialog = ({
 }: ViewUserProfileDialogProps) => {
   if (!user) return null;
 
+  // For cleaners, determine active status from role + is_active only (single source of truth).
+  const isCleanerRole = user.role === 'cleaner' || user.role === 'demo_cleaner';
+  const isActive = isCleanerRole ? !!user.is_active : user.status === 'approved';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -106,7 +110,7 @@ export const ViewUserProfileDialog = ({
                   {getRoleIcon(user.role)}
                   {getRoleLabel(user.role)}
                 </Badge>
-                {user.status === 'approved' ? (
+                {isActive ? (
                   <Badge variant="outline" className="bg-status-active/10 text-status-active border-status-active/30">
                     <CheckCircle2 className="w-3 h-3 mr-1" />
                     Активен
@@ -122,7 +126,7 @@ export const ViewUserProfileDialog = ({
           </div>
 
           {/* Contact Info */}
-          <div className="space-y-3">
+          <div className="space-y-6">
             <h4 className="text-sm font-medium text-muted-foreground">Контактные данные</h4>
             
             <div className="space-y-2">
