@@ -72,6 +72,12 @@ export const useAdminRiskDetection = () => {
   const fetchProblematicOrders = useCallback(async () => {
     setIsLoading(true);
     try {
+      // 1. Get orders with reports using NOT EXISTS pattern
+      // Using raw query to ensure NOT EXISTS logic is applied correctly
+      const ordersWithReportsResult = await supabase.rpc('get_orders_with_reports' as any);
+      const ordersWithReports = new Set<string>((ordersWithReportsResult.data || []).map((r: any) => r.order_id));
+
+      // 2. Fetch all orders for other risk checks
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
@@ -158,9 +164,9 @@ export const useAdminRiskDetection = () => {
           continue;
         }
 
-        // Risk 3: Completed but no report in completion_reports
-        // A report exists if there's at least ONE record in completion_reports
-        if (order.status === 'completed' && !report) {
+        // Risk 3: Completed but NO report exists (using NOT EXISTS pattern)
+        // An order has NO report if it's not in the ordersWithReports set
+        if (order.status === 'completed' && !ordersWithReports.has(order.id)) {
           problems.push({
             ...order,
             manager_name: manager?.name || null,
@@ -180,7 +186,6 @@ export const useAdminRiskDetection = () => {
         }
 
         // Risk 4: Report exists but has no photos
-        // A report exists (completion_reports record) but no image files attached
         if (report && reportFiles.length === 0) {
           problems.push({
             ...order,
