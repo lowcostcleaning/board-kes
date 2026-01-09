@@ -14,6 +14,8 @@ const Register = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'cleaner' | 'manager'>('cleaner');
+  const [companyName, setCompanyName] = useState('');
+  const [airbnbProfileLink, setAirbnbProfileLink] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { register, isAuthenticated, logout, profile, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -38,7 +40,7 @@ const Register = () => {
     if (!name || !email || !password) {
       toast({
         title: 'Ошибка',
-        description: 'Заполните все поля',
+        description: 'Заполните все обязательные поля',
         variant: 'destructive',
       });
       return;
@@ -54,7 +56,10 @@ const Register = () => {
     }
 
     setIsLoading(true);
-    const { error } = await register(name, email, password, role);
+    
+    const managerData = role === 'manager' ? { companyName, airbnbProfileLink } : {};
+
+    const { error } = await register(name, email, password, role, managerData);
     
     if (error) {
       toast({
@@ -178,6 +183,31 @@ const Register = () => {
                   </Label>
                 </RadioGroup>
               </div>
+              
+              {role === 'manager' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName">Название управляющей компании (если есть)</Label>
+                    <Input
+                      id="companyName"
+                      type="text"
+                      placeholder="Название компании"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="airbnbProfileLink">Ссылка на профиль Airbnb</Label>
+                    <Input
+                      id="airbnbProfileLink"
+                      type="url"
+                      placeholder="https://www.airbnb.com/users/show/..."
+                      value={airbnbProfileLink}
+                      onChange={(e) => setAirbnbProfileLink(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
               <Button type="submit" className="w-full" disabled={isLoading}>

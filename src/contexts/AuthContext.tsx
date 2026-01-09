@@ -10,6 +10,8 @@ export interface UserProfile {
   email: string | null;
   role: UserRole;
   status: UserStatus;
+  company_name?: string | null;
+  airbnb_profile_link?: string | null;
 }
 
 interface AuthContextType {
@@ -24,7 +26,8 @@ interface AuthContextType {
     name: string,
     email: string,
     password: string,
-    role: 'cleaner' | 'manager'
+    role: 'cleaner' | 'manager',
+    managerData?: { companyName?: string; airbnbProfileLink?: string }
   ) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
 }
@@ -57,7 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email, role, status')
+      .select('id, email, role, status, company_name, airbnb_profile_link')
       .eq('id', userId)
       .maybeSingle();
 
@@ -85,6 +88,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       email: data.email,
       role: data.role as UserRole,
       status: (data.status as UserStatus) || 'pending',
+      company_name: data.company_name,
+      airbnb_profile_link: data.airbnb_profile_link,
     };
   };
 
@@ -146,7 +151,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     name: string,
     email: string,
     password: string,
-    role: 'cleaner' | 'manager'
+    role: 'cleaner' | 'manager',
+    managerData: { companyName?: string; airbnbProfileLink?: string } = {}
   ) => {
     setProfileError(null);
     const redirectUrl = `${window.location.origin}/`;
@@ -174,6 +180,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         email,
         role,
         status: 'pending',
+        company_name: managerData.companyName || null,
+        airbnb_profile_link: managerData.airbnbProfileLink || null,
       });
 
       if (profileInsertError) {

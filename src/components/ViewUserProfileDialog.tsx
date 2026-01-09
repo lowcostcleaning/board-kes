@@ -16,7 +16,9 @@ import {
   Star,
   CheckCircle2,
   Clock,
-  MessageCircle
+  MessageCircle,
+  Building2,
+  Link as LinkIcon
 } from 'lucide-react';
 
 interface UserProfile {
@@ -31,6 +33,8 @@ interface UserProfile {
   rating?: number | null;
   completed_orders_count?: number;
   is_active?: boolean;
+  company_name?: string | null; // New
+  airbnb_profile_link?: string | null; // New
 }
 
 interface ViewUserProfileDialogProps {
@@ -78,6 +82,8 @@ export const ViewUserProfileDialog = ({
 }: ViewUserProfileDialogProps) => {
   if (!user) return null;
 
+  const isManagerRole = user.role === 'manager' || user.role === 'demo_manager';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -120,6 +126,36 @@ export const ViewUserProfileDialog = ({
               </div>
             </div>
           </div>
+
+          {/* Manager Info */}
+          {isManagerRole && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-muted-foreground">Информация о компании</h4>
+              
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <Building2 className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm">{user.company_name || 'Название компании не указано'}</span>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <LinkIcon className="w-4 h-4 text-muted-foreground" />
+                  {user.airbnb_profile_link ? (
+                    <a 
+                      href={user.airbnb_profile_link} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-sm text-primary hover:underline truncate"
+                    >
+                      Профиль Airbnb
+                    </a>
+                  ) : (
+                    <span className="text-sm">Ссылка Airbnb не указана</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Contact Info */}
           <div className="space-y-3">
