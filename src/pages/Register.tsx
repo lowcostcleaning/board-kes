@@ -55,6 +55,16 @@ const Register = () => {
       return;
     }
 
+    // Airbnb profile link is required for managers
+    if (role === 'manager' && !airbnbProfileLink.trim()) {
+      toast({
+        title: 'Ошибка',
+        description: 'Ссылка на профиль Airbnb обязательна для управляющей компании',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
     
     const managerData = role === 'manager' ? { companyName, airbnbProfileLink } : {};
@@ -197,14 +207,18 @@ const Register = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="airbnbProfileLink">Ссылка на профиль Airbnb</Label>
+                    <Label htmlFor="airbnbProfileLink">Ссылка на профиль Airbnb <span className="text-destructive">*</span></Label>
                     <Input
                       id="airbnbProfileLink"
                       type="url"
                       placeholder="https://www.airbnb.com/users/show/..."
                       value={airbnbProfileLink}
                       onChange={(e) => setAirbnbProfileLink(e.target.value)}
+                      required={role === 'manager'}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Обязательное поле для управляющей компании
+                    </p>
                   </div>
                 </>
               )}
