@@ -78,18 +78,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Validate role is one of allowed values
     const validRoles: UserRole[] = ['cleaner', 'manager', 'admin', 'demo_manager', 'demo_cleaner'];
-    if (!validRoles.includes(data.role as UserRole)) {
+    if (!validRoles.includes((data as any).role as UserRole)) {
       setProfileError('Некорректная роль пользователя.');
       return null;
     }
 
     return {
-      id: data.id,
-      email: data.email,
-      role: data.role as UserRole,
-      status: (data.status as UserStatus) || 'pending',
-      company_name: data.company_name,
-      airbnb_profile_link: data.airbnb_profile_link,
+      id: (data as any).id,
+      email: (data as any).email,
+      role: (data as any).role as UserRole,
+      status: ((data as any).status as UserStatus) || 'pending',
+      company_name: (data as any).company_name,
+      airbnb_profile_link: (data as any).airbnb_profile_link,
     };
   };
 
