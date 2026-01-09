@@ -41,6 +41,7 @@ import { useAdminUsers, UserProfile } from '@/hooks/use-admin-users';
 import { useAdminDashboard } from '@/hooks/use-admin-dashboard';
 import { AdminObjectsTab } from '@/components/AdminObjectsTab';
 import { AdminCleanerCalendarTab } from '@/components/AdminCleanerCalendarTab';
+import { AdminAddObjectDialog } from '@/components/AdminAddObjectDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,7 +59,7 @@ import { cn } from '@/lib/utils';
 const AdminDashboard = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  
+
   const [isReadOnlyMode, setIsReadOnlyMode] = useState(false);
 
   const {
@@ -73,7 +74,7 @@ const AdminDashboard = () => {
     updateStatus,
     updateOrdersCount,
   } = useAdminUsers();
-  
+
   const {
     counters,
     isLoadingCounters,
@@ -81,7 +82,7 @@ const AdminDashboard = () => {
     isUpdatingNotification,
     resolveNotification,
   } = useAdminDashboard();
-  
+
   const [editingOrdersCount, setEditingOrdersCount] = useState<string | null>(null);
   const [newOrdersCount, setNewOrdersCount] = useState<string>('');
   const [viewingUser, setViewingUser] = useState<UserProfile | null>(null);
@@ -90,10 +91,10 @@ const AdminDashboard = () => {
   const isMobile = useIsMobile();
 
   const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Админ';
-  
+
   // On mobile, cards are collapsible and closed by default
-  const cardProps = isMobile 
-    ? { collapsible: true, defaultOpen: false } 
+  const cardProps = isMobile
+    ? { collapsible: true, defaultOpen: false }
     : { collapsible: false, defaultOpen: true };
 
   const checkReadOnly = () => {
@@ -133,9 +134,9 @@ const AdminDashboard = () => {
   const handleDeleteUser = async () => {
     if (checkReadOnly()) return;
     if (!userToDelete) return;
-    
+
     const result = await deleteUser(userToDelete.id);
-    
+
     if (result.success) {
       toast({
         title: 'Пользователь удалён',
@@ -148,14 +149,14 @@ const AdminDashboard = () => {
         variant: 'destructive',
       });
     }
-    
+
     setUserToDelete(null);
   };
 
   const handleRestoreUser = async (userId: string) => {
     if (checkReadOnly()) return;
     const result = await restoreUser(userId);
-    
+
     if (result.success) {
       toast({
         title: 'Пользователь восстановлен',
@@ -272,7 +273,7 @@ const AdminDashboard = () => {
               Управляйте пользователями, объектами и заказами.
             </p>
           </div>
-          
+
           {/* Read-Only Toggle (TASK 4) */}
           <div className="flex items-center space-x-2 p-2 rounded-lg bg-muted/50">
             <Lock className="w-4 h-4 text-muted-foreground" />
@@ -306,8 +307,8 @@ const AdminDashboard = () => {
               <Bell className="w-4 h-4" />
               <span className="hidden sm:inline">Уведомления</span>
               {notifications.length > 0 && (
-                <Badge 
-                  variant="destructive" 
+                <Badge
+                  variant="destructive"
                   className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
                 >
                   {notifications.length}
@@ -461,7 +462,7 @@ const AdminDashboard = () => {
               </Select>
 
               <Button
-                variant={userFilters.showInactive ? 'secondary' : 'outline'}
+                variant={userFilters.showInactive ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => updateUserFilters({ showInactive: !userFilters.showInactive })}
                 className="gap-1"
@@ -749,6 +750,12 @@ const AdminDashboard = () => {
 
           {/* Objects Tab */}
           <TabsContent value="objects" className="mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Управление объектами</h3>
+              <AdminAddObjectDialog onObjectAdded={() => {
+                toast({ title: 'Объект добавлен', description: 'Объект успешно создан' });
+              }} />
+            </div>
             <AdminObjectsTab isReadOnlyMode={isReadOnlyMode} />
           </TabsContent>
 
@@ -786,7 +793,7 @@ const AdminDashboard = () => {
               ) : (
                 <div className="space-y-3">
                   {notifications.map((notif) => {
-                    const isOverdue = counters.overdueNotifications > 0 && 
+                    const isOverdue = counters.overdueNotifications > 0 &&
                       new Date(notif.created_at) < subHours(new Date(), 24);
 
                     return (
@@ -794,8 +801,8 @@ const AdminDashboard = () => {
                         key={notif.id}
                         className={cn(
                           "p-4 rounded-lg border space-y-2",
-                          isOverdue 
-                            ? "border-destructive/50 bg-destructive/10" 
+                          isOverdue
+                            ? "border-destructive/50 bg-destructive/10"
                             : "border-status-pending/30 bg-status-pending/10",
                           isUpdatingNotification && "opacity-60 pointer-events-none"
                         )}
@@ -811,7 +818,7 @@ const AdminDashboard = () => {
                             {format(new Date(notif.created_at), 'd MMM HH:mm', { locale: ru })}
                           </span>
                         </div>
-                        
+
                         <div className="text-sm">
                           <p className="font-semibold">{notif.user_email}</p>
                           <p className="text-muted-foreground text-xs capitalize">
@@ -862,7 +869,7 @@ const AdminDashboard = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Удалить пользователя?</AlertDialogTitle>
             <AlertDialogDescription>
-              Пользователь <strong>{userToDelete?.name || userToDelete?.email}</strong> будет деактивирован. 
+              Пользователь <strong>{userToDelete?.name || userToDelete?.email}</strong> будет деактивирован.
               Вы сможете восстановить его позже.
             </AlertDialogDescription>
           </AlertDialogHeader>
