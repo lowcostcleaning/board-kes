@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Dispatch, SetStateAction } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,6 @@ import { useAdminDashboard } from '@/hooks/use-admin-dashboard';
 import { AdminObjectsTab } from '@/components/AdminObjectsTab';
 import { AdminCleanerCalendarTab } from '@/components/AdminCleanerCalendarTab';
 import { AdminAddObjectDialog } from '@/components/AdminAddObjectDialog';
-// Corrected import paths for admin components
 import { AdminStatsOverview } from '@/components/admin/AdminStatsOverview';
 import { AdminUserFilters } from '@/components/admin/AdminUserFilters';
 import { AdminUserList } from '@/components/admin/AdminUserList';
@@ -327,7 +326,7 @@ const AdminDashboard = () => {
               handleCancelEditOrdersCount={handleCancelEditOrdersCount}
               handleSaveOrdersCount={handleSaveOrdersCount}
               handleViewProfile={handleViewProfile}
-              setUserToDelete={setUserToDelete}
+              setUserToDelete={setUserToDelete as (user: UserProfile | null) => void} // Corrected type here
               handleRestoreUser={handleRestoreUser}
               setNewOrdersCount={setNewOrdersCount}
             />
