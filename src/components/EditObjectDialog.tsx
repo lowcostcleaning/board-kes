@@ -49,6 +49,7 @@ interface EditOrderDialogProps {
 }
 
 const TIME_SLOTS = ['10:00', '12:00', '14:00', '16:00', '18:00'];
+const NO_COMPLEX_VALUE = '__no_complex__';
 
 interface CleanerOrder {
   scheduled_date: string;
@@ -76,14 +77,14 @@ export const EditOrderDialog = ({
   const [cleanerOrders, setCleanerOrders] = useState<CleanerOrder[]>([]);
   const [unavailableDates, setUnavailableDates] = useState<UnavailableDate[]>([]);
   const [busyTimeSlots, setBusyTimeSlots] = useState<string[]>([]);
-  const [residentialComplexId, setResidentialComplexId] = useState<string>('');
+  const [residentialComplexId, setResidentialComplexId] = useState<string>(NO_COMPLEX_VALUE);
   const [complexes, setComplexes] = useState<ResidentialComplex[]>([]);
 
   useEffect(() => {
     if (open && order) {
       setSelectedDate(new Date(order.scheduled_date));
       setSelectedTime(order.scheduled_time);
-      setResidentialComplexId(order.residential_complex_id || '');
+      setResidentialComplexId(order.residential_complex_id || NO_COMPLEX_VALUE);
       fetchCleanerData();
       if (order.user_id) {
         fetchComplexes(order.user_id);
@@ -182,7 +183,7 @@ export const EditOrderDialog = ({
       };
 
       if (canEditComplex) {
-        payload.residential_complex_id = residentialComplexId || null;
+        payload.residential_complex_id = residentialComplexId === NO_COMPLEX_VALUE ? null : residentialComplexId;
       }
 
       const { error } = await supabase
@@ -248,7 +249,7 @@ export const EditOrderDialog = ({
   const hasChanges = order && selectedDate && selectedTime && (
     format(selectedDate, 'yyyy-MM-dd') !== order.scheduled_date ||
     selectedTime !== order.scheduled_time ||
-    (canEditComplex && (residentialComplexId || null) !== order.residential_complex_id)
+    (canEditComplex && (residentialComplexId === NO_COMPLEX_VALUE ? null : residentialComplexId) !== order.residential_complex_id)
   );
 
   const complexLabel = () => {
@@ -279,13 +280,13 @@ export const EditOrderDialog = ({
                 <Select value={residentialComplexId} onValueChange={setResidentialComplexId}>
                   <SelectTrigger className="bg-muted/50">
                     <SelectValue>
-                      {residentialComplexId
-                        ? complexes.find((c) => c.id === residentialComplexId)?.name
-                        : 'Без ЖК'}
+                      {residentialComplexId === NO_COMPLEX_VALUE
+                        ? 'Без ЖК'
+                        : complexes.find((c) => c.id === residentialComplexId)?.name || 'Выберите ЖК'}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Без ЖК</SelectItem>
+                    <SelectItem value={NO_COMPLEX_VALUE}>Без ЖК</SelectItem>
                     {complexes.map((complex) => (
                       <SelectItem key={complex.id} value={complex.id}>
                         {complex.name}

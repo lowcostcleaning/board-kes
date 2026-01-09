@@ -38,13 +38,15 @@ interface ResidentialComplex {
   name: string;
 }
 
+const NO_COMPLEX_VALUE = '__no_complex__';
+
 export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProps) => {
   const [open, setOpen] = useState(false);
   const [apartmentNumber, setApartmentNumber] = useState('');
   const [apartmentType, setApartmentType] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [complexes, setComplexes] = useState<ResidentialComplex[]>([]);
-  const [selectedComplexId, setSelectedComplexId] = useState('');
+  const [selectedComplexId, setSelectedComplexId] = useState(NO_COMPLEX_VALUE);
   const [isLoadingComplexes, setIsLoadingComplexes] = useState(false);
 
   useEffect(() => {
@@ -87,10 +89,10 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedComplexId || !apartmentNumber.trim() || !apartmentType) {
+    if (!apartmentNumber.trim() || !apartmentType) {
       toast({
         title: 'Ошибка',
-        description: 'Выберите ЖК и заполните все поля',
+        description: 'Заполните все поля',
         variant: 'destructive',
       });
       return;
@@ -103,13 +105,14 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
       if (!user) throw new Error('Пользователь не авторизован');
 
       const selectedComplex = complexes.find((complex) => complex.id === selectedComplexId);
+      const complexIdToUse = selectedComplexId === NO_COMPLEX_VALUE ? null : selectedComplexId;
 
       const { error } = await supabase.from('objects').insert({
         user_id: user.id,
         complex_name: selectedComplex?.name || 'Без ЖК',
         apartment_number: apartmentNumber.trim(),
         apartment_type: apartmentType,
-        residential_complex_id: selectedComplexId,
+        residential_complex_id: complexIdToUse,
       });
 
       if (error) throw error;
@@ -121,7 +124,7 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
 
       setApartmentNumber('');
       setApartmentType('');
-      setSelectedComplexId('');
+      setSelectedComplexId(NO_COMPLEX_VALUE);
       setOpen(false);
       onObjectAdded();
     } catch (error: any) {
@@ -161,10 +164,11 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
               <Select value={selectedComplexId} onValueChange={setSelectedComplexId}>
                 <SelectTrigger className="bg-muted/50">
                   <SelectValue>
-                    {isLoadingComplexes ? 'Загрузка...' : 'Выберите ЖК'}
+                    {isLoadingComplexes ? 'Загрузка...' : selectedComplexId === NO_COMPLEX_VALUE ? 'Без ЖК' : complexes.find(c => c.id === selectedComplexId)?.name || 'Выберите ЖК'}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={NO_COMPLEX_VALUE}>Без ЖК</SelectItem>
                   {complexesAvailable ? (
                     complexes.map((complex) => (
                       <SelectItem key={complex.id} value={complex.id}>
@@ -172,7 +176,7 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="__no_options__" disabled>
                       {isLoadingComplexes
                         ? 'ЖК загружаются...'
                         : 'Нет ЖК — обратитесь к администратору'}
@@ -220,9 +224,7 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
             </Button>
             <Button
               type="submit"
-              disabled={
-                isLoading || !selectedComplexId || !complexesAvailable || apartmentType === ''
-              }
+              disabled={isLoading || apartmentType === ''}
             >
               {isLoading ? 'Добавление...' : 'Добавить'}
             </Button>

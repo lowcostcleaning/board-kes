@@ -45,12 +45,14 @@ const APARTMENT_TYPES = [
   { value: '2+1', label: '2+1' },
 ];
 
+const NO_COMPLEX_VALUE = '__no_complex__';
+
 export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProps) => {
   const [open, setOpen] = useState(false);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [selectedManager, setSelectedManager] = useState('');
   const [complexes, setComplexes] = useState<ResidentialComplex[]>([]);
-  const [selectedComplexId, setSelectedComplexId] = useState('');
+  const [selectedComplexId, setSelectedComplexId] = useState(NO_COMPLEX_VALUE);
   const [complexName, setComplexName] = useState('');
   const [apartmentNumber, setApartmentNumber] = useState('');
   const [apartmentType, setApartmentType] = useState<string>('');
@@ -67,7 +69,7 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
       fetchComplexesForManager(selectedManager);
     } else {
       setComplexes([]);
-      setSelectedComplexId('');
+      setSelectedComplexId(NO_COMPLEX_VALUE);
     }
   }, [selectedManager]);
 
@@ -92,7 +94,7 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
       .order('name');
 
     setComplexes(data || []);
-    setSelectedComplexId('');
+    setSelectedComplexId(NO_COMPLEX_VALUE);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,7 +103,7 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
     if (!selectedManager || !apartmentNumber.trim() || !apartmentType) {
       toast({
         title: 'Ошибка',
-        description: 'Выберите менеджера, ЖК и заполните все поля',
+        description: 'Выберите менеджера и заполните все поля',
         variant: 'destructive',
       });
       return;
@@ -111,13 +113,14 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
 
     try {
       const selectedComplex = complexes.find((complex) => complex.id === selectedComplexId);
+      const complexIdToUse = selectedComplexId === NO_COMPLEX_VALUE ? null : selectedComplexId;
 
       const { error } = await supabase.from('objects').insert({
         user_id: selectedManager,
         complex_name: selectedComplex?.name || complexName.trim() || 'Без ЖК',
         apartment_number: apartmentNumber.trim(),
         apartment_type: apartmentType,
-        residential_complex_id: selectedComplexId || null,
+        residential_complex_id: complexIdToUse,
       });
 
       if (error) throw error;
@@ -129,7 +132,7 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
 
       setSelectedManager('');
       setComplexName('');
-      setSelectedComplexId('');
+      setSelectedComplexId(NO_COMPLEX_VALUE);
       setApartmentNumber('');
       setApartmentType('');
       setOpen(false);
@@ -204,24 +207,24 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
               <Select value={selectedComplexId} onValueChange={setSelectedComplexId} disabled={!selectedManager}>
                 <SelectTrigger className="bg-muted/50">
                   <SelectValue>
-                    {selectedComplex
-                      ? selectedComplex.name
-                      : 'Выберите ЖК или оставьте Без ЖК'}
+                    {selectedComplexId === NO_COMPLEX_VALUE 
+                      ? 'Без ЖК' 
+                      : selectedComplex?.name || 'Выберите ЖК'}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Без ЖК</SelectItem>
-                  {complexes.length > 0
-                    ? complexes.map((complex) => (
-                        <SelectItem key={complex.id} value={complex.id}>
-                          {complex.name}
-                        </SelectItem>
-                      ))
-                    : (
-                      <SelectItem value="" disabled={!selectedManager}>
-                        {selectedManager ? 'У менеджера нет ЖК' : 'Выберите менеджера'}
+                  <SelectItem value={NO_COMPLEX_VALUE}>Без ЖК</SelectItem>
+                  {complexes.length > 0 ? (
+                    complexes.map((complex) => (
+                      <SelectItem key={complex.id} value={complex.id}>
+                        {complex.name}
                       </SelectItem>
-                    )}
+                    ))
+                  ) : selectedManager ? (
+                    <SelectItem value="__no_options__" disabled>
+                      У менеджера нет ЖК
+                    </SelectItem>
+                  ) : null}
                 </SelectContent>
               </Select>
             </div>
