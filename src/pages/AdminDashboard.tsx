@@ -41,11 +41,12 @@ import { useAdminDashboard } from '@/hooks/use-admin-dashboard';
 import { AdminObjectsTab } from '@/components/AdminObjectsTab';
 import { AdminCleanerCalendarTab } from '@/components/AdminCleanerCalendarTab';
 import { AdminAddObjectDialog } from '@/components/AdminAddObjectDialog';
-import { AdminStatsOverview } from '@/components/AdminStatsOverview';
-import { AdminUserFilters } from '@/components/AdminUserFilters';
-import { AdminUserList } from '@/components/AdminUserList';
-import { AdminRolesManagement } from '@/components/AdminRolesManagement';
-import { AdminNotifications } from '@/components/AdminNotifications';
+// Corrected import paths for admin components
+import { AdminStatsOverview } from '@/components/admin/AdminStatsOverview';
+import { AdminUserFilters } from '@/components/admin/AdminUserFilters';
+import { AdminUserList } from '@/components/admin/AdminUserList';
+import { AdminRolesManagement } from '@/components/admin/AdminRolesManagement';
+import { AdminNotifications } from '@/components/admin/AdminNotifications';
 import {
   AlertDialog,
   AlertDialogAction,
