@@ -13,8 +13,8 @@ interface ResidentialComplex {
   city: string | null;
 }
 
-interface CleanerPricing {
-  complex_id: string;
+interface CleanerPricingRow {
+  residential_complex_id: string;
   price_studio: number | null;
   price_one_plus_one: number | null;
   price_two_plus_one: number | null;
@@ -25,7 +25,7 @@ interface CleanerPricingFormProps {
 }
 
 const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) => {
-  const [complexes, setComplexes] = useState<ResidentialComplex[]>([]);
+  const [residential_complexes, setResidential_complexes] = useState<ResidentialComplex[]>([]);
   const [pricingData, setPricingData] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,31 +42,34 @@ const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) =>
           .select('*');
 
         if (complexesError) throw complexesError;
-        setComplexes(complexesData || []);
+        setResidential_complexes(complexesData || []);
 
         // Fetch existing prices for the cleaner from cleaner_pricing
-        const { data: prices, error: pricesError } = await supabase
+        // Avoid using a deep generic on select — fetch raw and cast to a lightweight interface
+        const { data: pricesData, error: pricesError } = await supabase
           .from('cleaner_pricing')
-          .select('complex_id, price_studio, price_one_plus_one, price_two_plus_one')
-          .eq('user_id', cleanerId);
+          .select('residential_complex_id, price_studio, price_one_plus_one, price_two_plus_one')
+          .eq('cleaner_id', cleanerId);
 
         if (pricesError) throw pricesError;
 
+        const prices = (pricesData || []) as CleanerPricingRow[];
+
         const initialPricing: Record<string, number> = {};
-        prices?.forEach(p => {
-          if (p.complex_id) {
-            // Use studio price as the base price, or fallback to other prices
-            initialPricing[p.complex_id] = p.price_studio || p.price_one_plus_one || p.price_two_plus_one || 0;
+        prices.forEach((p) => {
+          if (p && p.residential_complex_id) {
+            initialPricing[p.residential_complex_id] =
+              p.price_studio ?? p.price_one_plus_one ?? p.price_two_plus_one ?? 0;
           }
         });
-        setPricingData(initialPricing);
 
+        setPricingData(initialPricing);
       } catch (err: any) {
-        console.error("Error fetching data:", err);
-        setError(`Failed to load data: ${err.message}`);
+        console.error('Error fetching data:', err);
+        setError(`Failed to load data: ${err?.message || String(err)}`);
         toast({
           title: 'Ошибка',
-          description: err.message,
+          description: err?.message || 'Не удалось загрузить данные',
           variant: 'destructive',
         });
       } finally {
@@ -78,7 +81,7 @@ const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) =>
   }, [cleanerId]);
 
   const handlePriceChange = (complexId: string, price: number) => {
-    setPricingData(prev => ({
+    setPricingData((prev) => ({
       ...prev,
       [complexId]: price,
     }));
@@ -90,19 +93,18 @@ const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) =>
     setError(null);
 
     try {
-      // Upsert prices into cleaner_pricing
+      // Build payload matching cleaner_pricing insert shape: cleaner_id + residential_complex_id required
+      const payload = Object.entries(pricingData).map(([residential_complex_id, price]) => ({
+        cleaner_id: cleanerId,
+        residential_complex_id,
+        price_studio: price,
+        price_one_plus_one: price,
+        price_two_plus_one: price,
+      }));
+
       const { error: upsertError } = await supabase
         .from('cleaner_pricing')
-        .upsert(
-          Object.entries(pricingData).map(([complex_id, price]) => ({
-            user_id: cleanerId,
-            complex_id: complex_id,
-            price_studio: price,
-            price_one_plus_one: price,
-            price_two_plus_one: price,
-          })),
-          { onConflict: 'user_id, complex_id' }
-        );
+        .upsert(payload, { onConflict: 'cleaner_id,residential_complex_id' });
 
       if (upsertError) throw upsertError;
 
@@ -111,11 +113,11 @@ const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) =>
         description: 'Цены сохранены',
       });
     } catch (err: any) {
-      console.error("Error saving pricing:", err);
-      setError(`Failed to save pricing: ${err.message}`);
+      console.error('Error saving pricing:', err);
+      setError(`Failed to save pricing: ${err?.message || String(err)}`);
       toast({
         title: 'Ошибка',
-        description: err.message,
+        description: err?.message || 'Не удалось сохранить цены',
         variant: 'destructive',
       });
     } finally {
@@ -132,11 +134,7 @@ const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) =>
   }
 
   if (error) {
-    return (
-      <div className="text-center text-destructive p-4">
-        {error}
-      </div>
-    );
+    return <div className="text-center text-destructive p-4">{error}</div>;
   }
 
   return (
@@ -151,26 +149,24 @@ const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) =>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {complexes.length === 0 ? (
+          {residential_complexes.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
               Нет доступных жилых комплексов
             </p>
           ) : (
-            complexes.map((complex) => (
+            residential_complexes.map((complex) => (
               <div key={complex.id} className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Banknote className="w-4 h-4 text-muted-foreground" />
                   {complex.name}
                   {complex.city && (
-                    <span className="text-xs text-muted-foreground">
-                      ({complex.city})
-                    </span>
+                    <span className="text-xs text-muted-foreground">({complex.city})</span>
                   )}
                 </Label>
                 <Input
                   type="number"
-                  value={pricingData[complex.id] || 0}
-                  onChange={(e) => handlePriceChange(complex.id, parseFloat(e.target.value))}
+                  value={pricingData[complex.id] ?? 0}
+                  onChange={(e) => handlePriceChange(complex.id, parseFloat(e.target.value || '0'))}
                   min={0}
                   step={1}
                   placeholder="Цена за уборку"
@@ -182,12 +178,7 @@ const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) =>
         </form>
       </CardContent>
       <CardFooter>
-        <Button
-          type="submit"
-          onClick={handleSubmit}
-          disabled={loading || complexes.length === 0}
-          className="w-full"
-        >
+        <Button type="submit" onClick={handleSubmit} disabled={loading || residential_complexes.length === 0} className="w-full">
           {loading ? 'Сохранение...' : 'Сохранить цены'}
         </Button>
       </CardFooter>
