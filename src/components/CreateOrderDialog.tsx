@@ -31,6 +31,7 @@ interface PropertyObject {
   complex_name: string;
   apartment_number: string;
   apartment_type: string | null;
+  residential_complex_id: string | null; // Added complex ID
 }
 
 interface Cleaner {
@@ -40,6 +41,7 @@ interface Cleaner {
   avatar_url: string | null;
   rating: number | null;
   completed_orders_count: number;
+  // Global prices from profiles table (used as fallback)
   price_studio: number | null;
   price_one_plus_one: number | null;
   price_two_plus_one: number | null;
@@ -75,15 +77,25 @@ const getApartmentTypeLabel = (type: string | null) => {
   }
 };
 
-const getCleanerPrice = (cleaner: Cleaner, apartmentType: string | null): number | null => {
+interface PriceSource {
+  price_studio: number | null;
+  price_one_plus_one: number | null;
+  price_two_plus_one: number | null;
+}
+
+const getCleanerPrice = (cleaner: Cleaner, apartmentType: string | null, complexPricing: PriceSource | null): number | null => {
   if (!apartmentType) return null;
+  
+  // Prioritize complex pricing if available, otherwise use global profile prices
+  const prices = complexPricing || cleaner;
+
   switch (apartmentType) {
     case 'studio':
-      return cleaner.price_studio;
+      return prices.price_studio;
     case '1+1':
-      return cleaner.price_one_plus_one;
+      return prices.price_one_plus_one;
     case '2+1':
-      return cleaner.price_two_plus_one;
+      return prices.price_two_plus_one;
     default:
       return null;
   }
@@ -103,6 +115,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   const [cleanerUnavailableDates, setCleanerUnavailableDates] = useState<UnavailableDate[]>([]);
   const [busyTimeSlots, setBusyTimeSlots] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>('name');
+  const [cleanerComplexPricing, setCleanerComplexPricing] = useState<PriceSource | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -117,6 +130,14 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
       fetchCleanerUnavailability();
     }
   }, [selectedCleaner]);
+
+  useEffect(() => {
+    if (selectedCleaner && selectedObject) {
+      fetchCleanerComplexPricing(selectedCleaner, selectedObject);
+    } else {
+      setCleanerComplexPricing(null);
+    }
+  }, [selectedCleaner, selectedObject, objects]);
 
   useEffect(() => {
     if (selectedDate && cleanerOrders.length > 0) {
@@ -139,7 +160,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   const fetchObjects = async () => {
     const { data, error } = await supabase
       .from('objects')
-      .select('*')
+      .select('id, complex_name, apartment_number, apartment_type, residential_complex_id')
       .order('created_at', { ascending: false });
 
     if (!error && data) {
@@ -174,7 +195,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     const { data, error } = await query;
 
     if (!error && data) {
-      setCleaners(data);
+      setCleaners(data as Cleaner[]);
     }
   };
 
@@ -200,6 +221,31 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     }
   };
 
+  const fetchCleanerComplexPricing = async (cleanerId: string, objectId: string) => {
+    const objectData = objects.find(o => o.id === objectId);
+    const complexId = objectData?.residential_complex_id;
+
+    if (!complexId) {
+      setCleanerComplexPricing(null); 
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('cleaner_pricing')
+      .select('price_studio, price_one_plus_one, price_two_plus_one')
+      .eq('cleaner_id', cleanerId)
+      .eq('residential_complex_id', complexId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching complex pricing:', error);
+      setCleanerComplexPricing(null);
+      return;
+    }
+
+    setCleanerComplexPricing(data || null);
+  };
+
   const sortedCleaners = useMemo(() => {
     const sorted = [...cleaners];
     switch (sortBy) {
@@ -212,6 +258,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
       case 'orders_asc':
         return sorted.sort((a, b) => a.completed_orders_count - b.completed_orders_count);
       case 'price_asc':
+        // Use global price for sorting if complex price isn't easily accessible here
         return sorted.sort((a, b) => (a.price_studio || 0) - (b.price_studio || 0));
       case 'price_desc':
         return sorted.sort((a, b) => (b.price_studio || 0) - (a.price_studio || 0));
@@ -238,6 +285,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     setCleanerUnavailableDates([]);
     setBusyTimeSlots([]);
     setSortBy('name');
+    setCleanerComplexPricing(null);
   };
 
   const handleCleanerSelect = (cleanerId: string) => {
@@ -325,8 +373,10 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
 
   const selectedObjectData = objects.find(o => o.id === selectedObject);
   const selectedCleanerData = cleaners.find(c => c.id === selectedCleaner);
+  
+  // Calculate selected price using complex pricing if available, otherwise fallback to global
   const selectedPrice = selectedCleanerData && selectedObjectData 
-    ? getCleanerPrice(selectedCleanerData, selectedObjectData.apartment_type)
+    ? getCleanerPrice(selectedCleanerData, selectedObjectData.apartment_type, cleanerComplexPricing)
     : null;
 
   const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time));
