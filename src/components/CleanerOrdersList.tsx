@@ -137,7 +137,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
 
       setOrders(transformedOrders);
     } catch (error: any) {
-      console.error('Error fetching orders:', error);
+      console.error('Error fetching orders:', error); // Log the full error
       toast({
         title: 'Ошибка',
         description: 'Не удалось загрузить заказы',
