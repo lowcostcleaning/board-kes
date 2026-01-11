@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
-import { Banknote } from 'lucide-react';
+import { Banknote, Building2 } from 'lucide-react'; // Added Building2 import
 import { Tables } from '@/integrations/supabase/types'; // Import Tables type
 
 interface ResidentialComplex {
@@ -21,9 +21,16 @@ interface CleanerPricingFormProps {
   cleanerId: string;
 }
 
-const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) => {
+// Define a type for the pricing state to hold all three prices
+interface ComplexPrices {
+  price_studio: number | null;
+  price_one_plus_one: number | null;
+  price_two_plus_one: number | null;
+}
+
+export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) => {
   const [residential_complexes, setResidential_complexes] = useState<ResidentialComplex[]>([]);
-  const [pricingData, setPricingData] = useState<Record<string, number>>({});
+  const [pricingData, setPricingData] = useState<Record<string, ComplexPrices>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,12 +58,14 @@ const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) =>
 
         const prices = (pricesData || []) as CleanerPricingRow[];
 
-        const initialPricing: Record<string, number> = {};
-        prices.forEach((p) => {
-          if (p && p.complex_id) {
-            initialPricing[p.complex_id] =
-              p.price_studio ?? p.price_one_plus_one ?? p.price_two_plus_one ?? 0;
-          }
+        const initialPricing: Record<string, ComplexPrices> = {};
+        (complexesData || []).forEach(complex => {
+          const existingPrice = prices.find(p => p.complex_id === complex.id);
+          initialPricing[complex.id] = {
+            price_studio: existingPrice?.price_studio ?? null,
+            price_one_plus_one: existingPrice?.price_one_plus_one ?? null,
+            price_two_plus_one: existingPrice?.price_two_plus_one ?? null,
+          };
         });
 
         setPricingData(initialPricing);
@@ -76,10 +85,14 @@ const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) =>
     fetchComplexesAndPricing();
   }, [cleanerId]);
 
-  const handlePriceChange = (complexId: string, price: number) => {
+  const handlePriceChange = (complexId: string, priceType: keyof ComplexPrices, value: string) => {
+    const parsedValue = value === '' ? null : parseFloat(value);
     setPricingData((prev) => ({
       ...prev,
-      [complexId]: price,
+      [complexId]: {
+        ...prev[complexId],
+        [priceType]: parsedValue,
+      },
     }));
   };
 
@@ -89,18 +102,17 @@ const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) =>
     setError(null);
 
     try {
-      // Build payload matching cleaner_pricing insert shape: user_id + complex_id required
-      const payload = Object.entries(pricingData).map(([complex_id, price]) => ({
-        user_id: cleanerId, // Corrected to user_id
+      const payload = Object.entries(pricingData).map(([complex_id, prices]) => ({
+        user_id: cleanerId,
         complex_id,
-        price_studio: price,
-        price_one_plus_one: price,
-        price_two_plus_one: price,
+        price_studio: prices.price_studio,
+        price_one_plus_one: prices.price_one_plus_one,
+        price_two_plus_one: prices.price_two_plus_one,
       }));
 
       const { error: upsertError } = await supabase
         .from('cleaner_pricing')
-        .upsert(payload, { onConflict: 'user_id,complex_id' }); // Corrected onConflict
+        .upsert(payload, { onConflict: 'user_id,complex_id' });
 
       if (upsertError) throw upsertError;
 
@@ -144,30 +156,62 @@ const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) =>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {residential_complexes.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
               Нет доступных жилых комплексов
             </p>
           ) : (
             residential_complexes.map((complex) => (
-              <div key={complex.id} className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Banknote className="w-4 h-4 text-muted-foreground" />
+              <div key={complex.id} className="space-y-3 p-4 border rounded-lg bg-muted/50">
+                <h4 className="font-medium text-base flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-muted-foreground" />
                   {complex.name}
                   {complex.city && (
-                    <span className="text-xs text-muted-foreground">({complex.city})</span>
+                    <span className="text-sm text-muted-foreground">({complex.city})</span>
                   )}
-                </Label>
-                <Input
-                  type="number"
-                  value={pricingData[complex.id] ?? 0}
-                  onChange={(e) => handlePriceChange(complex.id, parseFloat(e.target.value || '0'))}
-                  min={0}
-                  step={1}
-                  placeholder="Цена за уборку"
-                  className="bg-muted/50"
-                />
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <Label htmlFor={`studio-${complex.id}`} className="text-xs text-muted-foreground">Студия</Label>
+                    <Input
+                      id={`studio-${complex.id}`}
+                      type="number"
+                      value={pricingData[complex.id]?.price_studio ?? ''}
+                      onChange={(e) => handlePriceChange(complex.id, 'price_studio', e.target.value)}
+                      min={0}
+                      step={1}
+                      placeholder="Цена"
+                      className="bg-background"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`one-plus-one-${complex.id}`} className="text-xs text-muted-foreground">1+1</Label>
+                    <Input
+                      id={`one-plus-one-${complex.id}`}
+                      type="number"
+                      value={pricingData[complex.id]?.price_one_plus_one ?? ''}
+                      onChange={(e) => handlePriceChange(complex.id, 'price_one_plus_one', e.target.value)}
+                      min={0}
+                      step={1}
+                      placeholder="Цена"
+                      className="bg-background"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`two-plus-one-${complex.id}`} className="text-xs text-muted-foreground">2+1</Label>
+                    <Input
+                      id={`two-plus-one-${complex.id}`}
+                      type="number"
+                      value={pricingData[complex.id]?.price_two_plus_one ?? ''}
+                      onChange={(e) => handlePriceChange(complex.id, 'price_two_plus_one', e.target.value)}
+                      min={0}
+                      step={1}
+                      placeholder="Цена"
+                      className="bg-background"
+                    />
+                  </div>
+                </div>
               </div>
             ))
           )}
