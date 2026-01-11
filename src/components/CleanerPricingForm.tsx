@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '@/integrations/supabase/client'; // Corrected import path
 import { useUser } from '@supabase/auth-helpers-react';
-import { CleanerPricingRecord, Complex } from '../types'; // Assuming these types are defined
+import { CleanerPricingRecord, Complex } from '@/types'; // Assuming these types are defined
 
 interface CleanerPricingFormProps {
   cleanerId: string;
