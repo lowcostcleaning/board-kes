@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAdminObjects, ResidentialComplex } from '@/hooks/use-admin-objects';
+import { useAdminObjects, ResidentialComplex, AdminObject } from '@/hooks/use-admin-objects';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -14,6 +14,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { AssignComplexDialog } from './AssignComplexDialog';
 
 interface AdminObjectsTabProps {
   isReadOnlyMode: boolean;
@@ -40,7 +41,10 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
   const [editingComplex, setEditingComplex] = useState<ResidentialComplex | null>(null);
   const [complexName, setComplexName] = useState('');
   const [complexCity, setComplexCity] = useState('');
-  const [assigningComplex, setAssigningComplex] = useState<string | null>(null);
+  
+  // New state for assignment dialog
+  const [assigningObject, setAssigningObject] = useState<AdminObject | null>(null);
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
 
   const checkReadOnly = () => {
     if (isReadOnlyMode) {
@@ -101,13 +105,24 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
     }
   };
 
-  const handleAssignComplex = async (objectId: string, complexId: string | null) => {
+  // Handler to open the assignment dialog
+  const openAssignDialog = (obj: AdminObject) => {
     if (checkReadOnly()) return;
-    const success = await updateObjectComplex(objectId, complexId);
+    setAssigningObject(obj);
+    setShowAssignDialog(true);
+  };
+
+  // Handler to perform the assignment logic (passed to AssignComplexDialog)
+  const handleAssignComplexSubmit = async (complexId: string | null) => {
+    if (!assigningObject) return false;
+    if (checkReadOnly()) return false;
+    
+    const success = await updateObjectComplex(assigningObject.id, complexId);
     if (success) {
-      toast({ title: 'ЖК объекта обновлён' });
-      setAssigningComplex(null);
+        setShowAssignDialog(false);
+        setAssigningObject(null);
     }
+    return success;
   };
 
   const openCreateComplexDialog = () => {
@@ -293,13 +308,30 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
                     </Badge>
                   )}
                 </div>
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                    <User className="w-3 h-3" />
+                    <span>Менеджер: {obj.owner_name || obj.owner_email}</span>
+                </div>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
+                {/* Archive/Restore Button */}
+                <Button
+                  size="sm"
+                  variant={obj.is_archived ? 'outline' : 'ghost'}
+                  className={obj.is_archived ? 'text-destructive hover:bg-destructive/10' : 'text-muted-foreground hover:text-foreground'}
+                  onClick={() => handleToggleArchive(obj.id, obj.is_archived)}
+                  disabled={isReadOnlyMode}
+                >
+                  {obj.is_archived ? <ArchiveRestore className="w-4 h-4 mr-1" /> : <Archive className="w-4 h-4 mr-1" />}
+                  {obj.is_archived ? 'Восстановить' : 'Архивировать'}
+                </Button>
+
+                {/* Assign Complex Button - Opens Dialog */}
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => handleAssignComplex(obj.id, obj.residential_complex_id)}
+                  onClick={() => openAssignDialog(obj)}
                   disabled={isReadOnlyMode}
                 >
                   <Building2 className="w-4 h-4 mr-1" />
@@ -311,6 +343,7 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
         )}
       </div>
 
+      {/* Complex Create/Edit Dialog */}
       <Dialog open={showComplexDialog || !!editingComplex} onOpenChange={(open) => {
         if (!open) {
           setShowComplexDialog(false);
@@ -356,6 +389,19 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Assign Complex Dialog */}
+      {assigningObject && (
+        <AssignComplexDialog
+          open={showAssignDialog}
+          onOpenChange={setShowAssignDialog}
+          objectName={`${assigningObject.complex_name}, кв. ${assigningObject.apartment_number}`}
+          currentComplexId={assigningObject.residential_complex_id}
+          residentialComplexes={residentialComplexes}
+          onAssign={handleAssignComplexSubmit}
+          isReadOnlyMode={isReadOnlyMode}
+        />
+      )}
     </div>
   );
 };
