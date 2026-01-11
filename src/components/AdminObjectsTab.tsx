@@ -331,6 +331,7 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
                 <Button
                   size="sm"
                   variant="outline"
+                  type="button"
                   onClick={() => openAssignDialog(obj)}
                   disabled={isReadOnlyMode}
                 >
