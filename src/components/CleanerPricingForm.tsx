@@ -22,7 +22,7 @@ interface CleanerPricingFormData {
 
 interface CleanerPricingRecord {
   id?: string;
-  cleaner_id: string;
+  user_id: string; // Corrected from cleaner_id
   residential_complex_id: string;
   price_studio: number | null;
   price_one_plus_one: number | null;
@@ -66,7 +66,7 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
         .from('cleaner_pricing')
         .select(`
           id, 
-          cleaner_id, 
+          user_id, 
           residential_complex_id, 
           price_studio, 
           price_one_plus_one, 
@@ -74,7 +74,7 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
           created_at, 
           updated_at
         `)
-        .eq('cleaner_id', user.id);
+        .eq('user_id', user.id); // Use user.id
       
       if (pricingError) throw pricingError;
       
@@ -162,7 +162,7 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
       // Upsert entries with prices
       if (entriesToSave.length > 0) {
         const entriesToUpsert = entriesToSave.map(entry => ({
-          cleaner_id: user.id,
+          user_id: user.id, // Use user.id
           residential_complex_id: entry.complex_id,
           price_studio: entry.price_studio,
           price_one_plus_one: entry.price_one_plus_one,
@@ -172,7 +172,7 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
         const { error: upsertError } = await supabase
           .from('cleaner_pricing')
           .upsert(entriesToUpsert as any, {
-            onConflict: 'cleaner_id,residential_complex_id'
+            onConflict: 'user_id,residential_complex_id' // Use user_id in conflict key
           });
         
         if (upsertError) throw upsertError;
@@ -271,7 +271,7 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
       
       <Button type="submit" size="sm" disabled={isSaving} className="w-full">
         <Save className="w-4 h-4 mr-2" />
-        {isSaving ? 'Сохранение...' : 'Сохранить цены'}
+        {isSaving ? 'Сохранить цены' : 'Сохранить цены'}
       </Button>
     </form>
   );
