@@ -12,7 +12,15 @@ interface ResidentialComplex {
   name: string;
 }
 
-interface CleanerPricing {
+interface CleanerPricingFormData {
+  id?: string;
+  complex_id: string;
+  price_studio: number | null;
+  price_one_plus_one: number | null;
+  price_two_plus_one: number | null;
+}
+
+interface CleanerPricingRecord {
   id?: string;
   cleaner_id: string;
   residential_complex_id: string;
@@ -21,14 +29,6 @@ interface CleanerPricing {
   price_two_plus_one: number | null;
   created_at?: string;
   updated_at?: string;
-}
-
-interface CleanerPricingFormData {
-  id?: string;
-  residential_complex_id: string;
-  price_studio: number | null;
-  price_one_plus_one: number | null;
-  price_two_plus_one: number | null;
 }
 
 interface CleanerPricingFormProps {
@@ -51,6 +51,7 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
   const fetchComplexesAndPricing = async () => {
     if (!user) return;
     setIsLoading(true);
+    
     try {
       // Fetch all residential complexes
       const { data: complexesData, error: complexesError } = await supabase
@@ -59,38 +60,47 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
         .order('name');
       
       if (complexesError) throw complexesError;
-
-      // Fetch existing pricing for this cleaner
+      
+      // Fetch existing pricing for this user
       const { data: pricingData, error: pricingError } = await supabase
         .from('cleaner_pricing')
-        .select('id, cleaner_id, residential_complex_id, price_studio, price_one_plus_one, price_two_plus_one, created_at, updated_at')
+        .select(`
+          id, 
+          cleaner_id, 
+          residential_complex_id, 
+          price_studio, 
+          price_one_plus_one, 
+          price_two_plus_one, 
+          created_at, 
+          updated_at
+        `)
         .eq('cleaner_id', user.id);
       
       if (pricingError) throw pricingError;
-
+      
       // Convert pricing data to a map for easier access
       const pricingMap: Record<string, CleanerPricingFormData> = {};
       pricingData?.forEach((item: any) => {
         pricingMap[item.residential_complex_id] = {
           id: item.id,
-          residential_complex_id: item.residential_complex_id,
+          complex_id: item.residential_complex_id,
           price_studio: item.price_studio,
           price_one_plus_one: item.price_one_plus_one,
           price_two_plus_one: item.price_two_plus_one
         };
       });
-
+      
       // Initialize pricing for complexes without existing data
       const initializedPricing: Record<string, CleanerPricingFormData> = {};
       complexesData?.forEach(complex => {
         initializedPricing[complex.id] = pricingMap[complex.id] || {
-          residential_complex_id: complex.id,
+          complex_id: complex.id,
           price_studio: null,
           price_one_plus_one: null,
           price_two_plus_one: null
         };
       });
-
+      
       setComplexes(complexesData || []);
       setPricing(initializedPricing);
     } catch (error) {
@@ -114,7 +124,9 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    
     setIsSaving(true);
+    
     try {
       // Prepare data for upsert (insert or update)
       const pricingEntries = Object.values(pricing);
@@ -142,6 +154,7 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
             .from('cleaner_pricing')
             .delete()
             .in('id', idsToDelete);
+          
           if (deleteError) throw deleteError;
         }
       }
@@ -149,15 +162,19 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
       // Upsert entries with prices
       if (entriesToSave.length > 0) {
         const entriesToUpsert = entriesToSave.map(entry => ({
-          ...entry,
-          cleaner_id: user.id
+          cleaner_id: user.id,
+          residential_complex_id: entry.complex_id,
+          price_studio: entry.price_studio,
+          price_one_plus_one: entry.price_one_plus_one,
+          price_two_plus_one: entry.price_two_plus_one
         }));
         
         const { error: upsertError } = await supabase
           .from('cleaner_pricing')
-          .upsert(entriesToUpsert, {
+          .upsert(entriesToUpsert as any, {
             onConflict: 'cleaner_id,residential_complex_id'
           });
+        
         if (upsertError) throw upsertError;
       }
       

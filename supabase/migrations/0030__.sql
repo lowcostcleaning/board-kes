@@ -1,0 +1,1 @@
+SELECT * FROM residential_complexes ORDER BY name;

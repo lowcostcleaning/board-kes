@@ -1,0 +1,1 @@
+SELECT * FROM cleaner_pricing LIMIT 10;
