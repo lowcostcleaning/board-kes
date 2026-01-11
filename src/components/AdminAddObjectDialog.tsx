@@ -45,14 +45,14 @@ const APARTMENT_TYPES = [
   { value: '2+1', label: '2+1' },
 ];
 
-const NO_COMPLEX_VALUE = '__no_complex__';
+// NO_COMPLEX_VALUE removed as complex is now mandatory
 
 export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProps) => {
   const [open, setOpen] = useState(false);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [selectedManager, setSelectedManager] = useState('');
   const [complexes, setComplexes] = useState<ResidentialComplex[]>([]);
-  const [selectedComplexId, setSelectedComplexId] = useState(NO_COMPLEX_VALUE);
+  const [selectedComplexId, setSelectedComplexId] = useState(''); // Changed default to empty string
   const [apartmentNumber, setApartmentNumber] = useState('');
   const [apartmentType, setApartmentType] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -68,7 +68,7 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
       fetchComplexes();
     } else {
       setComplexes([]);
-      setSelectedComplexId(NO_COMPLEX_VALUE);
+      setSelectedComplexId('');
     }
   }, [selectedManager]);
 
@@ -86,23 +86,29 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
   };
 
   const fetchComplexes = async () => {
-    // Admin should see all complexes, regardless of manager_id
     const { data, error } = await supabase
       .from('residential_complexes')
       .select('id, name')
       .order('name');
 
-    setComplexes(data || []);
-    setSelectedComplexId(NO_COMPLEX_VALUE);
+    const fetchedComplexes = data || [];
+    setComplexes(fetchedComplexes);
+    
+    // Set default selection if complexes exist
+    if (fetchedComplexes.length > 0) {
+      setSelectedComplexId(fetchedComplexes[0].id);
+    } else {
+      setSelectedComplexId('');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedManager || !apartmentNumber.trim() || !apartmentType) {
+    if (!selectedManager || !apartmentNumber.trim() || !apartmentType || !selectedComplexId) {
       toast({
         title: 'Ошибка',
-        description: 'Выберите менеджера и заполните все поля',
+        description: 'Выберите менеджера, ЖК, тип и номер апартамента',
         variant: 'destructive',
       });
       return;
@@ -112,17 +118,17 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
 
     try {
       const selectedComplex = complexes.find((complex) => complex.id === selectedComplexId);
-      const complexIdToUse = selectedComplexId === NO_COMPLEX_VALUE ? null : selectedComplexId;
       
-      // Determine complex name based on selection
-      const finalComplexName = selectedComplex?.name || 'Без ЖК';
+      if (!selectedComplex) {
+        throw new Error('Выбранный ЖК не найден');
+      }
 
       const { error } = await supabase.from('objects').insert({
         user_id: selectedManager,
-        complex_name: finalComplexName, // Use selected name or default
+        complex_name: selectedComplex.name, // Use selected name
         apartment_number: apartmentNumber.trim(),
         apartment_type: apartmentType,
-        residential_complex_id: complexIdToUse,
+        residential_complex_id: selectedComplexId,
       });
 
       if (error) throw error;
@@ -133,7 +139,7 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
       });
 
       setSelectedManager('');
-      setSelectedComplexId(NO_COMPLEX_VALUE);
+      setSelectedComplexId('');
       setApartmentNumber('');
       setApartmentType('');
       setOpen(false);
@@ -148,6 +154,8 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
       setIsLoading(false);
     }
   };
+
+  const complexesAvailable = complexes.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -205,15 +213,10 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
               </Label>
               <Select value={selectedComplexId} onValueChange={setSelectedComplexId}>
                 <SelectTrigger className="bg-muted/50">
-                  <SelectValue>
-                    {selectedComplexId === NO_COMPLEX_VALUE 
-                      ? 'Без ЖК' 
-                      : complexes.find((complex) => complex.id === selectedComplexId)?.name || 'Выберите ЖК'}
-                  </SelectValue>
+                  <SelectValue placeholder="Выберите ЖК" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NO_COMPLEX_VALUE}>Без ЖК</SelectItem>
-                  {complexes.length > 0 ? (
+                  {complexesAvailable ? (
                     complexes.map((complex) => (
                       <SelectItem key={complex.id} value={complex.id}>
                         {complex.name}
@@ -226,6 +229,11 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
                   )}
                 </SelectContent>
               </Select>
+              {!complexesAvailable && (
+                <p className="text-xs text-destructive">
+                  Сначала создайте ЖК на вкладке "Объекты"
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -265,7 +273,10 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
             <Button type="button" variant="outline" onClick={() => setOpen(false)} className="w-full sm:w-auto">
               Отмена
             </Button>
-            <Button type="submit" disabled={isLoading || !selectedManager || !apartmentNumber.trim() || !apartmentType}>
+            <Button 
+              type="submit" 
+              disabled={isLoading || !selectedManager || !apartmentNumber.trim() || !apartmentType || !selectedComplexId}
+            >
               {isLoading ? 'Добавление...' : 'Добавить'}
             </Button>
           </DialogFooter>
