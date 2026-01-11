@@ -23,9 +23,11 @@ interface CleanerOrder {
   manager_id: string;
   user_id: string; // Added user_id
   object: {
-    complex_name: string;
     apartment_number: string;
-    complex_id: string | null; // Add complex_id to object interface
+    complex: {
+      id: string;
+      name: string;
+    } | null;
   };
   manager: {
     email: string;
@@ -87,7 +89,13 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
           manager_id,
           cleaner_id,
           object_id,
-          object:objects(complex_name, apartment_number, complex_id)
+          object:objects(
+            apartment_number,
+            complex:residential_complexes(
+              id,
+              name
+            )
+          )
         `)
         .eq('cleaner_id', user.id)
         .order('scheduled_date', { ascending: true });
@@ -106,7 +114,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
         if (order.object && !uniqueObjects.has(order.object_id)) {
           uniqueObjects.set(order.object_id, {
             id: order.object_id,
-            complex_name: order.object.complex_name,
+            complex_name: order.object.complex?.name || 'Неизвестный ЖК', // Use nested complex name
             apartment_number: order.object.apartment_number,
           });
         }
@@ -131,7 +139,10 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
         cleaner_id: order.cleaner_id,
         manager_id: order.manager_id,
         user_id: order.manager_id, // Assuming manager_id is the user_id for the order
-        object: order.object || { complex_name: 'Неизвестно', apartment_number: '', complex_id: null },
+        object: {
+          apartment_number: order.object.apartment_number,
+          complex: order.object.complex || null,
+        },
         manager: managerMap.get(order.manager_id) || { email: 'Неизвестно', name: null, avatar_url: null },
       }));
 
@@ -319,7 +330,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
             <div className="flex items-center gap-4 text-sm flex-wrap">
               <div className="flex items-center gap-1">
                 <Building2 className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                <span className="truncate">{order.object.complex_name}</span>
+                <span className="truncate">{order.object.complex?.name || 'Неизвестный ЖК'}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Home className="w-3 h-3 text-muted-foreground flex-shrink-0" />
@@ -409,7 +420,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
           cleaner_id: editingOrder.cleaner_id,
           user_id: editingOrder.manager_id, // Pass manager_id as user_id
           object_id: editingOrder.object_id, // Pass object_id
-          complex_id: editingOrder.object.complex_id, // Pass complex_id from object
+          complex_id: editingOrder.object.complex?.id || null, // Pass complex_id from nested complex
         } : null}
         onSuccess={onRefresh}
         canDelete={editingOrder?.manager_id === editingOrder?.cleaner_id}
