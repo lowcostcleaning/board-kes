@@ -77,7 +77,7 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
       .from('profiles')
       .select('id, email, name, avatar_url')
       .eq('status', 'approved')
-      .in('role', ['manager', 'demo_manager'])
+      .eq('role', 'manager') // Filter only real managers
       .order('name');
 
     if (!error && data) {
