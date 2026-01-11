@@ -50,7 +50,6 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
 
   const fetchComplexesAndPricing = async () => {
     if (!user) return;
-    
     setIsLoading(true);
     try {
       // Fetch all residential complexes
@@ -60,7 +59,7 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
         .order('name');
       
       if (complexesError) throw complexesError;
-      
+
       // Fetch existing pricing for this cleaner
       const { data: pricingData, error: pricingError } = await supabase
         .from('cleaner_pricing')
@@ -68,7 +67,7 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
         .eq('cleaner_id', user.id);
       
       if (pricingError) throw pricingError;
-      
+
       // Convert pricing data to a map for easier access
       const pricingMap: Record<string, CleanerPricingFormData> = {};
       pricingData?.forEach((item: any) => {
@@ -80,7 +79,7 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
           price_two_plus_one: item.price_two_plus_one
         };
       });
-      
+
       // Initialize pricing for complexes without existing data
       const initializedPricing: Record<string, CleanerPricingFormData> = {};
       complexesData?.forEach(complex => {
@@ -91,7 +90,7 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
           price_two_plus_one: null
         };
       });
-      
+
       setComplexes(complexesData || []);
       setPricing(initializedPricing);
     } catch (error) {
@@ -115,7 +114,6 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    
     setIsSaving(true);
     try {
       // Prepare data for upsert (insert or update)
@@ -132,7 +130,7 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
       const entriesToClear = pricingEntries.filter(entry => 
         !entry.price_studio && 
         !entry.price_one_plus_one && 
-        !entry.price_two_plus_one &&
+        !entry.price_two_plus_one && 
         entry.id // Only if it exists in DB
       );
       
@@ -144,7 +142,6 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
             .from('cleaner_pricing')
             .delete()
             .in('id', idsToDelete);
-          
           if (deleteError) throw deleteError;
         }
       }
@@ -158,8 +155,9 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
         
         const { error: upsertError } = await supabase
           .from('cleaner_pricing')
-          .upsert(entriesToUpsert, { onConflict: 'cleaner_id,residential_complex_id' });
-        
+          .upsert(entriesToUpsert, {
+            onConflict: 'cleaner_id,residential_complex_id'
+          });
         if (upsertError) throw upsertError;
       }
       
@@ -188,65 +186,71 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
         <span className="text-sm font-medium">Стоимость уборки по ЖК (₾)</span>
       </div>
       
-      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-        {complexes.map(complex => {
-          const complexPricing = pricing[complex.id] || {
-            price_studio: null,
-            price_one_plus_one: null,
-            price_two_plus_one: null
-          };
-          
-          return (
-            <div key={complex.id} className="p-3 rounded-lg bg-muted/50">
-              <h3 className="font-medium text-sm mb-2">{complex.name}</h3>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor={`price_studio_${complex.id}`} className="text-xs text-muted-foreground">
-                    Студия
-                  </Label>
-                  <Input
-                    id={`price_studio_${complex.id}`}
-                    type="number"
-                    min="0"
-                    value={complexPricing.price_studio || ''}
-                    onChange={(e) => handlePriceChange(complex.id, 'price_studio', e.target.value)}
-                    placeholder="0"
-                    className="bg-background h-9"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor={`price_1_1_${complex.id}`} className="text-xs text-muted-foreground">
-                    1+1
-                  </Label>
-                  <Input
-                    id={`price_1_1_${complex.id}`}
-                    type="number"
-                    min="0"
-                    value={complexPricing.price_one_plus_one || ''}
-                    onChange={(e) => handlePriceChange(complex.id, 'price_one_plus_one', e.target.value)}
-                    placeholder="0"
-                    className="bg-background h-9"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor={`price_2_1_${complex.id}`} className="text-xs text-muted-foreground">
-                    2+1
-                  </Label>
-                  <Input
-                    id={`price_2_1_${complex.id}`}
-                    type="number"
-                    min="0"
-                    value={complexPricing.price_two_plus_one || ''}
-                    onChange={(e) => handlePriceChange(complex.id, 'price_two_plus_one', e.target.value)}
-                    placeholder="0"
-                    className="bg-background h-9"
-                  />
+      {complexes.length === 0 ? (
+        <div className="text-center py-4 text-muted-foreground">
+          Нет доступных жилых комплексов
+        </div>
+      ) : (
+        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+          {complexes.map(complex => {
+            const complexPricing = pricing[complex.id] || {
+              price_studio: null,
+              price_one_plus_one: null,
+              price_two_plus_one: null
+            };
+            
+            return (
+              <div key={complex.id} className="p-3 rounded-lg bg-muted/50">
+                <h3 className="font-medium text-sm mb-2">{complex.name}</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`price_studio_${complex.id}`} className="text-xs text-muted-foreground">
+                      Студия
+                    </Label>
+                    <Input
+                      id={`price_studio_${complex.id}`}
+                      type="number"
+                      min="0"
+                      value={complexPricing.price_studio || ''}
+                      onChange={(e) => handlePriceChange(complex.id, 'price_studio', e.target.value)}
+                      placeholder="0"
+                      className="bg-background h-9"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`price_1_1_${complex.id}`} className="text-xs text-muted-foreground">
+                      1+1
+                    </Label>
+                    <Input
+                      id={`price_1_1_${complex.id}`}
+                      type="number"
+                      min="0"
+                      value={complexPricing.price_one_plus_one || ''}
+                      onChange={(e) => handlePriceChange(complex.id, 'price_one_plus_one', e.target.value)}
+                      placeholder="0"
+                      className="bg-background h-9"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`price_2_1_${complex.id}`} className="text-xs text-muted-foreground">
+                      2+1
+                    </Label>
+                    <Input
+                      id={`price_2_1_${complex.id}`}
+                      type="number"
+                      min="0"
+                      value={complexPricing.price_two_plus_one || ''}
+                      onChange={(e) => handlePriceChange(complex.id, 'price_two_plus_one', e.target.value)}
+                      placeholder="0"
+                      className="bg-background h-9"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
       
       <Button type="submit" size="sm" disabled={isSaving} className="w-full">
         <Save className="w-4 h-4 mr-2" />
