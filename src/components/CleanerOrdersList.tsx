@@ -26,6 +26,7 @@ interface CleanerOrder {
   object: {
     complex_name: string;
     apartment_number: string;
+    complex_id: string | null; // Add complex_id to object interface
   };
   manager: {
     email: string;
@@ -62,7 +63,7 @@ const statusVariants: Record<string, 'default' | 'secondary' | 'destructive' | '
 export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersListProps) => {
   const [orders, setOrders] = useState<CleanerOrder[]>([]);
   const [objects, setObjects] = useState<ObjectOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true); // Fixed: Initialized with useState(true)
+  const [isLoading, setIsLoading] = useState(true);
   const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
   const [viewingReportOrderId, setViewingReportOrderId] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<CleanerOrder | null>(null);
@@ -87,8 +88,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
           manager_id,
           cleaner_id,
           object_id,
-          complex_id,
-          object:objects(complex_name, apartment_number)
+          object:objects(complex_name, apartment_number, complex_id)
         `)
         .eq('cleaner_id', user.id)
         .order('scheduled_date', { ascending: true });
@@ -103,7 +103,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
 
       // Extract unique objects for filter
       const uniqueObjects = new Map<string, ObjectOption>();
-      ordersData.forEach((order: any) => {
+      (ordersData as any[]).forEach((order: any) => {
         if (order.object && !uniqueObjects.has(order.object_id)) {
           uniqueObjects.set(order.object_id, {
             id: order.object_id,
@@ -115,7 +115,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
       setObjects(Array.from(uniqueObjects.values()));
 
       // Get manager profiles separately
-      const managerIds = [...new Set(ordersData.map(o => o.manager_id))]; // Fixed: ordersData is now guaranteed to be an array
+      const managerIds = [...new Set((ordersData as any[]).map(o => o.manager_id))];
       const { data: managerProfiles } = await supabase
         .from('profiles')
         .select('id, email, name, avatar_url')
@@ -123,7 +123,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
 
       const managerMap = new Map(managerProfiles?.map(p => [p.id, p]) || []);
 
-      const transformedOrders = ordersData.map((order: any) => ({
+      const transformedOrders: CleanerOrder[] = (ordersData as any[]).map((order: any) => ({
         id: order.id,
         scheduled_date: order.scheduled_date,
         scheduled_time: order.scheduled_time,
@@ -132,8 +132,8 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
         cleaner_id: order.cleaner_id,
         manager_id: order.manager_id,
         user_id: order.manager_id, // Assuming manager_id is the user_id for the order
-        complex_id: order.complex_id,
-        object: order.object || { complex_name: 'Неизвестно', apartment_number: '' },
+        complex_id: order.object?.complex_id || null, // Get complex_id from the joined object
+        object: order.object || { complex_name: 'Неизвестно', apartment_number: '', complex_id: null },
         manager: managerMap.get(order.manager_id) || { email: 'Неизвестно', name: null, avatar_url: null },
       }));
 

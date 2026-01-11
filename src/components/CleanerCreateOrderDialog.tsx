@@ -82,7 +82,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   const [step, setStep] = useState<'manager' | 'calendar' | 'details'>('manager');
   const [managers, setManagers] = useState<Manager[]>([]);
   const [objects, setObjects] = useState<PropertyObject[]>([]);
-  const [selectedManager, setSelectedManager] = useState<string | null>(null);
+  const [selectedManagerId, setSelectedManagerId] = useState<string | null>(null); // Renamed to selectedManagerId
   const [selectedObject, setSelectedObject] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>('');
@@ -91,7 +91,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   const [cleanerUnavailableDates, setCleanerUnavailableDates] = useState<UnavailableDate[]>([]);
   const [busyTimeSlots, setBusyTimeSlots] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>('name');
-  const [selectedPrice, setSelectedPrice] = useState<number | null>(null); // Added selectedPrice state
+  const selectedPrice = null; // Placeholder, as pricing logic is not fully implemented here
 
   // Load managers when dialog opens
   useEffect(() => {
@@ -102,12 +102,12 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
 
   // Fetch objects when manager is selected
   useEffect(() => {
-    if (selectedManager) {
-      fetchObjectsForManager(selectedManager);
+    if (selectedManagerId) {
+      fetchObjectsForManager(selectedManagerId);
     } else {
       setObjects([]);
     }
-  }, [selectedManager]);
+  }, [selectedManagerId]);
 
   // Update busy time slots when date changes
   useEffect(() => {
@@ -211,7 +211,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
 
   const resetForm = () => {
     setStep('manager');
-    setSelectedManager(null);
+    setSelectedManagerId(null);
     setSelectedObject('');
     setSelectedDate(undefined);
     setSelectedTime('');
@@ -219,12 +219,11 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     setCleanerUnavailableDates([]);
     setBusyTimeSlots([]);
     setSortBy('name');
-    setSelectedPrice(null);
     setObjects([]);
   };
 
-  const handleCleanerSelect = (managerId: string) => {
-    setSelectedManager(managerId);
+  const handleManagerSelect = (managerId: string) => {
+    setSelectedManagerId(managerId);
     setSelectedObject('');
     setSelectedDate(undefined);
     setSelectedTime('');
@@ -246,7 +245,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   };
 
   const handleSubmit = async () => {
-    if (!selectedManager || !selectedDate || !selectedTime || !selectedObject) {
+    if (!selectedManagerId || !selectedDate || !selectedTime || !selectedObject) {
       toast({
         title: 'Ошибка',
         description: 'Заполните все поля',
@@ -274,8 +273,8 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
       }
 
       const { error } = await supabase.from('orders').insert({
-        manager_id: user.id,
-        cleaner_id: selectedManager,
+        manager_id: selectedManagerId, // Use selectedManagerId here
+        cleaner_id: user.id,
         object_id: selectedObject,
         scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
         scheduled_time: selectedTime,
@@ -308,11 +307,8 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   };
 
   const selectedObjectData = objects.find(o => o.id === selectedObject);
-  const selectedCleanerData = managers.find(c => c.id === selectedManager);
+  const selectedManagerData = managers.find(c => c.id === selectedManagerId); // Use selectedManagerId here
   
-  // Calculate selected price using complex pricing if available, otherwise fallback to global
-  const selectedPrice = null; // Placeholder, as pricing logic is not fully implemented here
-
   const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time));
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -348,7 +344,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                   {sortedCleaners.map((manager) => (
                     <button
                       key={manager.id}
-                      onClick={() => handleCleanerSelect(manager.id)}
+                      onClick={() => handleManagerSelect(manager.id)}
                       className="w-full flex items-center gap-3 p-3 rounded-[14px] bg-muted/50 hover:bg-muted transition-all duration-300 text-left hover:scale-[1.01] active:scale-[0.99]"
                     >
                       <UserAvatar
@@ -375,15 +371,15 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
           <>
             <DialogHeader>
               <DialogTitle className="text-center">Выберите дату</DialogTitle>
-            {selectedCleanerData && (
+            {selectedManagerData && (
               <p className="text-sm text-muted-foreground text-center mt-1">
-                Расписание: {selectedCleanerData.name || selectedCleanerData.email?.split('@')[0]}
+                Расписание: {selectedManagerData.name || selectedManagerData.email?.split('@')[0]}
               </p>
               )}
             </DialogHeader>
             <div className="py-4">
               <OrdersCalendar
-                cleanerId={selectedCleaner || undefined} // Ensure it's string or undefined
+                cleanerId={selectedManagerId || undefined} // Ensure it's string or undefined
                 onDateSelect={handleDateSelect}
                 selectedDate={selectedDate}
                 minDate={today}
@@ -397,7 +393,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
             <Button 
               variant="outline" 
               onClick={() => {
-                setSelectedManager(null);
+                setSelectedManagerId(null);
                 setObjects([]);
                 setStep('manager');
               }}
@@ -510,21 +506,21 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                 </div>
               )}
 
-              {selectedCleanerData && (
+              {selectedManagerData && (
                 <div className="p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40">
                   <Label className="flex items-center gap-2 text-muted-foreground mb-2">
                     Менеджер
                   </Label>
                   <div className="flex items-center gap-3">
                     <UserAvatar
-                      avatarUrl={selectedCleanerData.avatar_url}
-                      name={selectedCleanerData.name}
-                      email={selectedCleanerData.email}
+                      avatarUrl={selectedManagerData.avatar_url}
+                      name={selectedManagerData.name}
+                      email={selectedManagerData.email}
                       size="sm"
                     />
                     <div>
                       <p className="text-sm font-medium">
-                        {selectedCleanerData.name || selectedCleanerData.email?.split('@')[0]}
+                        {selectedManagerData.name || selectedManagerData.email?.split('@')[0]}
                       </p>
                       {/* Manager rating and completed orders are not applicable here */}
                     </div>
