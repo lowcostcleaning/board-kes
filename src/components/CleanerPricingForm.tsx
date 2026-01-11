@@ -6,14 +6,30 @@ import { Banknote, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Tables } from '@/integrations/supabase/types';
 
 interface ResidentialComplex {
   id: string;
   name: string;
 }
 
-type CleanerPricing = Tables<'cleaner_pricing'>;
+interface CleanerPricing {
+  id?: string;
+  cleaner_id: string;
+  residential_complex_id: string;
+  price_studio: number | null;
+  price_one_plus_one: number | null;
+  price_two_plus_one: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface CleanerPricingFormData {
+  id?: string;
+  residential_complex_id: string;
+  price_studio: number | null;
+  price_one_plus_one: number | null;
+  price_two_plus_one: number | null;
+}
 
 interface CleanerPricingFormProps {
   onUpdate?: () => void;
@@ -22,7 +38,7 @@ interface CleanerPricingFormProps {
 export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate }) => {
   const { user } = useAuth();
   const [complexes, setComplexes] = useState<ResidentialComplex[]>([]);
-  const [pricing, setPricing] = useState<Record<string, CleanerPricing>>({});
+  const [pricing, setPricing] = useState<Record<string, CleanerPricingFormData>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -48,26 +64,32 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
       // Fetch existing pricing for this cleaner
       const { data: pricingData, error: pricingError } = await supabase
         .from('cleaner_pricing')
-        .select('*')
+        .select('id, cleaner_id, residential_complex_id, price_studio, price_one_plus_one, price_two_plus_one, created_at, updated_at')
         .eq('cleaner_id', user.id);
       
       if (pricingError) throw pricingError;
       
       // Convert pricing data to a map for easier access
-      const pricingMap: Record<string, CleanerPricing> = {};
-      pricingData?.forEach(item => {
-        pricingMap[item.residential_complex_id] = item;
+      const pricingMap: Record<string, CleanerPricingFormData> = {};
+      pricingData?.forEach((item: any) => {
+        pricingMap[item.residential_complex_id] = {
+          id: item.id,
+          residential_complex_id: item.residential_complex_id,
+          price_studio: item.price_studio,
+          price_one_plus_one: item.price_one_plus_one,
+          price_two_plus_one: item.price_two_plus_one
+        };
       });
       
       // Initialize pricing for complexes without existing data
-      const initializedPricing: Record<string, CleanerPricing> = {};
+      const initializedPricing: Record<string, CleanerPricingFormData> = {};
       complexesData?.forEach(complex => {
         initializedPricing[complex.id] = pricingMap[complex.id] || {
           residential_complex_id: complex.id,
           price_studio: null,
           price_one_plus_one: null,
           price_two_plus_one: null
-        } as CleanerPricing;
+        };
       });
       
       setComplexes(complexesData || []);
@@ -80,7 +102,7 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
     }
   };
 
-  const handlePriceChange = (complexId: string, field: keyof CleanerPricing, value: string) => {
+  const handlePriceChange = (complexId: string, field: keyof CleanerPricingFormData, value: string) => {
     setPricing(prev => ({
       ...prev,
       [complexId]: {
@@ -169,11 +191,10 @@ export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate
       <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
         {complexes.map(complex => {
           const complexPricing = pricing[complex.id] || {
-            residential_complex_id: complex.id,
             price_studio: null,
             price_one_plus_one: null,
             price_two_plus_one: null
-          } as CleanerPricing;
+          };
           
           return (
             <div key={complex.id} className="p-3 rounded-lg bg-muted/50">
