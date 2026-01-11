@@ -1,0 +1,5 @@
+-- Проверим структуру таблицы objects
+SELECT column_name, data_type, is_nullable 
+FROM information_schema.columns 
+WHERE table_name = 'objects' 
+ORDER BY ordinal_position;
