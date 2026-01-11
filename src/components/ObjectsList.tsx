@@ -79,7 +79,12 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
 
       setObjects(mapped);
     } catch (error: any) {
-      console.error('Error fetching objects:', error); // Added console.error
+      console.error("Supabase error:", {
+        code: error?.code,
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint
+      });
       toast({
         title: 'Ошибка',
         description: 'Не удалось загрузить объекты',

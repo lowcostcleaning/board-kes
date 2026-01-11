@@ -151,7 +151,12 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
 
       setOrders(transformedOrders);
     } catch (error: any) {
-      console.error('Error fetching orders:', error); // Log the full error
+      console.error("Supabase error:", {
+        code: error?.code,
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint
+      });
       toast({
         title: 'Ошибка',
         description: 'Не удалось загрузить заказы',
