@@ -1,13 +1,16 @@
-"use client";
-
-import { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useState, useEffect } from 'react';
+import { Building2, MapPin, Check, X } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { ResidentialComplex } from '@/hooks/use-admin-objects';
-import { Building2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface AssignComplexDialogProps {
   open: boolean;
@@ -19,6 +22,8 @@ interface AssignComplexDialogProps {
   isReadOnlyMode: boolean;
 }
 
+const NO_COMPLEX_VALUE = 'none';
+
 export const AssignComplexDialog = ({
   open,
   onOpenChange,
@@ -28,81 +33,93 @@ export const AssignComplexDialog = ({
   onAssign,
   isReadOnlyMode,
 }: AssignComplexDialogProps) => {
-  const [selectedComplexId, setSelectedComplexId] = useState<string>(currentComplexId || '');
-  const [isSaving, setIsSaving] = useState(false);
+  const [selectedComplexId, setSelectedComplexId] = useState<string>(
+    currentComplexId || NO_COMPLEX_VALUE
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Sync internal state when the dialog opens or currentComplexId changes
   useEffect(() => {
-    if (open) {
-      setSelectedComplexId(currentComplexId || '');
-    }
-  }, [open, currentComplexId]);
+    setSelectedComplexId(currentComplexId || NO_COMPLEX_VALUE);
+  }, [currentComplexId, open]);
 
-  const handleSubmit = async () => {
+  const handleAssign = async () => {
     if (isReadOnlyMode) return;
-
-    setIsSaving(true);
-    const success = await onAssign(selectedComplexId || null);
-    setIsSaving(false);
-
+    setIsSubmitting(true);
+    
+    const complexIdToAssign = selectedComplexId === NO_COMPLEX_VALUE ? null : selectedComplexId;
+    
+    const success = await onAssign(complexIdToAssign);
+    
     if (success) {
       onOpenChange(false);
     }
+    setIsSubmitting(false);
   };
 
-  const handleClose = () => {
-    if (isSaving) return;
-    onOpenChange(false);
-  };
+  const currentComplexName = residentialComplexes.find(c => c.id === currentComplexId)?.name || 'Не присвоен';
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && handleClose()}>
-      <DialogContent className="sm:max-w-sm">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Привязать ЖК</DialogTitle>
-          <p className="text-xs text-muted-foreground mt-1">
-            {objectName}
-          </p>
+          <DialogTitle>Присвоить ЖК объекту</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <Label className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-muted-foreground" />
-              ЖК
-            </Label>
-            <Select value={selectedComplexId} onValueChange={setSelectedComplexId}>
-              <SelectTrigger className="bg-muted/50">
-                <SelectValue>
-                  {selectedComplexId
-                    ? residentialComplexes.find((complex) => complex.id === selectedComplexId)?.name
-                    : 'Без ЖК'}
-                </SelectValue>
+        
+        <div className="space-y-4 py-2">
+          <div className="p-3 bg-muted/50 rounded-md border text-sm">
+            <p className="font-medium mb-1">Объект:</p>
+            <p className="flex items-center gap-2 text-foreground">
+              <Building2 className="w-4 h-4" />
+              {objectName}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="complex-select">Текущий ЖК: <span className="font-medium">{currentComplexName}</span></Label>
+            <Select
+              value={selectedComplexId}
+              onValueChange={setSelectedComplexId}
+              disabled={isReadOnlyMode || isSubmitting}
+            >
+              <SelectTrigger id="complex-select">
+                <SelectValue placeholder="Выберите жилой комплекс" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Без ЖК</SelectItem>
-                {residentialComplexes.map((complex) => (
+                <SelectItem value={NO_COMPLEX_VALUE}>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <MapPin className="w-4 h-4" />
+                    Без ЖК
+                  </div>
+                </SelectItem>
+                {residentialComplexes.map(complex => (
                   <SelectItem key={complex.id} value={complex.id}>
-                    {complex.name}
-                    {complex.city && (
-                      <span className="text-xs text-muted-foreground ml-1">
-                        ({complex.city})
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4" />
+                      {complex.name}
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
         </div>
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={handleClose} disabled={isSaving}>
+
+        <DialogFooter>
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)} 
+            disabled={isSubmitting || isReadOnlyMode}
+          >
+            <X className="w-4 h-4 mr-2" />
             Отмена
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={isSaving || isReadOnlyMode}
-            className={cn('w-full sm:w-auto', isReadOnlyMode && 'cursor-not-allowed')}
+          <Button 
+            onClick={handleAssign} 
+            disabled={isSubmitting || isReadOnlyMode || selectedComplexId === currentComplexId}
           >
-            {isSaving ? 'Сохраняем…' : 'Сохранить'}
+            {isSubmitting ? 'Сохранение...' : 'Сохранить'}
+            <Check className="w-4 h-4 ml-2" />
           </Button>
         </DialogFooter>
       </DialogContent>
