@@ -25,6 +25,7 @@ import { OrdersCalendar } from '@/components/OrdersCalendar';
 import { CleanerRatingDisplay } from '@/components/CleanerRatingDisplay';
 import { CleanerFilters } from '@/components/CleanerFilters';
 import { UserAvatar } from '@/components/UserAvatar';
+import { Tables } from '@/integrations/supabase/types';
 
 interface PropertyObject {
   id: string;
@@ -233,9 +234,9 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     const { data, error } = await supabase
       .from('cleaner_pricing')
       .select('price_studio, price_one_plus_one, price_two_plus_one')
-      .eq('cleaner_id', cleanerId)
+      .eq('user_id', cleanerId) // Changed from cleaner_id to user_id
       .eq('complex_id', complexId)
-      .maybeSingle();
+      .maybeSingle<Tables<'cleaner_pricing'>>(); // Explicitly type the return
 
     if (error) {
       console.error('Error fetching complex pricing:', error);

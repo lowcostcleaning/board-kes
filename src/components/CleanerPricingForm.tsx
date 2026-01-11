@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Banknote } from 'lucide-react';
+import { Tables } from '@/integrations/supabase/types'; // Import Tables type
 
 interface ResidentialComplex {
   id: string;
@@ -13,12 +14,8 @@ interface ResidentialComplex {
   city: string | null;
 }
 
-interface CleanerPricingRow {
-  complex_id: string; // Reverted to complex_id to match DB
-  price_studio: number | null;
-  price_one_plus_one: number | null;
-  price_two_plus_one: number | null;
-}
+// Use the Tables type for CleanerPricingRow
+type CleanerPricingRow = Tables<'cleaner_pricing'>;
 
 interface CleanerPricingFormProps {
   cleanerId: string;
@@ -47,8 +44,8 @@ const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) =>
         // Fetch existing prices for the cleaner from cleaner_pricing
         const { data: pricesData, error: pricesError } = await supabase
           .from('cleaner_pricing')
-          .select('complex_id, price_studio, price_one_plus_one, price_two_plus_one') // Changed to complex_id
-          .eq('cleaner_id', cleanerId);
+          .select('complex_id, price_studio, price_one_plus_one, price_two_plus_one')
+          .eq('user_id', cleanerId); // Corrected to user_id
 
         if (pricesError) throw pricesError;
 
@@ -56,8 +53,8 @@ const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) =>
 
         const initialPricing: Record<string, number> = {};
         prices.forEach((p) => {
-          if (p && p.complex_id) { // Changed to complex_id
-            initialPricing[p.complex_id] = // Changed to complex_id
+          if (p && p.complex_id) {
+            initialPricing[p.complex_id] =
               p.price_studio ?? p.price_one_plus_one ?? p.price_two_plus_one ?? 0;
           }
         });
@@ -92,10 +89,10 @@ const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) =>
     setError(null);
 
     try {
-      // Build payload matching cleaner_pricing insert shape: cleaner_id + complex_id required
-      const payload = Object.entries(pricingData).map(([complex_id, price]) => ({ // Changed to complex_id
-        cleaner_id: cleanerId,
-        complex_id, // Changed to complex_id
+      // Build payload matching cleaner_pricing insert shape: user_id + complex_id required
+      const payload = Object.entries(pricingData).map(([complex_id, price]) => ({
+        user_id: cleanerId, // Corrected to user_id
+        complex_id,
         price_studio: price,
         price_one_plus_one: price,
         price_two_plus_one: price,
@@ -103,7 +100,7 @@ const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) =>
 
       const { error: upsertError } = await supabase
         .from('cleaner_pricing')
-        .upsert(payload, { onConflict: 'cleaner_id,complex_id' }); // Changed to complex_id
+        .upsert(payload, { onConflict: 'user_id,complex_id' }); // Corrected onConflict
 
       if (upsertError) throw upsertError;
 

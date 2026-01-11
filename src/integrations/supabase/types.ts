@@ -117,7 +117,7 @@ export type Database = {
       }
       cleaner_pricing: {
         Row: {
-          cleaner_id: string
+          user_id: string // Changed from cleaner_id
           created_at: string | null
           id: string
           price_one_plus_one: number | null
@@ -127,7 +127,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          cleaner_id: string
+          user_id: string // Changed from cleaner_id
           created_at?: string | null
           id?: string
           price_one_plus_one?: number | null
@@ -137,7 +137,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          cleaner_id?: string
+          user_id?: string // Changed from cleaner_id
           created_at?: string | null
           id?: string
           price_one_plus_one?: number | null
