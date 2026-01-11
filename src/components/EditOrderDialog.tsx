@@ -42,7 +42,7 @@ interface EditOrderDialogProps {
     cleaner_id: string;
     user_id: string; // This is the manager_id
     object_id: string; // Added object_id
-    complex_id: string | null; // This is the complex_id from the object
+    residential_complex_id: string | null; // Corrected to residential_complex_id
   } | null;
   onSuccess: () => void;
   canDelete: boolean;
@@ -85,7 +85,7 @@ export const EditOrderDialog = ({
     if (open && order) {
       setSelectedDate(new Date(order.scheduled_date));
       setSelectedTime(order.scheduled_time);
-      setResidentialComplexId(order.complex_id || NO_COMPLEX_VALUE); // Use order.complex_id
+      setResidentialComplexId(order.residential_complex_id || NO_COMPLEX_VALUE); // Use order.residential_complex_id
       fetchCleanerData();
       if (order.user_id) { // Use order.user_id (manager_id) to fetch complexes
         fetchComplexes(order.user_id);
@@ -184,10 +184,10 @@ export const EditOrderDialog = ({
       };
 
       if (canEditComplex) {
-        // When editing complex, we need to update the object's complex_id
+        // When editing complex, we need to update the object's residential_complex_id
         const { error: objectUpdateError } = await supabase
           .from('objects')
-          .update({ complex_id: residentialComplexId === NO_COMPLEX_VALUE ? null : residentialComplexId })
+          .update({ residential_complex_id: residentialComplexId === NO_COMPLEX_VALUE ? null : residentialComplexId })
           .eq('id', order.object_id); // Use order.object_id here
 
         if (objectUpdateError) throw objectUpdateError;
@@ -256,12 +256,12 @@ export const EditOrderDialog = ({
   const hasChanges = order && selectedDate && selectedTime && (
     format(selectedDate, 'yyyy-MM-dd') !== order.scheduled_date ||
     selectedTime !== order.scheduled_time ||
-    (canEditComplex && (residentialComplexId === NO_COMPLEX_VALUE ? null : residentialComplexId) !== order.complex_id)
+    (canEditComplex && (residentialComplexId === NO_COMPLEX_VALUE ? null : residentialComplexId) !== order.residential_complex_id)
   );
 
   const complexLabel = () => {
-    if (order?.complex_id) {
-      const complex = complexes.find(c => c.id === order.complex_id);
+    if (order?.residential_complex_id) {
+      const complex = complexes.find(c => c.id === order.residential_complex_id);
       return (complex && complex.name) || 'Привязан к ЖК';
     }
     return 'Без ЖК';
@@ -401,3 +401,5 @@ export const EditOrderDialog = ({
     </>
   );
 };
+
+export const EditObjectDialog = EditOrderDialog;

@@ -32,7 +32,7 @@ interface PropertyObject {
   complex_name: string;
   apartment_number: string;
   apartment_type: string | null;
-  user_id: string;
+  residential_complex_id: string | null; // Corrected to residential_complex_id
 }
 
 interface Manager {
@@ -152,7 +152,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     
     const { data, error } = await supabase
       .from('objects')
-      .select('id, complex_name, apartment_number, apartment_type, user_id')
+      .select('id, complex_name, apartment_number, apartment_type, user_id, residential_complex_id') // Corrected to residential_complex_id
       .eq('user_id', managerId)
       .order('created_at', { ascending: false });
 
@@ -219,7 +219,6 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     setCleanerUnavailableDates([]);
     setBusyTimeSlots([]);
     setSortBy('name');
-    setObjects([]);
   };
 
   const handleManagerSelect = (managerId: string) => {

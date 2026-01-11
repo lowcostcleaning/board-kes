@@ -24,7 +24,8 @@ interface CleanerOrder {
   user_id: string; // Added user_id
   object: {
     apartment_number: string;
-    complex: {
+    residential_complex_id: string | null; // Corrected to residential_complex_id
+    complex: { // Nested complex for name
       id: string;
       name: string;
     } | null;
@@ -91,6 +92,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
           object_id,
           object:objects(
             apartment_number,
+            residential_complex_id,
             complex:residential_complexes(
               id,
               name
@@ -141,6 +143,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
         user_id: order.manager_id, // Assuming manager_id is the user_id for the order
         object: {
           apartment_number: order.object.apartment_number,
+          residential_complex_id: order.object.residential_complex_id,
           complex: order.object.complex || null,
         },
         manager: managerMap.get(order.manager_id) || { email: 'Неизвестно', name: null, avatar_url: null },
@@ -420,7 +423,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
           cleaner_id: editingOrder.cleaner_id,
           user_id: editingOrder.manager_id, // Pass manager_id as user_id
           object_id: editingOrder.object_id, // Pass object_id
-          complex_id: editingOrder.object.complex?.id || null, // Pass complex_id from nested complex
+          residential_complex_id: editingOrder.object.residential_complex_id, // Pass residential_complex_id from object
         } : null}
         onSuccess={onRefresh}
         canDelete={editingOrder?.manager_id === editingOrder?.cleaner_id}

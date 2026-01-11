@@ -89,7 +89,7 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
 
   const handleDeleteComplex = async (complex: ResidentialComplex) => {
     if (checkReadOnly()) return;
-    const linkedObjects = objects.filter((obj) => obj.complex_id === complex.id);
+    const linkedObjects = objects.filter((obj) => obj.residential_complex_id === complex.id); // Corrected to residential_complex_id
     if (linkedObjects.length > 0) {
       toast({
         title: 'Ошибка',
@@ -302,7 +302,7 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
                 <div className="flex items-center gap-2">
                   <Home className="w-4 h-4 text-muted-foreground" />
                   <span className="font-medium">{obj.complex_name}, кв. {obj.apartment_number}</span>
-                  {obj.complex_id ? (
+                  {obj.residential_complex_id ? ( // Corrected to residential_complex_id
                     <Badge variant="outline">
                       ЖК: {obj.residential_complex_name || 'Неизвестный'}
                     </Badge>
@@ -407,7 +407,7 @@ export const AdminObjectsTab = ({ isReadOnlyMode }: AdminObjectsTabProps) => {
           open={showAssignDialog}
           onOpenChange={setShowAssignDialog}
           objectName={`${assigningObject.complex_name}, кв. ${assigningObject.apartment_number}`}
-          currentComplexId={assigningObject.complex_id}
+          currentComplexId={assigningObject.residential_complex_id} // Corrected to residential_complex_id
           residentialComplexes={residentialComplexes}
           onAssign={handleAssignComplexSubmit}
           isReadOnlyMode={isReadOnlyMode}

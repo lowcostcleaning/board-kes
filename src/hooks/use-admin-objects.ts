@@ -11,7 +11,7 @@ export interface AdminObject {
   apartment_number: string;
   apartment_type: string | null;
   user_id: string;
-  complex_id: string | null;
+  residential_complex_id: string | null; // Corrected to residential_complex_id
   is_archived: boolean;
   created_at: string;
   updated_at: string;
@@ -88,7 +88,7 @@ export const useAdminObjects = () => {
 
     const mappedObjects: AdminObject[] = (objectsData || []).map((obj) => {
       const owner = profilesMap.get(obj.user_id);
-      const complex = obj.complex_id ? complexesMap.get(obj.complex_id) : null;
+      const complex = obj.residential_complex_id ? complexesMap.get(obj.residential_complex_id) : null; // Corrected to residential_complex_id
 
       return {
         ...obj,
@@ -118,9 +118,9 @@ export const useAdminObjects = () => {
     }
 
     if (filters.complexId === 'none') {
-      result = result.filter((obj) => obj.complex_id === null);
+      result = result.filter((obj) => obj.residential_complex_id === null); // Corrected to residential_complex_id
     } else if (filters.complexId && filters.complexId !== 'none') {
-      result = result.filter((obj) => obj.complex_id === filters.complexId);
+      result = result.filter((obj) => obj.residential_complex_id === filters.complexId); // Corrected to residential_complex_id
     }
 
     if (filters.status === 'active') {
@@ -130,7 +130,7 @@ export const useAdminObjects = () => {
     }
 
     if (filters.withoutComplex) {
-      result = result.filter((obj) => !obj.complex_id);
+      result = result.filter((obj) => !obj.residential_complex_id); // Corrected to residential_complex_id
     }
 
     if (filters.search) {
@@ -196,7 +196,7 @@ export const useAdminObjects = () => {
   }, [toast]);
 
   const deleteResidentialComplex = useCallback(async (id: string): Promise<boolean> => {
-    const linkedObjects = objects.filter((obj) => obj.complex_id === id);
+    const linkedObjects = objects.filter((obj) => obj.residential_complex_id === id); // Corrected to residential_complex_id
     if (linkedObjects.length > 0) {
       toast({
         title: 'Ошибка',
@@ -224,10 +224,10 @@ export const useAdminObjects = () => {
     return true;
   }, [objects, toast]);
 
-  const updateObjectComplex = useCallback(async (objectId: string, complexId: string | null): Promise<boolean> => {
+  const updateObjectComplex = useCallback(async (objectId: string, residentialComplexId: string | null): Promise<boolean> => { // Corrected to residentialComplexId
     const { error } = await supabase
       .from('objects')
-      .update({ complex_id: complexId })
+      .update({ residential_complex_id: residentialComplexId }) // Corrected to residential_complex_id
       .eq('id', objectId);
 
     if (error) {

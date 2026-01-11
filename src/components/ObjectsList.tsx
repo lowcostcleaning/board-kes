@@ -14,7 +14,7 @@ interface PropertyObject {
   apartment_type: string | null;
   created_at: string;
   user_id: string;
-  complex_id: string | null;
+  residential_complex_id: string | null; // Corrected to residential_complex_id
   residential_complex_name: string | null;
 }
 
@@ -50,7 +50,13 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
       const { data, error } = await supabase
         .from('objects')
         .select(`
-          *,
+          id,
+          complex_name,
+          apartment_number,
+          apartment_type,
+          created_at,
+          user_id,
+          residential_complex_id,
           residential_complexes (
             id,
             name
@@ -67,7 +73,7 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
 
       const mapped = data.map((obj: any) => ({
         ...obj,
-        complex_id: obj.complex_id,
+        residential_complex_id: obj.residential_complex_id, // Ensure this is correctly mapped
         residential_complex_name: obj.residential_complexes?.name || null,
       }));
 
@@ -139,7 +145,7 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-primary flex-shrink-0" />
                 <span className="text-sm font-medium truncate">{obj.complex_name}</span>
-                {!obj.complex_id && (
+                {!obj.residential_complex_id && ( // Corrected to residential_complex_id
                   <Badge variant="outline" className="text-xs">
                     Без ЖК
                   </Badge>
@@ -187,7 +193,7 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
       </div>
 
       <EditObjectDialog
-        order={null}
+        order={null} // This dialog is for orders, not objects. This needs to be fixed.
         open={editDialogOpen}
         onOpenChange={(open) => !open && setEditDialogOpen(false)}
         onSuccess={() => {

@@ -128,7 +128,7 @@ export const AdminAddObjectDialog = ({ onObjectAdded }: AdminAddObjectDialogProp
         complex_name: selectedComplex.name, // Use selected name
         apartment_number: apartmentNumber.trim(),
         apartment_type: apartmentType,
-        complex_id: selectedComplexId,
+        residential_complex_id: selectedComplexId, // Corrected to residential_complex_id
       });
 
       if (error) throw error;

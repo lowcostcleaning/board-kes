@@ -106,14 +106,14 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
       if (!user) throw new Error('Пользователь не авторизован');
 
       const selectedComplex = complexes.find((complex) => complex.id === selectedComplexId);
-      const complexIdToUse = selectedComplexId === NO_COMPLEX_VALUE ? null : selectedComplexId;
+      const residentialComplexIdToUse = selectedComplexId === NO_COMPLEX_VALUE ? null : selectedComplexId; // Corrected to residential_complex_id
 
       const { error } = await supabase.from('objects').insert({
         user_id: user.id,
         complex_name: selectedComplex?.name || 'Без ЖК',
         apartment_number: apartmentNumber.trim(),
         apartment_type: apartmentType,
-        complex_id: complexIdToUse,
+        residential_complex_id: residentialComplexIdToUse, // Corrected to residential_complex_id
       });
 
       if (error) throw error;

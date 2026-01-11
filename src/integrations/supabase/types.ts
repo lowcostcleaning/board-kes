@@ -117,33 +117,33 @@ export type Database = {
       }
       cleaner_pricing: {
         Row: {
-          user_id: string // Changed from cleaner_id
+          user_id: string
           created_at: string | null
           id: string
           price_one_plus_one: number | null
           price_studio: number | null
           price_two_plus_one: number | null
-          complex_id: string
+          complex_id: string // Correct: complex_id
           updated_at: string | null
         }
         Insert: {
-          user_id: string // Changed from cleaner_id
+          user_id: string
           created_at?: string | null
           id?: string
           price_one_plus_one?: number | null
           price_studio?: number | null
           price_two_plus_one?: number | null
-          complex_id: string
+          complex_id: string // Correct: complex_id
           updated_at?: string | null
         }
         Update: {
-          user_id?: string // Changed from cleaner_id
+          user_id?: string
           created_at?: string | null
           id?: string
           price_one_plus_one?: number | null
           price_studio?: number | null
           price_two_plus_one?: number | null
-          complex_id?: string
+          complex_id?: string // Correct: complex_id
           updated_at?: string | null
         }
         Relationships: [
@@ -287,7 +287,7 @@ export type Database = {
           created_at: string
           id: string
           is_archived: boolean
-          complex_id: string | null
+          residential_complex_id: string | null // Correct: residential_complex_id
           updated_at: string
           user_id: string
         }
@@ -298,7 +298,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_archived?: boolean
-          complex_id?: string | null
+          residential_complex_id?: string | null // Correct: residential_complex_id
           updated_at?: string
           user_id: string
         }
@@ -309,14 +309,14 @@ export type Database = {
           created_at?: string
           id?: string
           is_archived?: boolean
-          complex_id?: string | null
+          residential_complex_id?: string | null // Correct: residential_complex_id
           updated_at?: string
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "objects_residential_complex_id_fkey"
-            columns: ["complex_id"]
+            columns: ["residential_complex_id"]
             isOneToOne: false
             referencedRelation: "residential_complexes"
             referencedColumns: ["id"]
