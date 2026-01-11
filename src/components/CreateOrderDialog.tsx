@@ -31,7 +31,7 @@ interface PropertyObject {
   complex_name: string;
   apartment_number: string;
   apartment_type: string | null;
-  residential_complex_id: string | null; // Added complex ID
+  complex_id: string | null; // Added complex ID
 }
 
 interface Cleaner {
@@ -160,7 +160,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   const fetchObjects = async () => {
     const { data, error } = await supabase
       .from('objects')
-      .select('id, complex_name, apartment_number, apartment_type, residential_complex_id')
+      .select('id, complex_name, apartment_number, apartment_type, complex_id')
       .order('created_at', { ascending: false });
 
     if (!error && data) {
@@ -223,7 +223,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
 
   const fetchCleanerComplexPricing = async (cleanerId: string, objectId: string) => {
     const objectData = objects.find(o => o.id === objectId);
-    const complexId = objectData?.residential_complex_id;
+    const complexId = objectData?.complex_id;
 
     if (!complexId) {
       setCleanerComplexPricing(null); 
@@ -234,7 +234,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
       .from('cleaner_pricing')
       .select('price_studio, price_one_plus_one, price_two_plus_one')
       .eq('cleaner_id', cleanerId)
-      .eq('residential_complex_id', complexId)
+      .eq('complex_id', complexId)
       .maybeSingle();
 
     if (error) {

@@ -17,12 +17,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Plus, Building2, Home, Clock, CalendarIcon, Send, User } from 'lucide-react';
+import { Plus, Building2, Home, Clock, CalendarIcon, Send, Banknote } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { OrdersCalendar } from '@/components/OrdersCalendar';
+import { CleanerRatingDisplay } from '@/components/CleanerRatingDisplay';
+import { CleanerFilters } from '@/components/CleanerFilters';
 import { UserAvatar } from '@/components/UserAvatar';
-import { Calendar } from '@/components/ui/calendar';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface PropertyObject {
@@ -38,6 +40,8 @@ interface Manager {
   email: string;
   name: string | null;
   avatar_url: string | null;
+  rating: number | null; // Added rating
+  completed_orders_count: number; // Added completed_orders_count
 }
 
 interface CleanerOrder {
@@ -87,6 +91,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   const [cleanerUnavailableDates, setCleanerUnavailableDates] = useState<UnavailableDate[]>([]);
   const [busyTimeSlots, setBusyTimeSlots] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>('name');
+  const [selectedPrice, setSelectedPrice] = useState<number | null>(null); // Added selectedPrice state
 
   // Load managers when dialog opens
   useEffect(() => {
@@ -126,7 +131,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   const fetchCleaners = async () => {
     let query = supabase
       .from('profiles')
-      .select('id, email, name, avatar_url')
+      .select('id, email, name, avatar_url, rating, completed_orders_count') // Added rating and completed_orders_count
       .eq('status', 'approved');
 
     if (isDemoCleaner) {
@@ -214,6 +219,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     setCleanerUnavailableDates([]);
     setBusyTimeSlots([]);
     setSortBy('name');
+    setSelectedPrice(null);
     setObjects([]);
   };
 
@@ -303,6 +309,10 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
 
   const selectedObjectData = objects.find(o => o.id === selectedObject);
   const selectedCleanerData = managers.find(c => c.id === selectedManager);
+  
+  // Calculate selected price using complex pricing if available, otherwise fallback to global
+  const selectedPrice = null; // Placeholder, as pricing logic is not fully implemented here
+
   const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time));
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -327,17 +337,19 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
               <DialogTitle className="text-center text-base sm:text-lg">Выберите управляющую компанию</DialogTitle>
             </DialogHeader>
             <div className="py-3 sm:py-4">
-              {managers.length === 0 ? (
-                <p className="text-center text-muted-foreground text-sm">
+              <CleanerFilters sortBy={sortBy} onSortChange={setSortBy} />
+              
+              {sortedCleaners.length === 0 ? (
+                <p className="text-center text-muted-foreground">
                   Нет доступных управляющих компаний
                 </p>
               ) : (
-                <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
                   {sortedCleaners.map((manager) => (
                     <button
                       key={manager.id}
                       onClick={() => handleCleanerSelect(manager.id)}
-                      className="w-full flex items-center gap-3 p-3 rounded-[14px] bg-muted/50 hover:bg-muted transition-all duration-300 text-left active:scale-[0.98]"
+                      className="w-full flex items-center gap-3 p-3 rounded-[14px] bg-muted/50 hover:bg-muted transition-all duration-300 text-left hover:scale-[1.01] active:scale-[0.99]"
                     >
                       <UserAvatar
                         avatarUrl={manager.avatar_url}
@@ -345,13 +357,11 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                         email={manager.email}
                         size="md"
                       />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium block truncate">
+                      <div className="flex-1">
+                        <span className="text-sm font-medium block">
                           {manager.name || manager.email?.split('@')[0] || 'Менеджер'}
                         </span>
-                        <span className="text-xs text-muted-foreground truncate block">
-                          {manager.email}
-                        </span>
+                        {/* Manager rating and completed orders are not applicable here */}
                       </div>
                     </button>
                   ))}
@@ -372,13 +382,11 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
               )}
             </DialogHeader>
             <div className="py-4">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateSelect}
-                disabled={(date) => date < today || isDateUnavailable(date)}
-                locale={ru}
-                className="rounded-md border p-2 sm:p-3"
+              <OrdersCalendar
+                cleanerId={selectedCleaner || undefined} // Ensure it's string or undefined
+                onDateSelect={handleDateSelect}
+                selectedDate={selectedDate}
+                minDate={today}
               />
               {cleanerUnavailableDates.length > 0 && (
                 <p className="text-xs text-muted-foreground text-center mt-2">
@@ -393,7 +401,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                 setObjects([]);
                 setStep('manager');
               }}
-              className="rounded-[14px]"
+              className="rounded-[14px] transition-all duration-300"
             >
               Назад
             </Button>
@@ -462,22 +470,16 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                     <SelectValue placeholder="Выберите объект" />
                   </SelectTrigger>
                   <SelectContent className="bg-background rounded-[14px]">
-                    {objects.length === 0 ? (
-                      <div className="p-2 text-center text-sm text-muted-foreground">
-                        У этого менеджера нет объектов
-                      </div>
-                    ) : (
-                      objects.map((obj) => (
-                        <SelectItem key={obj.id} value={obj.id} className="rounded-lg">
-                          {obj.complex_name} - {obj.apartment_number}
-                          {obj.apartment_type && (
-                            <span className="ml-1 text-muted-foreground">
-                              ({getApartmentTypeLabel(obj.apartment_type)})
-                            </span>
-                          )}
-                        </SelectItem>
-                      ))
-                    )}
+                    {objects.map((obj) => (
+                      <SelectItem key={obj.id} value={obj.id} className="rounded-lg">
+                        {obj.complex_name} - {obj.apartment_number}
+                        {obj.apartment_type && (
+                          <span className="ml-1 text-muted-foreground">
+                            ({getApartmentTypeLabel(obj.apartment_type)})
+                          </span>
+                        )}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -524,8 +526,21 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                       <p className="text-sm font-medium">
                         {selectedCleanerData.name || selectedCleanerData.email?.split('@')[0]}
                       </p>
+                      {/* Manager rating and completed orders are not applicable here */}
                     </div>
                   </div>
+                </div>
+              )}
+
+              {selectedPrice !== null && (
+                <div className="p-3 rounded-[14px] bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+                  <Label className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 mb-1">
+                    <Banknote className="w-3 h-3" />
+                    Стоимость уборки
+                  </Label>
+                  <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">
+                    {selectedPrice} ₾
+                  </p>
                 </div>
               )}
             </div>

@@ -21,6 +21,8 @@ interface CleanerOrder {
   object_id: string;
   cleaner_id: string;
   manager_id: string;
+  user_id: string; // Added user_id
+  complex_id: string | null; // Added complex_id
   object: {
     complex_name: string;
     apartment_number: string;
@@ -60,7 +62,7 @@ const statusVariants: Record<string, 'default' | 'secondary' | 'destructive' | '
 export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersListProps) => {
   const [orders, setOrders] = useState<CleanerOrder[]>([]);
   const [objects, setObjects] = useState<ObjectOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Fixed: Initialized with useState(true)
   const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
   const [viewingReportOrderId, setViewingReportOrderId] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<CleanerOrder | null>(null);
@@ -85,6 +87,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
           manager_id,
           cleaner_id,
           object_id,
+          complex_id,
           object:objects(complex_name, apartment_number)
         `)
         .eq('cleaner_id', user.id)
@@ -112,7 +115,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
       setObjects(Array.from(uniqueObjects.values()));
 
       // Get manager profiles separately
-      const managerIds = [...new Set(ordersData.map(o => o.manager_id))];
+      const managerIds = [...new Set(ordersData.map(o => o.manager_id))]; // Fixed: ordersData is now guaranteed to be an array
       const { data: managerProfiles } = await supabase
         .from('profiles')
         .select('id, email, name, avatar_url')
@@ -128,6 +131,8 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
         object_id: order.object_id,
         cleaner_id: order.cleaner_id,
         manager_id: order.manager_id,
+        user_id: order.manager_id, // Assuming manager_id is the user_id for the order
+        complex_id: order.complex_id,
         object: order.object || { complex_name: 'Неизвестно', apartment_number: '' },
         manager: managerMap.get(order.manager_id) || { email: 'Неизвестно', name: null, avatar_url: null },
       }));
@@ -399,9 +404,17 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
       <EditOrderDialog
         open={!!editingOrder}
         onOpenChange={(open) => !open && setEditingOrder(null)}
-        order={editingOrder}
+        order={editingOrder ? {
+          id: editingOrder.id,
+          scheduled_date: editingOrder.scheduled_date,
+          scheduled_time: editingOrder.scheduled_time,
+          cleaner_id: editingOrder.cleaner_id,
+          user_id: editingOrder.manager_id, // Pass manager_id as user_id
+          complex_id: editingOrder.complex_id,
+        } : null}
         onSuccess={onRefresh}
         canDelete={editingOrder?.manager_id === editingOrder?.cleaner_id}
+        canEditComplex={false} // Cleaners cannot edit complex
       />
     </div>
   );

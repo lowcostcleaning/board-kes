@@ -118,7 +118,7 @@ export const AssignComplexDialog = ({
             onClick={handleAssign} 
             disabled={isSubmitting || isReadOnlyMode || selectedComplexId === currentComplexId}
           >
-            {isSubmitting ? 'Сохранение...' : 'Сохранить'}
+            {isSubmitting ? 'Сохранить...' : 'Сохранить'}
             <Check className="w-4 h-4 ml-2" />
           </Button>
         </DialogFooter>

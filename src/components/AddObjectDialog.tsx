@@ -113,7 +113,7 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
         complex_name: selectedComplex?.name || 'Без ЖК',
         apartment_number: apartmentNumber.trim(),
         apartment_type: apartmentType,
-        residential_complex_id: complexIdToUse,
+        complex_id: complexIdToUse,
       });
 
       if (error) throw error;

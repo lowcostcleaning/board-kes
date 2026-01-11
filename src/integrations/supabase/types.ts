@@ -123,7 +123,7 @@ export type Database = {
           price_one_plus_one: number | null
           price_studio: number | null
           price_two_plus_one: number | null
-          residential_complex_id: string
+          complex_id: string
           updated_at: string | null
         }
         Insert: {
@@ -133,7 +133,7 @@ export type Database = {
           price_one_plus_one?: number | null
           price_studio?: number | null
           price_two_plus_one?: number | null
-          residential_complex_id: string
+          complex_id: string
           updated_at?: string | null
         }
         Update: {
@@ -143,20 +143,13 @@ export type Database = {
           price_one_plus_one?: number | null
           price_studio?: number | null
           price_two_plus_one?: number | null
-          residential_complex_id?: string
+          complex_id?: string
           updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "cleaner_pricing_cleaner_id_fkey"
-            columns: ["cleaner_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "cleaner_pricing_residential_complex_id_fkey"
-            columns: ["residential_complex_id"]
+            columns: ["complex_id"]
             isOneToOne: false
             referencedRelation: "residential_complexes"
             referencedColumns: ["id"]
@@ -294,7 +287,7 @@ export type Database = {
           created_at: string
           id: string
           is_archived: boolean
-          residential_complex_id: string | null
+          complex_id: string | null
           updated_at: string
           user_id: string
         }
@@ -305,7 +298,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_archived?: boolean
-          residential_complex_id?: string | null
+          complex_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -316,14 +309,14 @@ export type Database = {
           created_at?: string
           id?: string
           is_archived?: boolean
-          residential_complex_id?: string | null
+          complex_id?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "objects_residential_complex_id_fkey"
-            columns: ["residential_complex_id"]
+            columns: ["complex_id"]
             isOneToOne: false
             referencedRelation: "residential_complexes"
             referencedColumns: ["id"]

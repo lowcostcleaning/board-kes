@@ -14,7 +14,7 @@ interface PropertyObject {
   apartment_type: string | null;
   created_at: string;
   user_id: string;
-  residential_complex_id: string | null;
+  complex_id: string | null;
   residential_complex_name: string | null;
 }
 
@@ -67,6 +67,7 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
 
       const mapped = data.map((obj: any) => ({
         ...obj,
+        complex_id: obj.complex_id,
         residential_complex_name: obj.residential_complexes?.name || null,
       }));
 
@@ -138,7 +139,7 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-primary flex-shrink-0" />
                 <span className="text-sm font-medium truncate">{obj.complex_name}</span>
-                {!obj.residential_complex_id && (
+                {!obj.complex_id && (
                   <Badge variant="outline" className="text-xs">
                     Без ЖК
                   </Badge>

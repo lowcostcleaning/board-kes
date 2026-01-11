@@ -11,7 +11,7 @@ export interface AdminObject {
   apartment_number: string;
   apartment_type: string | null;
   user_id: string;
-  residential_complex_id: string | null;
+  complex_id: string | null;
   is_archived: boolean;
   created_at: string;
   updated_at: string;
@@ -30,7 +30,7 @@ export interface ResidentialComplex {
 
 export interface ObjectFilters {
   managerId: string | null;
-  residentialComplexId: string | null | 'none';
+  complexId: string | null | 'none';
   status: 'all' | 'active' | 'archived';
   search: string;
   withoutComplex: boolean;
@@ -38,7 +38,7 @@ export interface ObjectFilters {
 
 const defaultFilters: ObjectFilters = {
   managerId: null,
-  residentialComplexId: null,
+  complexId: null,
   status: 'active',
   search: '',
   withoutComplex: false,
@@ -88,7 +88,7 @@ export const useAdminObjects = () => {
 
     const mappedObjects: AdminObject[] = (objectsData || []).map((obj) => {
       const owner = profilesMap.get(obj.user_id);
-      const complex = obj.residential_complex_id ? complexesMap.get(obj.residential_complex_id) : null;
+      const complex = obj.complex_id ? complexesMap.get(obj.complex_id) : null;
 
       return {
         ...obj,
@@ -117,10 +117,10 @@ export const useAdminObjects = () => {
       result = result.filter((obj) => obj.user_id === filters.managerId);
     }
 
-    if (filters.residentialComplexId === 'none') {
-      result = result.filter((obj) => obj.residential_complex_id === null);
-    } else if (filters.residentialComplexId && filters.residentialComplexId !== 'none') {
-      result = result.filter((obj) => obj.residential_complex_id === filters.residentialComplexId);
+    if (filters.complexId === 'none') {
+      result = result.filter((obj) => obj.complex_id === null);
+    } else if (filters.complexId && filters.complexId !== 'none') {
+      result = result.filter((obj) => obj.complex_id === filters.complexId);
     }
 
     if (filters.status === 'active') {
@@ -130,7 +130,7 @@ export const useAdminObjects = () => {
     }
 
     if (filters.withoutComplex) {
-      result = result.filter((obj) => !obj.residential_complex_id);
+      result = result.filter((obj) => !obj.complex_id);
     }
 
     if (filters.search) {
@@ -196,7 +196,7 @@ export const useAdminObjects = () => {
   }, [toast]);
 
   const deleteResidentialComplex = useCallback(async (id: string): Promise<boolean> => {
-    const linkedObjects = objects.filter((obj) => obj.residential_complex_id === id);
+    const linkedObjects = objects.filter((obj) => obj.complex_id === id);
     if (linkedObjects.length > 0) {
       toast({
         title: 'Ошибка',
@@ -227,7 +227,7 @@ export const useAdminObjects = () => {
   const updateObjectComplex = useCallback(async (objectId: string, complexId: string | null): Promise<boolean> => {
     const { error } = await supabase
       .from('objects')
-      .update({ residential_complex_id: complexId })
+      .update({ complex_id: complexId })
       .eq('id', objectId);
 
     if (error) {
