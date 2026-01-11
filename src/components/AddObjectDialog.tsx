@@ -66,10 +66,11 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
         return;
       }
 
+      // Fetch complexes that belong to the current manager OR have no manager assigned (created by admin)
       const { data, error } = await supabase
         .from('residential_complexes')
         .select('id, name')
-        .eq('manager_id', user.id)
+        .or(`manager_id.eq.${user.id},manager_id.is.null`)
         .order('name');
 
       if (error) throw error;
@@ -179,7 +180,7 @@ export const AddObjectDialog = ({ onObjectAdded, disabled }: AddObjectDialogProp
                     <SelectItem value="__no_options__" disabled>
                       {isLoadingComplexes
                         ? 'ЖК загружаются...'
-                        : 'Нет ЖК — обратитесь к администратору'}
+                        : 'Нет доступных ЖК'}
                     </SelectItem>
                   )}
                 </SelectContent>
