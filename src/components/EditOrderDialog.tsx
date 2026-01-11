@@ -40,8 +40,9 @@ interface EditOrderDialogProps {
     scheduled_date: string;
     scheduled_time: string;
     cleaner_id: string;
-    user_id: string;
-    complex_id: string | null;
+    user_id: string; // This is the manager_id
+    object_id: string; // Added object_id
+    complex_id: string | null; // This is the complex_id from the object
   } | null;
   onSuccess: () => void;
   canDelete: boolean;
@@ -76,17 +77,17 @@ export const EditOrderDialog = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [cleanerOrders, setCleanerOrders] = useState<CleanerOrder[]>([]);
   const [unavailableDates, setUnavailableDates] = useState<UnavailableDate[]>([]);
-  const [busyTimeSlots, setBusyTimeSlots] = useState<string[]>([]); // Added busyTimeSlots state
-  const [complex_id, setComplex_id] = useState<string>(NO_COMPLEX_VALUE);
+  const [busyTimeSlots, setBusyTimeSlots] = useState<string[]>([]);
+  const [residentialComplexId, setResidentialComplexId] = useState<string>(NO_COMPLEX_VALUE); // Renamed from complex_id
   const [complexes, setComplexes] = useState<ResidentialComplex[]>([]);
 
   useEffect(() => {
     if (open && order) {
       setSelectedDate(new Date(order.scheduled_date));
       setSelectedTime(order.scheduled_time);
-      setComplex_id(order.complex_id || NO_COMPLEX_VALUE);
+      setResidentialComplexId(order.complex_id || NO_COMPLEX_VALUE); // Use order.complex_id
       fetchCleanerData();
-      if (order.user_id) {
+      if (order.user_id) { // Use order.user_id (manager_id) to fetch complexes
         fetchComplexes(order.user_id);
       }
     }
@@ -183,7 +184,13 @@ export const EditOrderDialog = ({
       };
 
       if (canEditComplex) {
-        payload.complex_id = complex_id === NO_COMPLEX_VALUE ? null : complex_id;
+        // When editing complex, we need to update the object's complex_id
+        const { error: objectUpdateError } = await supabase
+          .from('objects')
+          .update({ complex_id: residentialComplexId === NO_COMPLEX_VALUE ? null : residentialComplexId })
+          .eq('id', order.object_id); // Use order.object_id here
+
+        if (objectUpdateError) throw objectUpdateError;
       }
 
       const { error } = await supabase
@@ -249,7 +256,7 @@ export const EditOrderDialog = ({
   const hasChanges = order && selectedDate && selectedTime && (
     format(selectedDate, 'yyyy-MM-dd') !== order.scheduled_date ||
     selectedTime !== order.scheduled_time ||
-    (canEditComplex && (complex_id === NO_COMPLEX_VALUE ? null : complex_id) !== order.complex_id)
+    (canEditComplex && (residentialComplexId === NO_COMPLEX_VALUE ? null : residentialComplexId) !== order.complex_id)
   );
 
   const complexLabel = () => {
@@ -277,12 +284,12 @@ export const EditOrderDialog = ({
                   <Building2 className="w-4 h-4" />
                   ЖК
                 </Label>
-                <Select value={complex_id} onValueChange={setComplex_id}>
+                <Select value={residentialComplexId} onValueChange={setResidentialComplexId}>
                   <SelectTrigger className="bg-muted/50">
                     <SelectValue>
-                      {complex_id === NO_COMPLEX_VALUE
+                      {residentialComplexId === NO_COMPLEX_VALUE
                         ? 'Без ЖК'
-                        : complexes.find((c) => c.id === complex_id)?.name || 'Выберите ЖК'}
+                        : complexes.find((c) => c.id === residentialComplexId)?.name || 'Выберите ЖК'}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -394,5 +401,3 @@ export const EditOrderDialog = ({
     </>
   );
 };
-
-export const EditObjectDialog = EditOrderDialog;

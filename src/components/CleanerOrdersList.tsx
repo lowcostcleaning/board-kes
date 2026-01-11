@@ -22,7 +22,6 @@ interface CleanerOrder {
   cleaner_id: string;
   manager_id: string;
   user_id: string; // Added user_id
-  complex_id: string | null; // Added complex_id
   object: {
     complex_name: string;
     apartment_number: string;
@@ -132,7 +131,6 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
         cleaner_id: order.cleaner_id,
         manager_id: order.manager_id,
         user_id: order.manager_id, // Assuming manager_id is the user_id for the order
-        complex_id: order.object?.complex_id || null, // Get complex_id from the joined object
         object: order.object || { complex_name: 'Неизвестно', apartment_number: '', complex_id: null },
         manager: managerMap.get(order.manager_id) || { email: 'Неизвестно', name: null, avatar_url: null },
       }));
@@ -410,7 +408,8 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
           scheduled_time: editingOrder.scheduled_time,
           cleaner_id: editingOrder.cleaner_id,
           user_id: editingOrder.manager_id, // Pass manager_id as user_id
-          complex_id: editingOrder.complex_id,
+          object_id: editingOrder.object_id, // Pass object_id
+          complex_id: editingOrder.object.complex_id, // Pass complex_id from object
         } : null}
         onSuccess={onRefresh}
         canDelete={editingOrder?.manager_id === editingOrder?.cleaner_id}
