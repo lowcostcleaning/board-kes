@@ -79,6 +79,7 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
 
       setObjects(mapped);
     } catch (error: any) {
+      console.error('Error fetching objects:', error); // Added console.error
       toast({
         title: 'Ошибка',
         description: 'Не удалось загрузить объекты',
