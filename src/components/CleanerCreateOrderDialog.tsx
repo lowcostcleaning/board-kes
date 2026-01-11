@@ -152,7 +152,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     
     const { data, error } = await supabase
       .from('objects')
-      .select('id, complex_name, apartment_number, apartment_type, user_id, residential_complex_id') // Corrected to residential_complex_id
+      .select('id, complex_name, apartment_number, apartment_type, user_id, residential_complex_id')
       .eq('user_id', managerId)
       .order('created_at', { ascending: false });
 
@@ -398,7 +398,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
               }}
               className="rounded-[14px] transition-all duration-300"
             >
-              Назад
+                Назад
             </Button>
           </>
         )}

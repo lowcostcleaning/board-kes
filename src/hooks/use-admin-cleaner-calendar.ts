@@ -64,7 +64,16 @@ export const useAdminCleanerCalendar = () => {
     // Fetch orders in date range
     let ordersQuery = supabase
       .from('orders')
-      .select('*')
+      .select(`
+        *,
+        object:objects(
+          complex_name,
+          apartment_number,
+          residential_complex:residential_complexes!objects_residential_complex_id_fkey(
+            name
+          )
+        )
+      `)
       .gte('scheduled_date', startDate)
       .lte('scheduled_date', endDate)
       .order('scheduled_date');
@@ -120,7 +129,7 @@ export const useAdminCleanerCalendar = () => {
     const objectsMap = new Map((objectsData || []).map(o => [o.id, o]));
 
     // Map orders with joined data
-    const mappedOrders: CleanerOrder[] = (ordersData || []).map(order => {
+    const mappedOrders: CleanerOrder[] = (ordersData || []).map((order: any) => {
       const cleaner = profilesMap.get(order.cleaner_id);
       const manager = profilesMap.get(order.manager_id);
       const object = objectsMap.get(order.object_id);

@@ -57,7 +57,7 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
           created_at,
           user_id,
           residential_complex_id,
-          residential_complexes (
+          residential_complex:residential_complexes!objects_residential_complex_id_fkey (
             id,
             name
           )
@@ -73,8 +73,8 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
 
       const mapped = data.map((obj: any) => ({
         ...obj,
-        residential_complex_id: obj.residential_complex_id, // Ensure this is correctly mapped
-        residential_complex_name: obj.residential_complexes?.name || null,
+        residential_complex_id: obj.residential_complex_id,
+        residential_complex_name: obj.residential_complex?.name || null,
       }));
 
       setObjects(mapped);
@@ -151,7 +151,7 @@ export const ObjectsList = ({ refreshTrigger, onRefresh, disabled }: ObjectsList
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-primary flex-shrink-0" />
                 <span className="text-sm font-medium truncate">{obj.complex_name}</span>
-                {!obj.residential_complex_id && ( // Corrected to residential_complex_id
+                {!obj.residential_complex_id && (
                   <Badge variant="outline" className="text-xs">
                     Без ЖК
                   </Badge>

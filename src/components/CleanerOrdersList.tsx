@@ -93,7 +93,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
           object:objects(
             apartment_number,
             residential_complex_id,
-            complex:residential_complexes(
+            complex:residential_complexes!objects_residential_complex_id_fkey (
               id,
               name
             )
