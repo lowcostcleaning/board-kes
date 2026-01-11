@@ -1,278 +1,155 @@
 import React, { useState, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Banknote, Save } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
-
-interface ResidentialComplex {
-  id: string;
-  name: string;
-}
-
-interface CleanerPricingFormData {
-  id?: string;
-  complex_id: string;
-  price_studio: number | null;
-  price_one_plus_one: number | null;
-  price_two_plus_one: number | null;
-}
-
-interface CleanerPricingRecord {
-  id?: string;
-  user_id: string; // Corrected from cleaner_id
-  residential_complex_id: string;
-  price_studio: number | null;
-  price_one_plus_one: number | null;
-  price_two_plus_one: number | null;
-  created_at?: string;
-  updated_at?: string;
-}
+import { supabase } from '../supabaseClient';
+import { useUser } from '@supabase/auth-helpers-react';
+import { CleanerPricingRecord, Complex } from '../types'; // Assuming these types are defined
 
 interface CleanerPricingFormProps {
-  onUpdate?: () => void;
+  cleanerId: string;
 }
 
-export const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ onUpdate }) => {
-  const { user } = useAuth();
-  const [complexes, setComplexes] = useState<ResidentialComplex[]>([]);
-  const [pricing, setPricing] = useState<Record<string, CleanerPricingFormData>>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+const CleanerPricingForm: React.FC<CleanerPricingFormProps> = ({ cleanerId }) => {
+  const [complexes, setComplexes] = useState<Complex[]>([]);
+  const [pricingData, setPricingData] = useState<Record<string, number>>({}); // { complex_id: price }
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
-      fetchComplexesAndPricing();
-    }
-  }, [user]);
+    const fetchComplexesAndPricing = async () => {
+      setLoading(true);
+      setError(null);
 
-  const fetchComplexesAndPricing = async () => {
-    if (!user) return;
-    setIsLoading(true);
-    
-    try {
-      // Fetch all residential complexes
-      const { data: complexesData, error: complexesError } = await supabase
-        .from('residential_complexes')
-        .select('id, name')
-        .order('name');
-      
-      if (complexesError) throw complexesError;
-      
-      // Fetch existing pricing for this user
-      const { data: pricingData, error: pricingError } = await supabase
-        .from('cleaner_pricing')
-        .select(`
-          id, 
-          user_id, 
-          residential_complex_id, 
-          price_studio, 
-          price_one_plus_one, 
-          price_two_plus_one, 
-          created_at, 
-          updated_at
-        `)
-        .eq('user_id', user.id); // Use user.id
-      
-      if (pricingError) throw pricingError;
-      
-      // Convert pricing data to a map for easier access
-      const pricingMap: Record<string, CleanerPricingFormData> = {};
-      pricingData?.forEach((item: any) => {
-        pricingMap[item.residential_complex_id] = {
-          id: item.id,
-          complex_id: item.residential_complex_id,
-          price_studio: item.price_studio,
-          price_one_plus_one: item.price_one_plus_one,
-          price_two_plus_one: item.price_two_plus_one
-        };
-      });
-      
-      // Initialize pricing for complexes without existing data
-      const initializedPricing: Record<string, CleanerPricingFormData> = {};
-      complexesData?.forEach(complex => {
-        initializedPricing[complex.id] = pricingMap[complex.id] || {
-          complex_id: complex.id,
-          price_studio: null,
-          price_one_plus_one: null,
-          price_two_plus_one: null
-        };
-      });
-      
-      setComplexes(complexesData || []);
-      setPricing(initializedPricing);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      toast.error('Ошибка загрузки данных');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      try {
+        // Fetch complexes: SELECT * FROM complexes WHERE active = true
+        // If 'active' column doesn't exist, this query will fetch all.
+        const { data: complexesData, error: complexesError } = await supabase
+          .from('complexes')
+          .select('*')
+          .eq('active', true); // Add this condition if 'active' column exists
 
-  const handlePriceChange = (complexId: string, field: keyof CleanerPricingFormData, value: string) => {
-    setPricing(prev => ({
-      ...prev,
-      [complexId]: {
-        ...prev[complexId],
-        [field]: value ? parseInt(value) : null
+        if (complexesError) {
+          // Fallback if 'active' column does not exist or other error
+          const { data: allComplexesData, error: allComplexesError } = await supabase
+            .from('complexes')
+            .select('*');
+          
+          if (allComplexesError) throw allComplexesError;
+          setComplexes(allComplexesData || []);
+        } else {
+          setComplexes(complexesData || []);
+        }
+
+        // Fetch existing prices for the cleaner from cleaner_complex_prices
+        const { data: prices, error: pricesError } = await supabase
+          .from('cleaner_complex_prices')
+          .select('complex_id, price')
+          .eq('cleaner_id', cleanerId);
+
+        if (pricesError) throw pricesError;
+
+        const initialPricing: Record<string, number> = {};
+        prices?.forEach(p => {
+          if (p.complex_id) {
+            initialPricing[p.complex_id] = p.price;
+          }
+        });
+        setPricingData(initialPricing);
+
+      } catch (err: any) {
+        console.error("Error fetching data:", err);
+        setError(`Failed to load data: ${err.message}`);
+      } finally {
+        setLoading(false);
       }
+    };
+
+    fetchComplexesAndPricing();
+  }, [cleanerId]);
+
+  const handlePriceChange = (complexId: string, price: number) => {
+    setPricingData(prev => ({
+      ...prev,
+      [complexId]: price,
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    
-    setIsSaving(true);
-    
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+
     try {
-      // Prepare data for upsert (insert or update)
-      const pricingEntries = Object.values(pricing);
-      
-      // Filter out entries with no prices set
-      const entriesToSave = pricingEntries.filter(entry => 
-        entry.price_studio !== null || 
-        entry.price_one_plus_one !== null || 
-        entry.price_two_plus_one !== null
-      );
-      
-      // Also include entries that exist in DB but might be cleared
-      const entriesToClear = pricingEntries.filter(entry => 
-        !entry.price_studio && 
-        !entry.price_one_plus_one && 
-        !entry.price_two_plus_one && 
-        entry.id // Only if it exists in DB
-      );
-      
-      // Delete entries with all prices cleared
-      if (entriesToClear.length > 0) {
-        const idsToDelete = entriesToClear.map(e => e.id).filter(Boolean) as string[];
-        if (idsToDelete.length > 0) {
-          const { error: deleteError } = await supabase
-            .from('cleaner_pricing')
-            .delete()
-            .in('id', idsToDelete);
-          
-          if (deleteError) throw deleteError;
-        }
-      }
-      
-      // Upsert entries with prices
-      if (entriesToSave.length > 0) {
-        const entriesToUpsert = entriesToSave.map(entry => ({
-          user_id: user.id, // Use user.id
-          residential_complex_id: entry.complex_id,
-          price_studio: entry.price_studio,
-          price_one_plus_one: entry.price_one_plus_one,
-          price_two_plus_one: entry.price_two_plus_one
-        }));
-        
-        const { error: upsertError } = await supabase
-          .from('cleaner_pricing')
-          .upsert(entriesToUpsert as any, {
-            onConflict: 'user_id,residential_complex_id' // Use user_id in conflict key
-          });
-        
-        if (upsertError) throw upsertError;
-      }
-      
-      toast.success('Цены обновлены');
-      onUpdate?.();
-    } catch (error: any) {
-      console.error('Error updating prices:', error);
-      toast.error('Ошибка обновления цен');
+      // Upsert prices into cleaner_complex_prices
+      const { error: upsertError } = await supabase
+        .from('cleaner_complex_prices')
+        .upsert(
+          Object.entries(pricingData).map(([complex_id, price]) => ({
+            cleaner_id: cleanerId,
+            complex_id: complex_id,
+            price: price,
+          })),
+          { onConflict: 'cleaner_id, complex_id' } // Ensure unique constraint
+        );
+
+      if (upsertError) throw upsertError;
+
+      alert('Pricing saved successfully!');
+    } catch (err: any) {
+      console.error("Error saving pricing:", err);
+      setError(`Failed to save pricing: ${err.message}`);
     } finally {
-      setIsSaving(false);
+      setLoading(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  if (loading) return <div>Loading pricing...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Banknote className="w-4 h-4 text-primary" />
-        <span className="text-sm font-medium">Стоимость уборки по ЖК (₾)</span>
-      </div>
-      
-      {complexes.length === 0 ? (
-        <div className="text-center py-4 text-muted-foreground">
-          Нет доступных жилых комплексов
+    <form onSubmit={handleSubmit}>
+      <h2>Set Pricing for Complexes</h2>
+      {complexes.length === 0 && !error && <div>No complexes available to set prices for.</div>}
+      {complexes.map((complex) => (
+        <div key={complex.id} style={{ marginBottom: '15px', padding: '10px', border: '1px solid #ccc' }}>
+          <h3>{complex.name}</h3>
+          <label htmlFor={`price-${complex.id}`}>
+            Price: $
+            <input
+              type="number"
+              id={`price-${complex.id}`}
+              value={pricingData[complex.id] || 0}
+              onChange={(e) => handlePriceChange(complex.id, parseFloat(e.target.value))}
+              min="0"
+              step="0.01"
+              required
+              style={{ marginLeft: '5px' }}
+            />
+          </label>
         </div>
-      ) : (
-        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-          {complexes.map(complex => {
-            const complexPricing = pricing[complex.id] || {
-              price_studio: null,
-              price_one_plus_one: null,
-              price_two_plus_one: null
-            };
-            
-            return (
-              <div key={complex.id} className="p-3 rounded-lg bg-muted/50">
-                <h3 className="font-medium text-sm mb-2">{complex.name}</h3>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`price_studio_${complex.id}`} className="text-xs text-muted-foreground">
-                      Студия
-                    </Label>
-                    <Input
-                      id={`price_studio_${complex.id}`}
-                      type="number"
-                      min="0"
-                      value={complexPricing.price_studio || ''}
-                      onChange={(e) => handlePriceChange(complex.id, 'price_studio', e.target.value)}
-                      placeholder="0"
-                      className="bg-background h-9"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`price_1_1_${complex.id}`} className="text-xs text-muted-foreground">
-                      1+1
-                    </Label>
-                    <Input
-                      id={`price_1_1_${complex.id}`}
-                      type="number"
-                      min="0"
-                      value={complexPricing.price_one_plus_one || ''}
-                      onChange={(e) => handlePriceChange(complex.id, 'price_one_plus_one', e.target.value)}
-                      placeholder="0"
-                      className="bg-background h-9"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`price_2_1_${complex.id}`} className="text-xs text-muted-foreground">
-                      2+1
-                    </Label>
-                    <Input
-                      id={`price_2_1_${complex.id}`}
-                      type="number"
-                      min="0"
-                      value={complexPricing.price_two_plus_one || ''}
-                      onChange={(e) => handlePriceChange(complex.id, 'price_two_plus_one', e.target.value)}
-                      placeholder="0"
-                      className="bg-background h-9"
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      ))}
+      {complexes.length > 0 && (
+        <button type="submit" disabled={loading}>
+          {loading ? 'Saving...' : 'Save Prices'}
+        </button>
       )}
-      
-      <Button type="submit" size="sm" disabled={isSaving} className="w-full">
-        <Save className="w-4 h-4 mr-2" />
-        {isSaving ? 'Сохранить цены' : 'Сохранить цены'}
-      </Button>
     </form>
   );
 };
+
+export default CleanerPricingForm;
+
+// Dummy types (replace with your actual types)
+// interface CleanerPricingRecord {
+//   id: string;
+//   user_id: string;
+//   complex_id: string;
+//   price: number;
+//   created_at: string;
+//   updated_at: string;
+// }
+
+interface Complex {
+  id: string;
+  name: string;
+  // other complex properties...
+  active?: boolean; // Optional active flag
+}
