@@ -6,7 +6,7 @@ import { ModerationBanner } from '@/components/ModerationBanner';
 import { CleanerOrdersList } from '@/components/CleanerOrdersList';
 import { OrdersCalendar } from '@/components/OrdersCalendar';
 import { CleanerChat } from '@/components/CleanerChat';
-import { CleanerPricingForm } from '@/components/CleanerPricingForm';
+import CleanerPricingForm from '@/components/CleanerPricingForm';
 import { CleanerDayOrdersDialog } from '@/components/CleanerDayOrdersDialog';
 import { CleanerUnavailabilityManager } from '@/components/CleanerUnavailabilityManager';
 import { CleanerCreateOrderDialog } from '@/components/CleanerCreateOrderDialog';
@@ -19,7 +19,7 @@ const CleanerDashboard = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayOrdersOpen, setDayOrdersOpen] = useState(false);
   const isMobile = useIsMobile();
-  
+
   const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Клинер';
   const isApproved = profile?.role === 'admin' || profile?.status === 'approved';
 
@@ -33,8 +33,8 @@ const CleanerDashboard = () => {
   };
 
   // On mobile, cards are collapsible and closed by default
-  const cardProps = isMobile 
-    ? { collapsible: true, defaultOpen: false } 
+  const cardProps = isMobile
+    ? { collapsible: true, defaultOpen: false }
     : { collapsible: false, defaultOpen: true };
 
   return (
@@ -61,8 +61,8 @@ const CleanerDashboard = () => {
                 {isApproved ? (
                   <>
                     <CleanerCreateOrderDialog onOrderCreated={handleOrdersRefresh} />
-                    <CleanerOrdersList 
-                      refreshTrigger={ordersRefresh} 
+                    <CleanerOrdersList
+                      refreshTrigger={ordersRefresh}
                       onRefresh={handleOrdersRefresh}
                     />
                   </>
@@ -79,8 +79,8 @@ const CleanerDashboard = () => {
             <DashboardCard title="Календарь" icon={Calendar} {...cardProps}>
               <div className="space-y-3">
                 {isApproved ? (
-                  <OrdersCalendar 
-                    refreshTrigger={ordersRefresh} 
+                  <OrdersCalendar
+                    refreshTrigger={ordersRefresh}
                     userRole="cleaner"
                     onDateSelect={handleDateSelect}
                   />
@@ -111,7 +111,7 @@ const CleanerDashboard = () => {
             <DashboardCard title="Мои цены" icon={Banknote} {...cardProps}>
               <div className="space-y-3">
                 {isApproved ? (
-                  <CleanerPricingForm />
+                  <CleanerPricingForm cleanerId={user?.id || ''} />
                 ) : (
                   <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
                     Цены будут доступны после одобрения аккаунта.
