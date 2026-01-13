@@ -36,6 +36,11 @@ interface Cleaner {
   price_two_plus_one: number | null;
 }
 
+interface CleanerWithStats extends Cleaner {
+  total_cleanings?: number;
+  clean_rate?: number;
+}
+
 interface CleanerOrder {
   scheduled_date: string;
   scheduled_time: string;
@@ -86,7 +91,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'cleaner' | 'calendar' | 'details'>('cleaner');
   const [objects, setObjects] = useState<PropertyObject[]>([]);
-  const [cleaners, setCleaners] = useState<Cleaner[]>([]);
+  const [cleaners, setCleaners] = useState<CleanerWithStats[]>([]);
   const [selectedCleaner, setSelectedCleaner] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>('');
@@ -172,7 +177,24 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
 
     const { data, error } = await query;
     if (!error && data) {
-      setCleaners(data as Cleaner[]);
+      // Fetch stats for each cleaner
+      const cleanersWithStats: CleanerWithStats[] = [];
+      
+      for (const cleaner of data as Cleaner[]) {
+        const { data: statsData } = await supabase
+          .from('cleaner_stats_view')
+          .select('total_cleanings, clean_rate')
+          .eq('cleaner_id', cleaner.id)
+          .single();
+        
+        cleanersWithStats.push({
+          ...cleaner,
+          total_cleanings: statsData?.total_cleanings || 0,
+          clean_rate: statsData?.clean_rate || 0
+        });
+      }
+      
+      setCleaners(cleanersWithStats);
     }
   };
 
@@ -231,9 +253,9 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
       case 'rating_asc':
         return sorted.sort((a, b) => (a.rating || 0) - (b.rating || 0));
       case 'orders_desc':
-        return sorted.sort((a, b) => b.completed_orders_count - a.completed_orders_count);
+        return sorted.sort((a, b) => (b.total_cleanings || 0) - (a.total_cleanings || 0));
       case 'orders_asc':
-        return sorted.sort((a, b) => a.completed_orders_count - b.completed_orders_count);
+        return sorted.sort((a, b) => (a.total_cleanings || 0) - (b.total_cleanings || 0));
       case 'price_asc':  // Use global price for sorting if complex price isn't easily accessible here
         return sorted.sort((a, b) => (a.price_studio || 0) - (b.price_studio || 0));
       case 'price_desc':
@@ -402,6 +424,10 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                           completedOrders={cleaner.completed_orders_count} 
                           size="sm" 
                         />
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <span>Уборок: {cleaner.total_cleanings || 0}</span>
+                          <span>Качество: {cleaner.clean_rate || 0}%</span>
+                        </div>
                         {(cleaner.price_studio || cleaner.price_one_plus_one || cleaner.price_two_plus_one) && (
                           <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
                             <Banknote className="w-3 h-3" />
@@ -571,6 +597,10 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                         completedOrders={selectedCleanerData.completed_orders_count} 
                         size="sm" 
                       />
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <span>Уборок: {selectedCleanerData.total_cleanings || 0}</span>
+                        <span>Качество: {selectedCleanerData.clean_rate || 0}%</span>
+                      </div>
                     </div>
                   </div>
                 </div>

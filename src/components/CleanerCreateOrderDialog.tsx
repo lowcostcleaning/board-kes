@@ -32,6 +32,11 @@ interface Manager {
   completed_orders_count: number;
 }
 
+interface ManagerWithStats extends Manager {
+  total_cleanings?: number;
+  clean_rate?: number;
+}
+
 interface CleanerOrder {
   scheduled_date: string;
   scheduled_time: string;
@@ -63,7 +68,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   const isDemoCleaner = profile?.role === 'demo_cleaner';
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'manager' | 'calendar' | 'details'>('manager');
-  const [managers, setManagers] = useState<Manager[]>([]);
+  const [managers, setManagers] = useState<ManagerWithStats[]>([]);
   const [objects, setObjects] = useState<PropertyObject[]>([]);
   const [selectedManagerId, setSelectedManagerId] = useState<string | null>(null);
   const [selectedObject, setSelectedObject] = useState<string>('');
@@ -122,7 +127,20 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
 
     const { data, error } = await query;
     if (!error && data) {
-      setManagers(data);
+      // Fetch stats for each manager (for consistency with cleaner stats display)
+      const managersWithStats: ManagerWithStats[] = [];
+      
+      for (const manager of data) {
+        // For managers, we don't have stats in the same way as cleaners
+        // But we'll add the field for consistency
+        managersWithStats.push({
+          ...manager,
+          total_cleanings: 0,
+          clean_rate: 0
+        });
+      }
+      
+      setManagers(managersWithStats);
     }
   };
 

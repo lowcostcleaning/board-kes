@@ -1,0 +1,1 @@
+DROP VIEW IF EXISTS public.cleaner_stats_view;
