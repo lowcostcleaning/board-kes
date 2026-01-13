@@ -14,7 +14,7 @@ interface UserProfile {
   role: string;
   status: string;
   rating?: number | null;
-  completed_orders_count?: number;
+  total_cleanings?: number; // Changed from completed_orders_count
   avatar_url?: string | null;
   is_active?: boolean;
 }
@@ -23,34 +23,22 @@ interface AdminUserListProps {
   users: UserProfile[];
   isLoading: boolean;
   isReadOnlyMode: boolean;
-  editingOrdersCount: string | null;
-  newOrdersCount: string;
   handleRoleChange: (userId: string, newRole: string) => void;
   handleStatusChange: (userId: string, newStatus: string) => void;
-  handleStartEditOrdersCount: (userId: string, currentCount: number) => void;
-  handleCancelEditOrdersCount: () => void;
-  handleSaveOrdersCount: (userId: string) => void;
   handleViewProfile: (userProfile: UserProfile) => void;
   setUserToDelete: (user: UserProfile) => void;
   handleRestoreUser: (userId: string) => void;
-  setNewOrdersCount: (value: string) => void;
 }
 
 export const AdminUserList = ({
   users,
   isLoading,
   isReadOnlyMode,
-  editingOrdersCount,
-  newOrdersCount,
   handleRoleChange,
   handleStatusChange,
-  handleStartEditOrdersCount,
-  handleCancelEditOrdersCount,
-  handleSaveOrdersCount,
   handleViewProfile,
   setUserToDelete,
   handleRestoreUser,
-  setNewOrdersCount,
 }: AdminUserListProps) => {
   const isMobile = useIsMobile();
 
@@ -137,7 +125,7 @@ export const AdminUserList = ({
                 <p className="text-sm text-muted-foreground">
                   ID: {u.id.slice(0, 8)}...
                 </p>
-                {/* Show rating and orders count for cleaners */}
+                {/* Show rating and total cleanings for cleaners */}
                 {(u.role === 'cleaner' || u.role === 'demo_cleaner') && (
                   <div className="flex items-center gap-3 mt-1 text-sm">
                     <div className="flex items-center gap-1">
@@ -145,51 +133,9 @@ export const AdminUserList = ({
                       <span>{u.rating ? u.rating.toFixed(1) : '—'}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      {editingOrdersCount === u.id ? (
-                        <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            value={newOrdersCount}
-                            onChange={(e) => setNewOrdersCount(e.target.value)}
-                            className="w-16 h-6 text-xs px-2"
-                            min={0}
-                            disabled={isReadOnlyMode}
-                          />
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-6 w-6"
-                            onClick={() => handleSaveOrdersCount(u.id)}
-                            disabled={isReadOnlyMode}
-                          >
-                            <Check className="w-3 h-3 text-status-active" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-6 w-6"
-                            onClick={handleCancelEditOrdersCount}
-                            disabled={isReadOnlyMode}
-                          >
-                            <X className="w-3 h-3 text-destructive" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <span className="text-muted-foreground">
-                            {u.completed_orders_count} уборок
-                          </span>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-5 w-5"
-                            onClick={() => handleStartEditOrdersCount(u.id, u.completed_orders_count)}
-                            disabled={isReadOnlyMode}
-                          >
-                            <Edit2 className="w-3 h-3" />
-                          </Button>
-                        </>
-                      )}
+                      <span className="text-muted-foreground">
+                        {u.total_cleanings} уборок
+                      </span>
                     </div>
                   </div>
                 )}

@@ -2,16 +2,13 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Star, Brush } from 'lucide-react';
+import { Tables } from '@/integrations/supabase/types';
 
-interface CleanerStats {
-  total_cleanings: number;
-  avg_rating: number | null;
-  clean_rate: number;
-}
+type CleanerStatsView = Tables<'cleaner_stats_view'>;
 
 export const CleanerStatsSection = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState<CleanerStats | null>(null);
+  const [stats, setStats] = useState<CleanerStatsView | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,16 +18,23 @@ export const CleanerStatsSection = () => {
       try {
         const { data, error } = await supabase
           .from('cleaner_stats_view')
-          .select('total_cleanings, avg_rating, clean_rate')
+          .select('cleaner_id, total_cleanings, avg_rating, clean_jobs, clean_rate') // Select all fields
           .eq('cleaner_id', user.id)
           .single();
 
-        if (error) {
+        if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
           console.error('Error fetching cleaner stats:', error);
           return;
         }
 
-        setStats(data || null);
+        // Ensure all fields are present, even if null from DB
+        setStats(data ? {
+          cleaner_id: data.cleaner_id,
+          total_cleanings: data.total_cleanings,
+          avg_rating: data.avg_rating,
+          clean_jobs: data.clean_jobs,
+          clean_rate: data.clean_rate,
+        } : null);
       } catch (error) {
         console.error('Error fetching cleaner stats:', error);
       } finally {

@@ -76,7 +76,6 @@ const AdminDashboard = () => {
     restoreUser,
     updateRole,
     updateStatus,
-    updateOrdersCount,
   } = useAdminUsers();
 
   const {
@@ -87,8 +86,6 @@ const AdminDashboard = () => {
     resolveNotification,
   } = useAdminDashboard();
 
-  const [editingOrdersCount, setEditingOrdersCount] = useState<string | null>(null);
-  const [newOrdersCount, setNewOrdersCount] = useState<string>('');
   const [viewingUser, setViewingUser] = useState<UserProfile | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState('users');
@@ -184,40 +181,6 @@ const AdminDashboard = () => {
         return 'Demo Клинер';
       default:
         return role;
-    }
-  };
-
-  const handleStartEditOrdersCount = (userId: string, currentCount: number) => {
-    if (checkReadOnly()) return;
-    setEditingOrdersCount(userId);
-    setNewOrdersCount(currentCount.toString());
-  };
-
-  const handleCancelEditOrdersCount = () => {
-    setEditingOrdersCount(null);
-    setNewOrdersCount('');
-  };
-
-  const handleSaveOrdersCount = async (userId: string) => {
-    if (checkReadOnly()) return;
-    const count = parseInt(newOrdersCount, 10);
-    if (isNaN(count) || count < 0) {
-      toast({
-        title: 'Ошибка',
-        description: 'Введите корректное число',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const success = await updateOrdersCount(userId, count);
-    if (success) {
-      toast({
-        title: 'Успешно',
-        description: 'Количество уборок обновлено',
-      });
-      setEditingOrdersCount(null);
-      setNewOrdersCount('');
     }
   };
 
@@ -318,17 +281,12 @@ const AdminDashboard = () => {
               users={users}
               isLoading={isLoadingUsers}
               isReadOnlyMode={isReadOnlyMode}
-              editingOrdersCount={editingOrdersCount}
-              newOrdersCount={newOrdersCount}
+              // Removed editingOrdersCount, newOrdersCount, handleStartEditOrdersCount, handleCancelEditOrdersCount, handleSaveOrdersCount, setNewOrdersCount
               handleRoleChange={handleRoleChange}
               handleStatusChange={handleStatusChange}
-              handleStartEditOrdersCount={handleStartEditOrdersCount}
-              handleCancelEditOrdersCount={handleCancelEditOrdersCount}
-              handleSaveOrdersCount={handleSaveOrdersCount}
               handleViewProfile={handleViewProfile}
               setUserToDelete={setUserToDelete as (user: UserProfile | null) => void} // Corrected type here
               handleRestoreUser={handleRestoreUser}
-              setNewOrdersCount={setNewOrdersCount}
             />
 
             {/* Roles Management */}

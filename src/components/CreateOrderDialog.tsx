@@ -29,7 +29,6 @@ interface Cleaner {
   name: string | null;
   avatar_url: string | null;
   rating: number | null;
-  completed_orders_count: number;
   // Global prices from profiles table (used as fallback)
   price_studio: number | null;
   price_one_plus_one: number | null;
@@ -39,10 +38,11 @@ interface Cleaner {
   level_number: number | null;
   inventory_completed: number | null;
   inventory_total: number | null;
+  total_cleanings: number; // Added total_cleanings from cleaner_stats_view
 }
 
 interface CleanerWithStats extends Cleaner {
-  total_cleanings?: number;
+  total_cleanings: number;
   clean_rate?: number;
 }
 
@@ -172,7 +172,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     // Demo managers see demo_cleaners, regular managers see approved cleaners
     let query = supabase
       .from('profiles')
-      .select('id, email, name, avatar_url, rating, completed_orders_count, price_studio, price_one_plus_one, price_two_plus_one');
+      .select('id, email, name, avatar_url, rating, price_studio, price_one_plus_one, price_two_plus_one');
 
     if (isDemoManager) {
       query = query.eq('role', 'demo_cleaner');
@@ -276,9 +276,9 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
       case 'rating_asc':
         return sorted.sort((a, b) => (a.rating || 0) - (b.rating || 0));
       case 'orders_desc':
-        return sorted.sort((a, b) => (b.completed_orders_count || 0) - (a.completed_orders_count || 0));
+        return sorted.sort((a, b) => (b.total_cleanings || 0) - (a.total_cleanings || 0));
       case 'orders_asc':
-        return sorted.sort((a, b) => (a.completed_orders_count || 0) - (b.completed_orders_count || 0));
+        return sorted.sort((a, b) => (a.total_cleanings || 0) - (b.total_cleanings || 0));
       case 'price_asc':  // Use global price for sorting if complex price isn't easily accessible here
         return sorted.sort((a, b) => (a.price_studio || 0) - (b.price_studio || 0));
       case 'price_desc':
@@ -450,7 +450,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                         </div>
                         <CleanerRatingDisplay 
                           rating={cleaner.rating} 
-                          completedOrders={cleaner.completed_orders_count} 
+                          totalCleanings={cleaner.total_cleanings} // Use total_cleanings
                           size="sm" 
                         />
                         {(cleaner.price_studio || cleaner.price_one_plus_one || cleaner.price_two_plus_one) && (
@@ -625,7 +625,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                       </div>
                       <CleanerRatingDisplay 
                         rating={selectedCleanerData.rating} 
-                        completedOrders={selectedCleanerData.completed_orders_count} 
+                        totalCleanings={selectedCleanerData.total_cleanings} // Use total_cleanings
                         size="sm" 
                       />
                     </div>

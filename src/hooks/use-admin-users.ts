@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { logAdminAction } from '@/utils/admin-audit';
 import { useAuth } from '@/contexts/AuthContext';
+import { Tables } from '@/integrations/supabase/types';
+
+type CleanerStatsView = Tables<'cleaner_stats_view'>;
 
 export interface UserProfile {
   id: string;
@@ -12,7 +15,7 @@ export interface UserProfile {
   created_at: string | null;
   name: string | null;
   rating: number | null;
-  completed_orders_count: number;
+  total_cleanings: number; // Changed from completed_orders_count
   avatar_url: string | null;
   phone: string | null;
   telegram_chat_id: string | null;
@@ -44,27 +47,49 @@ export const useAdminUsers = () => {
   // Fetch all users from database
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
-    const { data, error } = await supabase
+    const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching users:', error);
+    if (profilesError) {
+      console.error('Error fetching users:', profilesError);
       toast({
         title: 'Ошибка',
         description: 'Не удалось загрузить список пользователей',
         variant: 'destructive',
       });
       setUsers([]);
-    } else {
-      // Map database response to include is_active with default true for backwards compatibility
-      const mappedUsers = (data || []).map(user => ({
-        ...user,
-        is_active: user.is_active ?? true,
-      }));
-      setUsers(mappedUsers);
+      setIsLoading(false);
+      return;
     }
+
+    const profiles = profilesData || [];
+    const cleanerIds = profiles.filter(p => p.role === 'cleaner' || p.role === 'demo_cleaner').map(p => p.id);
+
+    let cleanerStats: CleanerStatsView[] = [];
+    if (cleanerIds.length > 0) {
+      const { data: statsData, error: statsError } = await supabase
+        .from('cleaner_stats_view')
+        .select('cleaner_id, total_cleanings, avg_rating, clean_jobs, clean_rate') // Fetch all fields
+        .in('cleaner_id', cleanerIds);
+      
+      if (statsError) {
+        console.error('Error fetching cleaner stats:', statsError);
+      } else {
+        cleanerStats = statsData || [];
+      }
+    }
+
+    const statsMap = new Map(cleanerStats.map(s => [s.cleaner_id, s.total_cleanings]));
+
+    const mappedUsers: UserProfile[] = profiles.map(profile => ({
+      ...profile,
+      is_active: profile.is_active ?? true,
+      total_cleanings: statsMap.get(profile.id) || 0, // Get total_cleanings from stats view
+    }));
+    
+    setUsers(mappedUsers);
     setIsLoading(false);
   }, [toast]);
 
@@ -294,38 +319,6 @@ export const useAdminUsers = () => {
     return true;
   }, [user?.id, users, toast]);
 
-  // Update completed orders count
-  const updateOrdersCount = useCallback(async (userId: string, count: number): Promise<boolean> => {
-    if (!user?.id) return false;
-
-    const oldCount = users.find(u => u.id === userId)?.completed_orders_count;
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ completed_orders_count: count })
-      .eq('id', userId);
-
-    if (error) {
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось обновить количество уборок',
-        variant: 'destructive',
-      });
-      return false;
-    }
-
-    // Audit Log
-    await logAdminAction(user.id, 'update_orders_count', 'user', userId, { 
-      old_count: oldCount, 
-      new_count: count 
-    });
-
-    setUsers(prev => prev.map(u => 
-      u.id === userId ? { ...u, completed_orders_count: count } : u
-    ));
-    return true;
-  }, [user?.id, users, toast]);
-
   return {
     users: filteredUsers,
     allUsers: users,
@@ -338,6 +331,5 @@ export const useAdminUsers = () => {
     restoreUser,
     updateRole,
     updateStatus,
-    updateOrdersCount,
   };
 };

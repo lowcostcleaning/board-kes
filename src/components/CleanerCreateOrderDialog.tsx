@@ -29,7 +29,7 @@ interface Manager {
   name: string | null;
   avatar_url: string | null;
   rating: number | null;
-  completed_orders_count: number;
+  // completed_orders_count removed as it's no longer directly on profiles
 }
 
 interface ManagerWithStats extends Manager {
@@ -116,7 +116,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   const fetchCleaners = async () => {
     let query = supabase
       .from('profiles')
-      .select('id, email, name, avatar_url, rating, completed_orders_count')
+      .select('id, email, name, avatar_url, rating') // Removed completed_orders_count
       .eq('status', 'approved');
 
     if (isDemoCleaner) {
@@ -134,9 +134,14 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
         // For managers, we don't have stats in the same way as cleaners
         // But we'll add the field for consistency
         managersWithStats.push({
-          ...manager,
-          total_cleanings: 0,
-          clean_rate: 0
+          id: manager.id,
+          email: manager.email || '',
+          name: manager.name,
+          avatar_url: manager.avatar_url,
+          rating: manager.rating,
+          // completed_orders_count removed
+          total_cleanings: 0, // Default value
+          clean_rate: 0 // Default value
         });
       }
       

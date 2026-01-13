@@ -3,14 +3,14 @@ import { cn } from '@/lib/utils';
 
 interface CleanerRatingDisplayProps {
   rating: number | null;
-  completedOrders: number;
+  totalCleanings: number; // Changed from completedOrders
   showCount?: boolean;
   size?: 'sm' | 'md';
 }
 
 export const CleanerRatingDisplay = ({
   rating,
-  completedOrders,
+  totalCleanings, // Changed from completedOrders
   showCount = true,
   size = 'sm',
 }: CleanerRatingDisplayProps) => {
@@ -34,7 +34,7 @@ export const CleanerRatingDisplay = ({
       </div>
       {showCount && (
         <span className="text-muted-foreground">
-          ({completedOrders} {getOrdersWord(completedOrders)})
+          ({totalCleanings} {getOrdersWord(totalCleanings)})
         </span>
       )}
     </div>
