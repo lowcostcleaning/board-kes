@@ -123,7 +123,7 @@ export type Database = {
           price_one_plus_one: number | null
           price_studio: number | null
           price_two_plus_one: number | null
-          complex_id: string // Correct: complex_id
+          complex_id: string
           updated_at: string | null
         }
         Insert: {
@@ -133,7 +133,7 @@ export type Database = {
           price_one_plus_one?: number | null
           price_studio?: number | null
           price_two_plus_one?: number | null
-          complex_id: string // Correct: complex_id
+          complex_id: string
           updated_at?: string | null
         }
         Update: {
@@ -143,7 +143,7 @@ export type Database = {
           price_one_plus_one?: number | null
           price_studio?: number | null
           price_two_plus_one?: number | null
-          complex_id?: string // Correct: complex_id
+          complex_id?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -287,7 +287,7 @@ export type Database = {
           created_at: string
           id: string
           is_archived: boolean
-          residential_complex_id: string | null // Correct: residential_complex_id
+          residential_complex_id: string | null
           updated_at: string
           user_id: string
         }
@@ -298,7 +298,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_archived?: boolean
-          residential_complex_id?: string | null // Correct: residential_complex_id
+          residential_complex_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -309,7 +309,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_archived?: boolean
-          residential_complex_id?: string | null // Correct: residential_complex_id
+          residential_complex_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -483,6 +483,63 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_items: {
+        Row: {
+          code: string
+          title: string
+        }
+        Insert: {
+          code: string
+          title: string
+        }
+        Update: {
+          code?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      user_inventory: {
+        Row: {
+          id: string
+          user_id: string
+          item_code: string
+          has_item: boolean
+          verified: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          item_code: string
+          has_item?: boolean
+          verified?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          item_code?: string
+          has_item?: boolean
+          verified?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_inventory_item_code_fkey"
+            columns: ["item_code"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "user_inventory_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -523,12 +580,12 @@ export type Tables<
     ? R
     : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-    ? R
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
     : never
-  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
@@ -544,12 +601,12 @@ export type TablesInsert<
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-      Insert: infer I
-    }
-    ? I
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
     : never
-  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
@@ -565,12 +622,12 @@ export type TablesUpdate<
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-      Update: infer U
-    }
-    ? U
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
     : never
-  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
@@ -582,8 +639,8 @@ export type Enums<
 > = DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
@@ -595,8 +652,8 @@ export type CompositeTypes<
 > = PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {
