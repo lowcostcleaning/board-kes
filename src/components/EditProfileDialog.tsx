@@ -3,9 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, } from
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Settings } from 'lucide-react';
+import { Settings, Loader2 } from 'lucide-react'; // Added Loader2 import
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, UserProfile as AuthUserProfile } from '@/contexts/AuthContext'; // Renamed to avoid conflict
 import { toast } from 'sonner';
 import { TelegramSettings } from './TelegramSettings';
 import { AvatarUpload } from './AvatarUpload';
@@ -13,32 +13,61 @@ import { CleanerInventorySection } from './CleanerInventorySection';
 import { CleanerStatsSection } from './CleanerStatsSection';
 import { CleanerLevelAndInventory } from './CleanerLevelAndInventory'; // Import the new component
 
+// Define a more complete profile type for local use in this component
+interface LocalUserProfile extends AuthUserProfile {
+  phone: string | null;
+  avatar_url: string | null;
+  name: string | null; // Added missing 'name' property
+}
+
 interface EditProfileDialogProps {
   onProfileUpdate?: () => void;
 }
 
 export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileUpdate }) => {
-  const { user, profile } = useAuth();
+  const { user, profile: authProfile } = useAuth(); // authProfile is from AuthContext
   const [open, setOpen] = useState(false);
+  const [localProfile, setLocalProfile] = useState<LocalUserProfile | null>(null); // Local state for full profile
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingProfile, setIsFetchingProfile] = useState(false);
 
+  // Fetch full profile when dialog opens or user changes
   useEffect(() => {
-    if (open && profile) {
-      const currentName = (profile as any).name || user?.user_metadata?.name || '';
-      const currentPhone = (profile as any).phone || '';
-      const currentAvatar = (profile as any).avatar_url || null; // Use profile.avatar_url
-      setName(currentName);
-      setPhone(currentPhone);
-      setAvatarUrl(currentAvatar);
+    const fetchFullProfile = async () => {
+      if (!user) return;
+      setIsFetchingProfile(true);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, email, role, status, name, phone, avatar_url, company_name, airbnb_profile_link, manual_orders_adjustment')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+
+        setLocalProfile(data as LocalUserProfile);
+        setName(data.name || '');
+        setPhone(data.phone || '');
+        setAvatarUrl(data.avatar_url || null);
+      } catch (error: any) {
+        console.error('Error fetching full profile:', error);
+        toast.error('Ошибка загрузки данных профиля');
+      } finally {
+        setIsFetchingProfile(false);
+      }
+    };
+
+    if (open && user) {
+      fetchFullProfile();
     }
-  }, [open, profile, user]);
+  }, [open, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !localProfile) return;
     const trimmedName = name.trim();
     if (!trimmedName) {
       toast.error('Введите имя');
@@ -60,17 +89,20 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
         .eq('id', user.id);
       if (profileError) throw profileError;
 
-      // Update user metadata
+      // Update user metadata (optional, but good for consistency if used elsewhere)
       const { error: metaError } = await supabase.auth.updateUser({
         data: { name: trimmedName }
       });
       if (metaError) throw metaError;
 
+      // Update local profile state
+      setLocalProfile(prev => prev ? { ...prev, name: trimmedName, phone: phone.trim() || null } : null);
+
       toast.success('Профиль обновлён');
       setOpen(false);
       onProfileUpdate?.();
-      // Reload to update the displayed name
-      window.location.reload();
+      // No need to reload the entire window, AuthContext will re-fetch its profile
+      // and other components will react to localProfile changes or AuthContext updates.
     } catch (error: any) {
       console.error('Error updating profile:', error);
       toast.error('Ошибка обновления профиля');
@@ -81,9 +113,10 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
 
   const handleAvatarChange = (url: string | null) => {
     setAvatarUrl(url);
+    setLocalProfile(prev => prev ? { ...prev, avatar_url: url } : null);
   };
 
-  const isCleaner = profile?.role === 'cleaner' || profile?.role === 'demo_cleaner';
+  const isCleaner = authProfile?.role === 'cleaner' || authProfile?.role === 'demo_cleaner';
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -97,61 +130,67 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
         <DialogHeader>
           <DialogTitle>Редактировать профиль</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Cleaner Level and Inventory Section */}
-          {isCleaner && <CleanerLevelAndInventory />}
+        {isFetchingProfile ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Cleaner Level and Inventory Section */}
+            {isCleaner && <CleanerLevelAndInventory />}
 
-          {/* Avatar Upload */}
-          {user && (
+            {/* Avatar Upload */}
+            {user && localProfile && (
+              <div className="space-y-2">
+                <Label>Фото профиля</Label>
+                <AvatarUpload 
+                  currentAvatarUrl={avatarUrl} 
+                  userId={user.id} 
+                  userName={localProfile.name} 
+                  userEmail={localProfile.email} 
+                  onAvatarChange={handleAvatarChange} 
+                />
+              </div>
+            )}
             <div className="space-y-2">
-              <Label>Фото профиля</Label>
-              <AvatarUpload 
-                currentAvatarUrl={avatarUrl} 
-                userId={user.id} 
-                userName={name} 
-                userEmail={profile?.email} 
-                onAvatarChange={handleAvatarChange} 
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                value={localProfile?.email || ''} 
+                disabled 
+                className="bg-muted" 
               />
             </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input 
-              id="email" 
-              value={profile?.email || ''} 
-              disabled 
-              className="bg-muted" 
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="name">Имя</Label>
-            <Input 
-              id="name" 
-              value={name} 
-              onChange={(e) => setName(e.target.value)} 
-              placeholder="Введите ваше имя" 
-              maxLength={100} 
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="phone">Телефон</Label>
-            <Input 
-              id="phone" 
-              value={phone} 
-              onChange={(e) => setPhone(e.target.value)} 
-              placeholder="+7 999 123 45 67" 
-              maxLength={20} 
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Отмена
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Сохранение...' : 'Сохранить'}
-            </Button>
-          </div>
-        </form>
+            <div className="space-y-2">
+              <Label htmlFor="name">Имя</Label>
+              <Input 
+                id="name" 
+                value={name} 
+                onChange={(e) => setName(e.target.value)} 
+                placeholder="Введите ваше имя" 
+                maxLength={100} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Телефон</Label>
+              <Input 
+                id="phone" 
+                value={phone} 
+                onChange={(e) => setPhone(e.target.value)} 
+                placeholder="+7 999 123 45 67" 
+                maxLength={20} 
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Отмена
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? 'Сохранение...' : 'Сохранить'}
+              </Button>
+            </div>
+          </form>
+        )}
         {isCleaner && <CleanerStatsSection />}
         {isCleaner && <CleanerInventorySection />}
         <TelegramSettings />
