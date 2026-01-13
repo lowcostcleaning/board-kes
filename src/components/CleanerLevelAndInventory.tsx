@@ -58,7 +58,7 @@ export const CleanerLevelAndInventory = () => {
         // 3. Fetch cleaner stats
         const { data: statsData, error: statsError } = await supabase
           .from('cleaner_stats_view')
-          .select('cleaner_id, total_cleanings, avg_rating, clean_jobs, clean_rate') // Select all fields for correct type matching
+          .select('cleaner_id, total_cleanings, avg_rating, clean_jobs, clean_rate, final_cleanings') // Select all fields for correct type matching
           .eq('cleaner_id', user.id)
           .single();
 

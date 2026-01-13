@@ -191,7 +191,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
         // Fetch stats
         const { data: statsData } = await supabase
           .from('cleaner_stats_view')
-          .select('total_cleanings, avg_rating, clean_jobs, clean_rate') // Select all fields for correct type matching
+          .select('total_cleanings, avg_rating, clean_jobs, clean_rate, final_cleanings') // Select final_cleanings
           .eq('cleaner_id', cleaner.id)
           .single();
 
@@ -209,7 +209,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
 
         const realTotalCleanings = statsData?.total_cleanings || 0;
         const manualAdjustment = cleaner.manual_orders_adjustment || 0;
-        const finalTotalCleanings = realTotalCleanings + manualAdjustment;
+        const finalTotalCleanings = statsData?.final_cleanings || 0; // Use final_cleanings from view
 
         cleanersWithDetails.push({
           ...cleaner,

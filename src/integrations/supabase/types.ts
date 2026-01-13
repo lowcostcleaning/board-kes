@@ -576,6 +576,7 @@ export type Database = {
           avg_rating: number | null
           clean_jobs: number
           clean_rate: number
+          final_cleanings: number // Added final_cleanings
         }
         Insert: {
           cleaner_id?: string
@@ -583,6 +584,7 @@ export type Database = {
           avg_rating?: number | null
           clean_jobs?: number
           clean_rate?: number
+          final_cleanings?: number // Added final_cleanings
         }
         Update: {
           cleaner_id?: string
@@ -590,6 +592,7 @@ export type Database = {
           avg_rating?: number | null
           clean_jobs?: number
           clean_rate?: number
+          final_cleanings?: number // Added final_cleanings
         }
         Relationships: []
       }

@@ -188,7 +188,7 @@ export const ViewUserProfileDialog = ({
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-muted-foreground">Статистика</h4>
               
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3"> {/* Changed to 2 columns */}
                 <div className="p-3 rounded-lg bg-muted/50 text-center">
                   <div className="flex items-center justify-center gap-1 mb-1">
                     <Star className="w-4 h-4 text-amber-400 fill-amber-400" />

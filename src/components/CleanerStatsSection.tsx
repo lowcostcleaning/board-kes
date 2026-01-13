@@ -7,7 +7,7 @@ import { Tables } from '@/integrations/supabase/types';
 type CleanerStatsView = Tables<'cleaner_stats_view'>;
 
 export const CleanerStatsSection = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [stats, setStats] = useState<CleanerStatsView | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -18,7 +18,7 @@ export const CleanerStatsSection = () => {
       try {
         const { data, error } = await supabase
           .from('cleaner_stats_view')
-          .select('cleaner_id, total_cleanings, avg_rating, clean_jobs, clean_rate') // Select all fields
+          .select('cleaner_id, total_cleanings, avg_rating, clean_jobs, clean_rate, final_cleanings') // Select final_cleanings
           .eq('cleaner_id', user.id)
           .single();
 
@@ -34,6 +34,7 @@ export const CleanerStatsSection = () => {
           avg_rating: data.avg_rating,
           clean_jobs: data.clean_jobs,
           clean_rate: data.clean_rate,
+          final_cleanings: data.final_cleanings, // Assign final_cleanings
         } : null);
       } catch (error) {
         console.error('Error fetching cleaner stats:', error);
@@ -61,7 +62,7 @@ export const CleanerStatsSection = () => {
   return (
     <div className="space-y-4 border-t pt-4 mt-4">
       <h3 className="font-medium">Статистика</h3>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4"> {/* Changed to 2 columns */}
         <div className="text-center p-3 rounded-lg bg-muted/50">
           <div className="flex items-center justify-center gap-1 mb-1">
             <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -74,15 +75,9 @@ export const CleanerStatsSection = () => {
         <div className="text-center p-3 rounded-lg bg-muted/50">
           <div className="flex items-center justify-center gap-1 mb-1">
             <Brush className="w-4 h-4 text-primary" />
-            <span className="text-lg font-semibold">{stats.total_cleanings}</span>
+            <span className="text-lg font-semibold">{stats.final_cleanings}</span> {/* Use final_cleanings */}
           </div>
           <p className="text-xs text-muted-foreground">Уборок</p>
-        </div>
-        <div className="text-center p-3 rounded-lg bg-muted/50">
-          <div className="text-lg font-semibold">
-            {stats.clean_rate}%
-          </div>
-          <p className="text-xs text-muted-foreground">Качество</p>
         </div>
       </div>
     </div>

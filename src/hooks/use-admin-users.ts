@@ -15,9 +15,9 @@ export interface UserProfile {
   created_at: string | null;
   name: string | null;
   rating: number | null;
-  total_cleanings: number; // From cleaner_stats_view
+  total_cleanings: number; // From cleaner_stats_view (real orders only)
   manual_orders_adjustment: number; // New field
-  final_total_cleanings: number; // Calculated field
+  final_total_cleanings: number; // Calculated field (real + adjustment)
   avatar_url: string | null;
   phone: string | null;
   telegram_chat_id: string | null;
@@ -73,7 +73,7 @@ export const useAdminUsers = () => {
     if (cleanerIds.length > 0) {
       const { data: statsData, error: statsError } = await supabase
         .from('cleaner_stats_view')
-        .select('cleaner_id, total_cleanings, avg_rating, clean_jobs, clean_rate') // Fetch all fields
+        .select('cleaner_id, total_cleanings, avg_rating, clean_jobs, clean_rate, final_cleanings') // Fetch final_cleanings
         .in('cleaner_id', cleanerIds);
       
       if (statsError) {
@@ -83,19 +83,20 @@ export const useAdminUsers = () => {
       }
     }
 
-    const statsMap = new Map(cleanerStats.map(s => [s.cleaner_id, s.total_cleanings]));
+    const statsMap = new Map(cleanerStats.map(s => [s.cleaner_id, { total_cleanings: s.total_cleanings, final_cleanings: s.final_cleanings }]));
 
     const mappedUsers: UserProfile[] = profiles.map(profile => {
-      const totalCleaningsFromStats = statsMap.get(profile.id) || 0;
+      const stats = statsMap.get(profile.id);
+      const totalCleaningsFromStats = stats?.total_cleanings || 0;
+      const finalCleaningsFromStats = stats?.final_cleanings || 0; // Use final_cleanings from view
       const manualAdjustment = profile.manual_orders_adjustment || 0;
-      const finalTotalCleanings = totalCleaningsFromStats + manualAdjustment;
 
       return {
         ...profile,
         is_active: profile.is_active ?? true,
-        total_cleanings: totalCleaningsFromStats,
+        total_cleanings: totalCleaningsFromStats, // Real orders only
         manual_orders_adjustment: manualAdjustment,
-        final_total_cleanings: finalTotalCleanings,
+        final_total_cleanings: finalCleaningsFromStats, // Final total including adjustment
       };
     });
     
@@ -357,8 +358,9 @@ export const useAdminUsers = () => {
 
     setUsers(prev => prev.map(u => {
       if (u.id === userId) {
-        const newTotalCleanings = u.total_cleanings + adjustment;
-        return { ...u, manual_orders_adjustment: adjustment, final_total_cleanings: newTotalCleanings };
+        // Recalculate final_total_cleanings based on the new adjustment and existing total_cleanings
+        const newFinalTotalCleanings = u.total_cleanings + adjustment;
+        return { ...u, manual_orders_adjustment: adjustment, final_total_cleanings: newFinalTotalCleanings };
       }
       return u;
     }));
