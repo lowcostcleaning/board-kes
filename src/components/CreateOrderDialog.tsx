@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Plus, Building2, Home, Clock, CalendarIcon, Send, Banknote } from 'lucide-react';
+import { Plus, Building2, Home, Clock, CalendarIcon, Send, Banknote, Award, Package } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -34,6 +34,11 @@ interface Cleaner {
   price_studio: number | null;
   price_one_plus_one: number | null;
   price_two_plus_one: number | null;
+  // New fields for level and inventory
+  level_title: string | null;
+  level_number: number | null;
+  inventory_completed: number | null;
+  inventory_total: number | null;
 }
 
 interface CleanerWithStats extends Cleaner {
@@ -177,24 +182,42 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
 
     const { data, error } = await query;
     if (!error && data) {
-      // Fetch stats for each cleaner
-      const cleanersWithStats: CleanerWithStats[] = [];
-      
-      for (const cleaner of data as Cleaner[]) {
+      const allCleaners = data as Cleaner[];
+      const cleanersWithDetails: CleanerWithStats[] = [];
+      const totalInventoryItems = (await supabase.from('inventory_items').select('code', { count: 'exact', head: true })).count || 0;
+
+      for (const cleaner of allCleaners) {
+        // Fetch stats
         const { data: statsData } = await supabase
           .from('cleaner_stats_view')
-          .select('total_cleanings, clean_rate')
+          .select('total_cleanings, avg_rating, clean_jobs, clean_rate') // Select all fields for correct type matching
           .eq('cleaner_id', cleaner.id)
           .single();
-        
-        cleanersWithStats.push({
+
+        // Fetch level
+        const { data: levelData } = await supabase
+          .rpc('get_cleaner_level', { p_cleaner_id: cleaner.id });
+        const currentLevel: Tables<'levels'> | null = levelData && levelData.length > 0 ? levelData[0] : null;
+
+        // Fetch inventory progress
+        const { count: completedItems } = await supabase
+          .from('user_inventory')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', cleaner.id)
+          .eq('has_item', true);
+
+        cleanersWithDetails.push({
           ...cleaner,
           total_cleanings: statsData?.total_cleanings || 0,
-          clean_rate: statsData?.clean_rate || 0
+          clean_rate: statsData?.clean_rate || 0,
+          level_title: currentLevel?.title || 'Новичок',
+          level_number: currentLevel?.level ?? 0,
+          inventory_completed: completedItems || 0,
+          inventory_total: totalInventoryItems,
         });
       }
       
-      setCleaners(cleanersWithStats);
+      setCleaners(cleanersWithDetails);
     }
   };
 
@@ -253,9 +276,9 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
       case 'rating_asc':
         return sorted.sort((a, b) => (a.rating || 0) - (b.rating || 0));
       case 'orders_desc':
-        return sorted.sort((a, b) => (b.total_cleanings || 0) - (a.total_cleanings || 0));
+        return sorted.sort((a, b) => (b.completed_orders_count || 0) - (a.completed_orders_count || 0));
       case 'orders_asc':
-        return sorted.sort((a, b) => (a.total_cleanings || 0) - (b.total_cleanings || 0));
+        return sorted.sort((a, b) => (a.completed_orders_count || 0) - (b.completed_orders_count || 0));
       case 'price_asc':  // Use global price for sorting if complex price isn't easily accessible here
         return sorted.sort((a, b) => (a.price_studio || 0) - (b.price_studio || 0));
       case 'price_desc':
@@ -419,15 +442,17 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                         <span className="text-sm font-medium block">
                           {cleaner.name || cleaner.email?.split('@')[0] || 'Клинер'}
                         </span>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <Award className="w-3 h-3 text-primary" />
+                          <span>{cleaner.level_title}</span>
+                          <Package className="w-3 h-3" />
+                          <span>{cleaner.inventory_completed} / {cleaner.inventory_total}</span>
+                        </div>
                         <CleanerRatingDisplay 
                           rating={cleaner.rating} 
                           completedOrders={cleaner.completed_orders_count} 
                           size="sm" 
                         />
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          <span>Уборок: {cleaner.total_cleanings || 0}</span>
-                          <span>Качество: {cleaner.clean_rate || 0}%</span>
-                        </div>
                         {(cleaner.price_studio || cleaner.price_one_plus_one || cleaner.price_two_plus_one) && (
                           <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
                             <Banknote className="w-3 h-3" />
@@ -592,15 +617,17 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                       <p className="text-sm font-medium">
                         {selectedCleanerData.name || selectedCleanerData.email?.split('@')[0]}
                       </p>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <Award className="w-3 h-3 text-primary" />
+                          <span>{selectedCleanerData.level_title}</span>
+                          <Package className="w-3 h-3" />
+                          <span>{selectedCleanerData.inventory_completed} / {selectedCleanerData.inventory_total}</span>
+                      </div>
                       <CleanerRatingDisplay 
                         rating={selectedCleanerData.rating} 
                         completedOrders={selectedCleanerData.completed_orders_count} 
                         size="sm" 
                       />
-                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                        <span>Уборок: {selectedCleanerData.total_cleanings || 0}</span>
-                        <span>Качество: {selectedCleanerData.clean_rate || 0}%</span>
-                      </div>
                     </div>
                   </div>
                 </div>

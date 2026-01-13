@@ -388,6 +388,8 @@ export type Database = {
           status: string
           telegram_chat_id: string | null
           telegram_enabled: boolean
+          airbnb_profile_link: string | null // Added missing column
+          company_name: string | null // Added missing column
         }
         Insert: {
           avatar_url?: string | null
@@ -406,6 +408,8 @@ export type Database = {
           status?: string
           telegram_chat_id?: string | null
           telegram_enabled?: boolean
+          airbnb_profile_link?: string | null // Added missing column
+          company_name?: string | null // Added missing column
         }
         Update: {
           avatar_url?: string | null
@@ -424,6 +428,8 @@ export type Database = {
           status?: string
           telegram_chat_id?: string | null
           telegram_enabled?: boolean
+          airbnb_profile_link?: string | null // Added missing column
+          company_name?: string | null // Added missing column
         }
         Relationships: []
       }
@@ -540,6 +546,27 @@ export type Database = {
           }
         ]
       }
+      levels: { // Manually added levels table definition
+        Row: {
+          level: number;
+          title: string;
+          min_cleanings: number;
+          min_rating: number;
+        };
+        Insert: {
+          level: number;
+          title: string;
+          min_cleanings?: number;
+          min_rating?: number;
+        };
+        Update: {
+          level?: number;
+          title?: string;
+          min_cleanings?: number;
+          min_rating?: number;
+        };
+        Relationships: [];
+      };
     }
     Views: {
       cleaner_stats_view: {
@@ -574,6 +601,12 @@ export type Database = {
         }
         Returns: string
       }
+      get_cleaner_level: { // Manually added get_cleaner_level function definition
+        Args: {
+          p_cleaner_id: string;
+        };
+        Returns: Tables<'levels'>[]; // Returns a set of levels rows
+      };
     }
     Enums: {
       [_ in never]: never

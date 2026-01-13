@@ -11,6 +11,7 @@ import { TelegramSettings } from './TelegramSettings';
 import { AvatarUpload } from './AvatarUpload';
 import { CleanerInventorySection } from './CleanerInventorySection';
 import { CleanerStatsSection } from './CleanerStatsSection';
+import { CleanerLevelAndInventory } from './CleanerLevelAndInventory'; // Import the new component
 
 interface EditProfileDialogProps {
   onProfileUpdate?: () => void;
@@ -82,6 +83,8 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
     setAvatarUrl(url);
   };
 
+  const isCleaner = profile?.role === 'cleaner' || profile?.role === 'demo_cleaner';
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -95,6 +98,9 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
           <DialogTitle>Редактировать профиль</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Cleaner Level and Inventory Section */}
+          {isCleaner && <CleanerLevelAndInventory />}
+
           {/* Avatar Upload */}
           {user && (
             <div className="space-y-2">
@@ -146,8 +152,8 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
             </Button>
           </div>
         </form>
-        <CleanerStatsSection />
-        <CleanerInventorySection />
+        {isCleaner && <CleanerStatsSection />}
+        {isCleaner && <CleanerInventorySection />}
         <TelegramSettings />
       </DialogContent>
     </Dialog>
