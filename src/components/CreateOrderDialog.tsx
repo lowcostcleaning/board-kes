@@ -2,22 +2,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Plus, Building2, Home, Clock, CalendarIcon, Send, Banknote } from 'lucide-react';
+import { Plus, Building2, Home, Clock, CalendarIcon, Send, Banknote, Star, Brush } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -32,7 +20,7 @@ interface PropertyObject {
   complex_name: string;
   apartment_number: string;
   apartment_type: string | null;
-  residential_complex_id: string | null; // Corrected to residential_complex_id
+  residential_complex_id: string | null;
 }
 
 interface Cleaner {
@@ -46,6 +34,10 @@ interface Cleaner {
   price_studio: number | null;
   price_one_plus_one: number | null;
   price_two_plus_one: number | null;
+  // Stats from cleaner_stats_view
+  total_cleanings?: number;
+  avg_rating?: number;
+  clean_rate?: number;
 }
 
 interface CleanerOrder {
@@ -67,14 +59,10 @@ const TIME_SLOTS = ['10:00', '12:00', '14:00', '16:00', '18:00'];
 
 const getApartmentTypeLabel = (type: string | null) => {
   switch (type) {
-    case 'studio':
-      return 'Студия';
-    case '1+1':
-      return '1+1';
-    case '2+1':
-      return '2+1';
-    default:
-      return null;
+    case 'studio': return 'Студия';
+    case '1+1': return '1+1';
+    case '2+1': return '2+1';
+    default: return null;
   }
 };
 
@@ -84,21 +72,21 @@ interface PriceSource {
   price_two_plus_one: number | null;
 }
 
-const getCleanerPrice = (cleaner: Cleaner, apartmentType: string | null, complexPricing: PriceSource | null): number | null => {
+const getCleanerPrice = (
+  cleaner: Cleaner,
+  apartmentType: string | null,
+  complexPricing: PriceSource | null
+): number | null => {
   if (!apartmentType) return null;
-  
+
   // Prioritize complex pricing if available, otherwise use global profile prices
   const prices = complexPricing || cleaner;
-
+  
   switch (apartmentType) {
-    case 'studio':
-      return prices.price_studio;
-    case '1+1':
-      return prices.price_one_plus_one;
-    case '2+1':
-      return prices.price_two_plus_one;
-    default:
-      return null;
+    case 'studio': return prices.price_studio;
+    case '1+1': return prices.price_one_plus_one;
+    case '2+1': return prices.price_two_plus_one;
+    default: return null;
   }
 };
 
@@ -144,10 +132,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     if (selectedDate && cleanerOrders.length > 0) {
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       const busySlots = cleanerOrders
-        .filter(order => 
-          order.scheduled_date === dateStr && 
-          order.status !== 'cancelled'
-        )
+        .filter(order => order.scheduled_date === dateStr && order.status !== 'cancelled')
         .map(order => order.scheduled_time);
       setBusyTimeSlots(busySlots);
       if (busySlots.includes(selectedTime)) {
@@ -181,7 +166,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
       .maybeSingle();
 
     const isDemoManager = profile?.role === 'demo_manager';
-    
+
     // Demo managers see demo_cleaners, regular managers see approved cleaners
     let query = supabase
       .from('profiles')
@@ -196,7 +181,25 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     const { data, error } = await query;
 
     if (!error && data) {
-      setCleaners(data as Cleaner[]);
+      // Fetch stats for each cleaner
+      const cleanersWithStats = await Promise.all(
+        data.map(async (cleaner: any) => {
+          const { data: stats } = await supabase
+            .from('cleaner_stats_view')
+            .select('total_cleanings, avg_rating, clean_rate')
+            .eq('cleaner_id', cleaner.id)
+            .single();
+          
+          return {
+            ...cleaner,
+            total_cleanings: stats?.total_cleanings || 0,
+            avg_rating: stats?.avg_rating || null,
+            clean_rate: stats?.clean_rate || 0
+          };
+        })
+      );
+      
+      setCleaners(cleanersWithStats as Cleaner[]);
     }
   };
 
@@ -225,9 +228,9 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   const fetchCleanerComplexPricing = async (cleanerId: string, objectId: string) => {
     const objectData = objects.find(o => o.id === objectId);
     const residentialComplexId = objectData?.residential_complex_id;
-
+    
     if (!residentialComplexId) {
-      setCleanerComplexPricing(null); 
+      setCleanerComplexPricing(null);
       return;
     }
 
@@ -329,21 +332,21 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     }
 
     setIsLoading(true);
-
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
       if (!user) {
         throw new Error('Пользователь не авторизован');
       }
 
-      const { error } = await supabase.from('orders').insert({
-        manager_id: user.id,
-        cleaner_id: selectedCleaner,
-        object_id: selectedObject,
-        scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
-        scheduled_time: selectedTime,
-      });
+      const { error } = await supabase
+        .from('orders')
+        .insert({
+          manager_id: user.id,
+          cleaner_id: selectedCleaner,
+          object_id: selectedObject,
+          scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
+          scheduled_time: selectedTime,
+        });
 
       if (error) {
         // Handle backend validation error
@@ -357,7 +360,6 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
         title: 'Успешно',
         description: 'Заявка создана',
       });
-
       resetForm();
       setOpen(false);
       onOrderCreated();
@@ -374,13 +376,14 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
 
   const selectedObjectData = objects.find(o => o.id === selectedObject);
   const selectedCleanerData = cleaners.find(c => c.id === selectedCleaner);
-  
+
   // Calculate selected price using complex pricing if available, otherwise fallback to global
   const selectedPrice = selectedCleanerData && selectedObjectData 
     ? getCleanerPrice(selectedCleanerData, selectedObjectData.apartment_type, cleanerComplexPricing)
     : null;
 
   const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time));
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -403,7 +406,6 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
             </DialogHeader>
             <div className="py-4">
               <CleanerFilters sortBy={sortBy} onSortChange={setSortBy} />
-              
               {sortedCleaners.length === 0 ? (
                 <p className="text-center text-muted-foreground">
                   Нет доступных клинеров
@@ -416,21 +418,31 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                       onClick={() => handleCleanerSelect(cleaner.id)}
                       className="w-full flex items-center gap-3 p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40 hover:bg-[#ebebeb] dark:hover:bg-muted/60 transition-all duration-300 text-left hover:scale-[1.01] active:scale-[0.99]"
                     >
-                      <UserAvatar
-                        avatarUrl={cleaner.avatar_url}
-                        name={cleaner.name}
-                        email={cleaner.email}
-                        size="md"
+                      <UserAvatar 
+                        avatarUrl={cleaner.avatar_url} 
+                        name={cleaner.name} 
+                        email={cleaner.email} 
+                        size="md" 
                       />
                       <div className="flex-1">
                         <span className="text-sm font-medium block">
                           {cleaner.name || cleaner.email?.split('@')[0] || 'Клинер'}
                         </span>
-                        <CleanerRatingDisplay
-                          rating={cleaner.rating}
-                          completedOrders={cleaner.completed_orders_count}
-                          size="sm"
+                        <CleanerRatingDisplay 
+                          rating={cleaner.rating} 
+                          completedOrders={cleaner.completed_orders_count} 
+                          size="sm" 
                         />
+                        <div className="flex items-center gap-3 mt-1">
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                            <span>{cleaner.avg_rating ? cleaner.avg_rating.toFixed(1) : '—'}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Brush className="w-3 h-3 text-primary" />
+                            <span>{cleaner.total_cleanings || 0}</span>
+                          </div>
+                        </div>
                         {(cleaner.price_studio || cleaner.price_one_plus_one || cleaner.price_two_plus_one) && (
                           <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
                             <Banknote className="w-3 h-3" />
@@ -449,23 +461,22 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
             </div>
           </>
         )}
-
         {step === 'calendar' && (
           <>
             <DialogHeader>
               <DialogTitle className="text-center">Выберите дату</DialogTitle>
-            {selectedCleanerData && (
-              <p className="text-sm text-muted-foreground text-center mt-1">
-                Расписание: {selectedCleanerData.name || selectedCleanerData.email?.split('@')[0]}
-              </p>
+              {selectedCleanerData && (
+                <p className="text-sm text-muted-foreground text-center mt-1">
+                  Расписание: {selectedCleanerData.name || selectedCleanerData.email?.split('@')[0]}
+                </p>
               )}
             </DialogHeader>
             <div className="py-4">
-              <OrdersCalendar
-                cleanerId={selectedCleaner}
-                onDateSelect={handleDateSelect}
-                selectedDate={selectedDate}
-                minDate={today}
+              <OrdersCalendar 
+                cleanerId={selectedCleaner} 
+                onDateSelect={handleDateSelect} 
+                selectedDate={selectedDate} 
+                minDate={today} 
               />
               {cleanerUnavailableDates.length > 0 && (
                 <p className="text-xs text-muted-foreground text-center mt-2">
@@ -475,14 +486,13 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
             </div>
             <Button 
               variant="outline" 
-              onClick={() => setStep('cleaner')}
+              onClick={() => setStep('cleaner')} 
               className="rounded-[14px] transition-all duration-300"
             >
               Назад
             </Button>
           </>
         )}
-
         {step === 'details' && (
           <>
             <DialogHeader className="text-center space-y-3">
@@ -497,7 +507,6 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                 </p>
               )}
             </DialogHeader>
-            
             <div className="py-4 space-y-4">
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
@@ -520,10 +529,10 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                           disabled={isBusy}
                           className={cn(
                             "p-2 rounded-lg text-sm font-medium transition-all",
-                            isSelected 
-                              ? "bg-primary text-primary-foreground" 
-                              : isBusy 
-                                ? "bg-muted/30 text-muted-foreground line-through cursor-not-allowed" 
+                            isSelected
+                              ? "bg-primary text-primary-foreground"
+                              : isBusy
+                                ? "bg-muted/30 text-muted-foreground line-through cursor-not-allowed"
                                 : "bg-muted/50 hover:bg-muted"
                           )}
                         >
@@ -534,7 +543,6 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                   </div>
                 )}
               </div>
-
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Building2 className="w-4 h-4" />
@@ -558,7 +566,6 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                   </SelectContent>
                 </Select>
               </div>
-
               {selectedObjectData && (
                 <div className="space-y-3 pt-2">
                   <div className="p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40">
@@ -584,33 +591,31 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                   </div>
                 </div>
               )}
-
               {selectedCleanerData && (
                 <div className="p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40">
                   <Label className="flex items-center gap-2 text-muted-foreground mb-2">
                     Клинер
                   </Label>
                   <div className="flex items-center gap-3">
-                    <UserAvatar
-                      avatarUrl={selectedCleanerData.avatar_url}
-                      name={selectedCleanerData.name}
-                      email={selectedCleanerData.email}
-                      size="sm"
+                    <UserAvatar 
+                      avatarUrl={selectedCleanerData.avatar_url} 
+                      name={selectedCleanerData.name} 
+                      email={selectedCleanerData.email} 
+                      size="sm" 
                     />
                     <div>
                       <p className="text-sm font-medium">
                         {selectedCleanerData.name || selectedCleanerData.email?.split('@')[0]}
                       </p>
-                      <CleanerRatingDisplay
-                        rating={selectedCleanerData.rating}
-                        completedOrders={selectedCleanerData.completed_orders_count}
-                        size="sm"
+                      <CleanerRatingDisplay 
+                        rating={selectedCleanerData.rating} 
+                        completedOrders={selectedCleanerData.completed_orders_count} 
+                        size="sm" 
                       />
                     </div>
                   </div>
                 </div>
               )}
-
               {selectedPrice !== null && (
                 <div className="p-3 rounded-[14px] bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
                   <Label className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 mb-1">
@@ -623,7 +628,6 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                 </div>
               )}
             </div>
-
             <div className="flex gap-2">
               <Button 
                 variant="outline" 

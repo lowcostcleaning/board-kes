@@ -542,7 +542,38 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      cleaner_stats_view: {
+        Row: {
+          cleaner_id: string
+          total_cleanings: number | null
+          avg_rating: number | null
+          clean_jobs: number | null
+          clean_rate: number | null
+        }
+        Insert: {
+          cleaner_id: string
+          total_cleanings?: number | null
+          avg_rating?: number | null
+          clean_jobs?: number | null
+          clean_rate?: number | null
+        }
+        Update: {
+          cleaner_id?: string
+          total_cleanings?: number | null
+          avg_rating?: number | null
+          clean_jobs?: number | null
+          clean_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_cleaner_id_fkey"
+            columns: ["cleaner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Functions: {
       get_user_role: {
