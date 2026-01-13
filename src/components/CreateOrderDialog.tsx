@@ -39,10 +39,11 @@ interface Cleaner {
   inventory_completed: number | null;
   inventory_total: number | null;
   total_cleanings: number; // Added total_cleanings from cleaner_stats_view
+  manual_orders_adjustment: number; // New field
+  final_total_cleanings: number; // Calculated field
 }
 
 interface CleanerWithStats extends Cleaner {
-  total_cleanings: number;
   clean_rate?: number;
 }
 
@@ -172,7 +173,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     // Demo managers see demo_cleaners, regular managers see approved cleaners
     let query = supabase
       .from('profiles')
-      .select('id, email, name, avatar_url, rating, price_studio, price_one_plus_one, price_two_plus_one');
+      .select('id, email, name, avatar_url, rating, price_studio, price_one_plus_one, price_two_plus_one, manual_orders_adjustment'); // Select new column
 
     if (isDemoManager) {
       query = query.eq('role', 'demo_cleaner');
@@ -206,9 +207,15 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
           .eq('user_id', cleaner.id)
           .eq('has_item', true);
 
+        const realTotalCleanings = statsData?.total_cleanings || 0;
+        const manualAdjustment = cleaner.manual_orders_adjustment || 0;
+        const finalTotalCleanings = realTotalCleanings + manualAdjustment;
+
         cleanersWithDetails.push({
           ...cleaner,
-          total_cleanings: statsData?.total_cleanings || 0,
+          total_cleanings: realTotalCleanings, // Store real total from stats
+          manual_orders_adjustment: manualAdjustment,
+          final_total_cleanings: finalTotalCleanings, // Store calculated final total
           clean_rate: statsData?.clean_rate || 0,
           level_title: currentLevel?.title || 'Новичок',
           level_number: currentLevel?.level ?? 0,
@@ -276,9 +283,9 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
       case 'rating_asc':
         return sorted.sort((a, b) => (a.rating || 0) - (b.rating || 0));
       case 'orders_desc':
-        return sorted.sort((a, b) => (b.total_cleanings || 0) - (a.total_cleanings || 0));
+        return sorted.sort((a, b) => (b.final_total_cleanings || 0) - (a.final_total_cleanings || 0)); // Use final_total_cleanings
       case 'orders_asc':
-        return sorted.sort((a, b) => (a.total_cleanings || 0) - (b.total_cleanings || 0));
+        return sorted.sort((a, b) => (a.final_total_cleanings || 0) - (b.final_total_cleanings || 0)); // Use final_total_cleanings
       case 'price_asc':  // Use global price for sorting if complex price isn't easily accessible here
         return sorted.sort((a, b) => (a.price_studio || 0) - (b.price_studio || 0));
       case 'price_desc':
@@ -450,7 +457,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                         </div>
                         <CleanerRatingDisplay 
                           rating={cleaner.rating} 
-                          totalCleanings={cleaner.total_cleanings} // Use total_cleanings
+                          totalCleanings={cleaner.final_total_cleanings} // Use final_total_cleanings
                           size="sm" 
                         />
                         {(cleaner.price_studio || cleaner.price_one_plus_one || cleaner.price_two_plus_one) && (
@@ -625,7 +632,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                       </div>
                       <CleanerRatingDisplay 
                         rating={selectedCleanerData.rating} 
-                        totalCleanings={selectedCleanerData.total_cleanings} // Use total_cleanings
+                        totalCleanings={selectedCleanerData.final_total_cleanings} // Use final_total_cleanings
                         size="sm" 
                       />
                     </div>

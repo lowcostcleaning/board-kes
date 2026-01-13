@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Edit2, Check, X, Eye, FlaskConical, Clock, CheckCircle2, Star, Trash2, RotateCcw, Brush, Briefcase, Shield, UserCheck, Users } from 'lucide-react';
 import { DashboardCard } from '@/components/DashboardCard';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useState } from 'react'; // Import useState
 
 interface UserProfile {
   id: string;
@@ -14,7 +15,9 @@ interface UserProfile {
   role: string;
   status: string;
   rating?: number | null;
-  total_cleanings?: number; // Changed from completed_orders_count
+  total_cleanings: number; // From cleaner_stats_view
+  manual_orders_adjustment: number; // New field
+  final_total_cleanings: number; // Calculated field
   avatar_url?: string | null;
   is_active?: boolean;
 }
@@ -28,6 +31,7 @@ interface AdminUserListProps {
   handleViewProfile: (userProfile: UserProfile) => void;
   setUserToDelete: (user: UserProfile) => void;
   handleRestoreUser: (userId: string) => void;
+  updateManualOrdersAdjustment: (userId: string, adjustment: number) => Promise<boolean>; // New prop
 }
 
 export const AdminUserList = ({
@@ -39,8 +43,12 @@ export const AdminUserList = ({
   handleViewProfile,
   setUserToDelete,
   handleRestoreUser,
+  updateManualOrdersAdjustment,
 }: AdminUserListProps) => {
   const isMobile = useIsMobile();
+  const [editingAdjustmentId, setEditingAdjustmentId] = useState<string | null>(null);
+  const [currentAdjustmentValue, setCurrentAdjustmentValue] = useState<number>(0);
+  const [isSavingAdjustment, setIsSavingAdjustment] = useState(false);
 
   // On mobile, cards are collapsible and closed by default
   const cardProps = isMobile
@@ -79,6 +87,26 @@ export const AdminUserList = ({
       default:
         return role;
     }
+  };
+
+  const handleStartEditAdjustment = (userId: string, currentAdjustment: number) => {
+    if (isReadOnlyMode) return;
+    setEditingAdjustmentId(userId);
+    setCurrentAdjustmentValue(currentAdjustment);
+  };
+
+  const handleSaveAdjustment = async (userId: string) => {
+    if (isReadOnlyMode) return;
+    setIsSavingAdjustment(true);
+    const success = await updateManualOrdersAdjustment(userId, currentAdjustmentValue);
+    if (success) {
+      setEditingAdjustmentId(null);
+    }
+    setIsSavingAdjustment(false);
+  };
+
+  const handleCancelEditAdjustment = () => {
+    setEditingAdjustmentId(null);
   };
 
   if (isLoading) {
@@ -127,15 +155,58 @@ export const AdminUserList = ({
                 </p>
                 {/* Show rating and total cleanings for cleaners */}
                 {(u.role === 'cleaner' || u.role === 'demo_cleaner') && (
-                  <div className="flex items-center gap-3 mt-1 text-sm">
+                  <div className="flex flex-col gap-1 mt-1 text-sm">
                     <div className="flex items-center gap-1">
                       <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
                       <span>{u.rating ? u.rating.toFixed(1) : '—'}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">
-                        {u.total_cleanings} уборок
-                      </span>
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      {editingAdjustmentId === u.id ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs">Реал: {u.total_cleanings}</span>
+                          <Input
+                            type="number"
+                            value={currentAdjustmentValue}
+                            onChange={(e) => setCurrentAdjustmentValue(parseInt(e.target.value) || 0)}
+                            className="w-20 h-7 text-xs"
+                            disabled={isSavingAdjustment}
+                          />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => handleSaveAdjustment(u.id)}
+                            disabled={isSavingAdjustment}
+                          >
+                            <Check className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-destructive"
+                            onClick={handleCancelEditAdjustment}
+                            disabled={isSavingAdjustment}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs">Уборок: {u.final_total_cleanings}</span>
+                          <span className="text-xs text-muted-foreground">
+                            (Реал: {u.total_cleanings}, Корр: {u.manual_orders_adjustment})
+                          </span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => handleStartEditAdjustment(u.id, u.manual_orders_adjustment)}
+                            disabled={isReadOnlyMode}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

@@ -9,7 +9,7 @@ type Level = Tables<'levels'>;
 type CleanerStatsView = Tables<'cleaner_stats_view'>; // Renamed to avoid conflict and be more specific
 
 export const CleanerLevelAndInventory = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth(); // Get profile from AuthContext
   const [currentLevel, setCurrentLevel] = useState<Level | null>(null);
   const [nextLevel, setNextLevel] = useState<Level | null>(null);
   const [cleanerStats, setCleanerStats] = useState<CleanerStatsView | null>(null);
@@ -19,8 +19,8 @@ export const CleanerLevelAndInventory = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user?.id) {
-        setError('User not authenticated.');
+      if (!user?.id || !profile) { // Ensure profile is available
+        setError('User not authenticated or profile not loaded.');
         setLoading(false);
         return;
       }
@@ -96,14 +96,14 @@ export const CleanerLevelAndInventory = () => {
       }
     };
 
-    if (user?.id && (user.user_metadata?.role === 'cleaner' || user.user_metadata?.role === 'demo_cleaner')) {
+    if (user?.id && (profile.role === 'cleaner' || profile.role === 'demo_cleaner')) {
       fetchData();
     } else {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, profile]); // Add profile to dependencies
 
-  if (!user || (user.user_metadata?.role !== 'cleaner' && user.user_metadata?.role !== 'demo_cleaner')) {
+  if (!user || (profile?.role !== 'cleaner' && profile?.role !== 'demo_cleaner')) {
     return null; // Only show for cleaners
   }
 
@@ -122,7 +122,12 @@ export const CleanerLevelAndInventory = () => {
   const currentLevelTitle = currentLevel?.title || 'Новичок';
   const currentLevelNumber = currentLevel?.level ?? 0;
 
-  const remainingCleanings = nextLevel && cleanerStats ? Math.max(0, nextLevel.min_cleanings - (cleanerStats.total_cleanings || 0)) : 0;
+  // Calculate total cleanings including manual adjustment
+  const realTotalCleanings = cleanerStats?.total_cleanings || 0;
+  const manualAdjustment = profile.manual_orders_adjustment || 0;
+  const finalTotalCleanings = realTotalCleanings + manualAdjustment;
+
+  const remainingCleanings = nextLevel ? Math.max(0, nextLevel.min_cleanings - finalTotalCleanings) : 0;
   const remainingRating = nextLevel && cleanerStats ? Math.max(0, nextLevel.min_rating - (cleanerStats.avg_rating || 0)) : 0;
 
   return (

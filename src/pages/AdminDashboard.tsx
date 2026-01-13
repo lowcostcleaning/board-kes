@@ -76,6 +76,7 @@ const AdminDashboard = () => {
     restoreUser,
     updateRole,
     updateStatus,
+    updateManualOrdersAdjustment,
   } = useAdminUsers();
 
   const {
@@ -281,12 +282,12 @@ const AdminDashboard = () => {
               users={users}
               isLoading={isLoadingUsers}
               isReadOnlyMode={isReadOnlyMode}
-              // Removed editingOrdersCount, newOrdersCount, handleStartEditOrdersCount, handleCancelEditOrdersCount, handleSaveOrdersCount, setNewOrdersCount
               handleRoleChange={handleRoleChange}
               handleStatusChange={handleStatusChange}
               handleViewProfile={handleViewProfile}
               setUserToDelete={setUserToDelete as (user: UserProfile | null) => void} // Corrected type here
               handleRestoreUser={handleRestoreUser}
+              updateManualOrdersAdjustment={updateManualOrdersAdjustment}
             />
 
             {/* Roles Management */}

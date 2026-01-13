@@ -3,14 +3,14 @@ import { cn } from '@/lib/utils';
 
 interface CleanerRatingDisplayProps {
   rating: number | null;
-  totalCleanings: number; // Changed from completedOrders
+  totalCleanings: number;
   showCount?: boolean;
   size?: 'sm' | 'md';
 }
 
 export const CleanerRatingDisplay = ({
   rating,
-  totalCleanings, // Changed from completedOrders
+  totalCleanings,
   showCount = true,
   size = 'sm',
 }: CleanerRatingDisplayProps) => {

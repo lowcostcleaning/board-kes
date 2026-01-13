@@ -31,7 +31,9 @@ interface UserProfile {
   telegram_chat_id?: string | null;
   avatar_url?: string | null;
   rating?: number | null;
-  total_cleanings?: number; // Changed from completed_orders_count
+  total_cleanings?: number; // From cleaner_stats_view
+  manual_orders_adjustment?: number; // New field
+  final_total_cleanings?: number; // Calculated field
   is_active?: boolean;
   company_name?: string | null; // New
   airbnb_profile_link?: string | null; // New
@@ -199,7 +201,7 @@ export const ViewUserProfileDialog = ({
 
                 <div className="p-3 rounded-lg bg-muted/50 text-center">
                   <span className="text-lg font-semibold">
-                    {user.total_cleanings ?? 0}
+                    {user.final_total_cleanings ?? 0}
                   </span>
                   <p className="text-xs text-muted-foreground">Уборок</p>
                 </div>

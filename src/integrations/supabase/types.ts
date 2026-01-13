@@ -389,6 +389,7 @@ export type Database = {
           telegram_enabled: boolean
           airbnb_profile_link: string | null // Added missing column
           company_name: string | null // Added missing column
+          manual_orders_adjustment: number // Added new column
         }
         Insert: {
           avatar_url?: string | null
@@ -408,6 +409,7 @@ export type Database = {
           telegram_enabled?: boolean
           airbnb_profile_link?: string | null // Added missing column
           company_name?: string | null // Added missing column
+          manual_orders_adjustment?: number // Added new column
         }
         Update: {
           avatar_url?: string | null
@@ -427,6 +429,7 @@ export type Database = {
           telegram_enabled?: boolean
           airbnb_profile_link?: string | null // Added missing column
           company_name?: string | null // Added missing column
+          manual_orders_adjustment?: number // Added new column
         }
         Relationships: []
       }

@@ -116,8 +116,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   const fetchCleaners = async () => {
     let query = supabase
       .from('profiles')
-      .select('id, email, name, avatar_url, rating') // Removed completed_orders_count
-      .eq('status', 'approved');
+      .select('id, email, name, avatar_url, rating'); // Removed completed_orders_count
 
     if (isDemoCleaner) {
       query = query.eq('role', 'demo_manager');

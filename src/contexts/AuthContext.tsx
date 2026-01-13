@@ -12,6 +12,7 @@ export interface UserProfile {
   status: UserStatus;
   company_name?: string | null;
   airbnb_profile_link?: string | null;
+  manual_orders_adjustment?: number; // Added new column
 }
 
 interface AuthContextType {
@@ -60,7 +61,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email, role, status, company_name, airbnb_profile_link')
+      .select('id, email, role, status, company_name, airbnb_profile_link, manual_orders_adjustment') // Select new column
       .eq('id', userId)
       .maybeSingle();
 
@@ -90,6 +91,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       status: ((data as any).status as UserStatus) || 'pending',
       company_name: (data as any).company_name,
       airbnb_profile_link: (data as any).airbnb_profile_link,
+      manual_orders_adjustment: (data as any).manual_orders_adjustment, // Assign new column
     };
   };
 
@@ -182,6 +184,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         status: 'pending',
         company_name: managerData.companyName || null,
         airbnb_profile_link: managerData.airbnbProfileLink || null,
+        manual_orders_adjustment: 0, // Initialize new column
       });
 
       if (profileInsertError) {

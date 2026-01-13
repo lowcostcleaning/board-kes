@@ -15,7 +15,9 @@ export interface UserProfile {
   created_at: string | null;
   name: string | null;
   rating: number | null;
-  total_cleanings: number; // Changed from completed_orders_count
+  total_cleanings: number; // From cleaner_stats_view
+  manual_orders_adjustment: number; // New field
+  final_total_cleanings: number; // Calculated field
   avatar_url: string | null;
   phone: string | null;
   telegram_chat_id: string | null;
@@ -83,11 +85,19 @@ export const useAdminUsers = () => {
 
     const statsMap = new Map(cleanerStats.map(s => [s.cleaner_id, s.total_cleanings]));
 
-    const mappedUsers: UserProfile[] = profiles.map(profile => ({
-      ...profile,
-      is_active: profile.is_active ?? true,
-      total_cleanings: statsMap.get(profile.id) || 0, // Get total_cleanings from stats view
-    }));
+    const mappedUsers: UserProfile[] = profiles.map(profile => {
+      const totalCleaningsFromStats = statsMap.get(profile.id) || 0;
+      const manualAdjustment = profile.manual_orders_adjustment || 0;
+      const finalTotalCleanings = totalCleaningsFromStats + manualAdjustment;
+
+      return {
+        ...profile,
+        is_active: profile.is_active ?? true,
+        total_cleanings: totalCleaningsFromStats,
+        manual_orders_adjustment: manualAdjustment,
+        final_total_cleanings: finalTotalCleanings,
+      };
+    });
     
     setUsers(mappedUsers);
     setIsLoading(false);
@@ -319,6 +329,42 @@ export const useAdminUsers = () => {
     return true;
   }, [user?.id, users, toast]);
 
+  // Update manual_orders_adjustment
+  const updateManualOrdersAdjustment = useCallback(async (userId: string, adjustment: number): Promise<boolean> => {
+    if (!user?.id) return false;
+
+    const oldAdjustment = users.find(u => u.id === userId)?.manual_orders_adjustment;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ manual_orders_adjustment: adjustment })
+      .eq('id', userId);
+
+    if (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось обновить корректировку уборок',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    // Audit Log
+    await logAdminAction(user.id, 'update_manual_orders_adjustment', 'user', userId, { 
+      old_adjustment: oldAdjustment, 
+      new_adjustment: adjustment 
+    });
+
+    setUsers(prev => prev.map(u => {
+      if (u.id === userId) {
+        const newTotalCleanings = u.total_cleanings + adjustment;
+        return { ...u, manual_orders_adjustment: adjustment, final_total_cleanings: newTotalCleanings };
+      }
+      return u;
+    }));
+    return true;
+  }, [user?.id, users, toast]);
+
   return {
     users: filteredUsers,
     allUsers: users,
@@ -331,5 +377,6 @@ export const useAdminUsers = () => {
     restoreUser,
     updateRole,
     updateStatus,
+    updateManualOrdersAdjustment, // Expose new function
   };
 };
