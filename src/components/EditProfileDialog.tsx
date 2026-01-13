@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 import { TelegramSettings } from './TelegramSettings';
 import { AvatarUpload } from './AvatarUpload';
 import { CleanerInventorySection } from './CleanerInventorySection';
-import { CleanerPerformanceSection } from './CleanerPerformanceSection';
 
 interface EditProfileDialogProps {
   onProfileUpdate?: () => void;
@@ -146,7 +145,6 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
             </Button>
           </div>
         </form>
-        <CleanerPerformanceSection />
         <CleanerInventorySection />
         <TelegramSettings />
       </DialogContent>
