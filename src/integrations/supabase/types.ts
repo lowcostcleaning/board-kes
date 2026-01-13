@@ -91,63 +91,6 @@ export type Database = {
         }
         Relationships: []
       }
-      inventory_items: {
-        Row: {
-          code: string
-          title: string
-        }
-        Insert: {
-          code: string
-          title: string
-        }
-        Update: {
-          code?: string
-          title?: string
-        }
-        Relationships: []
-      }
-      user_inventory: {
-        Row: {
-          id: string
-          user_id: string
-          item_code: string
-          has_item: boolean
-          verified: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          item_code: string
-          has_item?: boolean
-          verified?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          item_code?: string
-          has_item?: boolean
-          verified?: boolean
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_inventory_item_code_fkey"
-            columns: ["item_code"]
-            isOneToOne: false
-            referencedRelation: "inventory_items"
-            referencedColumns: ["code"]
-          },
-          {
-            foreignKeyName: "user_inventory_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       cleaner_unavailability: {
         Row: {
           cleaner_id: string

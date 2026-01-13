@@ -15,7 +15,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { TelegramSettings } from './TelegramSettings';
 import { AvatarUpload } from './AvatarUpload';
-import { CleanerInventorySettings } from './CleanerInventorySettings';
 
 interface EditProfileDialogProps {
   onProfileUpdate?: () => void;
@@ -95,8 +94,6 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
     setAvatarUrl(url);
   };
 
-  const isCleaner = profile?.role === 'cleaner' || profile?.role === 'demo_cleaner';
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -163,7 +160,6 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
           </div>
         </form>
         
-        {isCleaner && <CleanerInventorySettings />}
         <TelegramSettings />
       </DialogContent>
     </Dialog>
