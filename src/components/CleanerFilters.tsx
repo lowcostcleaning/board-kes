@@ -8,10 +8,7 @@ interface CleanerFiltersProps {
   onSortChange: (value: string) => void;
 }
 
-export const CleanerFilters: React.FC<CleanerFiltersProps> = ({
-  sortBy,
-  onSortChange,
-}) => {
+export const CleanerFilters: React.FC<CleanerFiltersProps> = ({ sortBy, onSortChange, }) => {
   return (
     <div className="flex items-center gap-2 mb-3">
       <Filter className="w-4 h-4 text-muted-foreground" />

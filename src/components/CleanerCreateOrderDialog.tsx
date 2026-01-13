@@ -2,20 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Plus, Building2, Home, Clock, CalendarIcon, Send, Banknote } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,7 +20,7 @@ interface PropertyObject {
   complex_name: string;
   apartment_number: string;
   apartment_type: string | null;
-  residential_complex_id: string | null; // Corrected to residential_complex_id
+  residential_complex_id: string | null;
 }
 
 interface Manager {
@@ -40,8 +28,8 @@ interface Manager {
   email: string;
   name: string | null;
   avatar_url: string | null;
-  rating: number | null; // Added rating
-  completed_orders_count: number; // Added completed_orders_count
+  rating: number | null;
+  completed_orders_count: number;
 }
 
 interface CleanerOrder {
@@ -63,26 +51,21 @@ const TIME_SLOTS = ['10:00', '12:00', '14:00', '16:00', '18:00'];
 
 const getApartmentTypeLabel = (type: string | null) => {
   switch (type) {
-    case 'studio':
-      return 'Студия';
-    case '1+1':
-      return '1+1';
-    case '2+1':
-      return '2+1';
-    default:
-      return null;
+    case 'studio': return 'Студия';
+    case '1+1': return '1+1';
+    case '2+1': return '2+1';
+    default: return null;
   }
 };
 
 export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCreateOrderDialogProps) => {
   const { profile } = useAuth();
   const isDemoCleaner = profile?.role === 'demo_cleaner';
-
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'manager' | 'calendar' | 'details'>('manager');
   const [managers, setManagers] = useState<Manager[]>([]);
   const [objects, setObjects] = useState<PropertyObject[]>([]);
-  const [selectedManagerId, setSelectedManagerId] = useState<string | null>(null); // Renamed to selectedManagerId
+  const [selectedManagerId, setSelectedManagerId] = useState<string | null>(null);
   const [selectedObject, setSelectedObject] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>('');
@@ -91,7 +74,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   const [cleanerUnavailableDates, setCleanerUnavailableDates] = useState<UnavailableDate[]>([]);
   const [busyTimeSlots, setBusyTimeSlots] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>('name');
-  const selectedPrice = null; // Placeholder, as pricing logic is not fully implemented here
+  const selectedPrice = null;
 
   // Load managers when dialog opens
   useEffect(() => {
@@ -114,10 +97,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     if (selectedDate && cleanerOrders.length > 0) {
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       const busySlots = cleanerOrders
-        .filter(order => 
-          order.scheduled_date === dateStr && 
-          order.status !== 'cancelled'
-        )
+        .filter(order => order.scheduled_date === dateStr && order.status !== 'cancelled')
         .map(order => order.scheduled_time);
       setBusyTimeSlots(busySlots);
       if (busySlots.includes(selectedTime)) {
@@ -131,7 +111,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   const fetchCleaners = async () => {
     let query = supabase
       .from('profiles')
-      .select('id, email, name, avatar_url, rating, completed_orders_count') // Added rating and completed_orders_count
+      .select('id, email, name, avatar_url, rating, completed_orders_count')
       .eq('status', 'approved');
 
     if (isDemoCleaner) {
@@ -141,7 +121,6 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     }
 
     const { data, error } = await query;
-
     if (!error && data) {
       setManagers(data);
     }
@@ -149,7 +128,6 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
 
   const fetchObjectsForManager = async (managerId: string) => {
     console.log('Fetching objects for manager:', managerId);
-    
     const { data, error } = await supabase
       .from('objects')
       .select('id, complex_name, apartment_number, apartment_type, user_id, residential_complex_id')
@@ -158,7 +136,6 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
 
     console.log('Objects fetched:', data?.length);
     console.log('Error:', error);
-
     if (!error && data) {
       setObjects(data);
     } else {
@@ -263,16 +240,14 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     }
 
     setIsLoading(true);
-
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
       if (!user) {
         throw new Error('Пользователь не авторизован');
       }
 
       const { error } = await supabase.from('orders').insert({
-        manager_id: selectedManagerId, // Use selectedManagerId here
+        manager_id: selectedManagerId,
         cleaner_id: user.id,
         object_id: selectedObject,
         scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
@@ -290,7 +265,6 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
         title: 'Успешно',
         description: 'Заявка создана',
       });
-
       setOpen(false);
       resetForm();
       onOrderCreated();
@@ -306,9 +280,9 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   };
 
   const selectedObjectData = objects.find(o => o.id === selectedObject);
-  const selectedManagerData = managers.find(c => c.id === selectedManagerId); // Use selectedManagerId here
-  
+  const selectedManagerData = managers.find(c => c.id === selectedManagerId);
   const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time));
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -333,7 +307,6 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
             </DialogHeader>
             <div className="py-3 sm:py-4">
               <CleanerFilters sortBy={sortBy} onSortChange={setSortBy} />
-              
               {sortedCleaners.length === 0 ? (
                 <p className="text-center text-muted-foreground">
                   Нет доступных управляющих компаний
@@ -346,11 +319,11 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                       onClick={() => handleManagerSelect(manager.id)}
                       className="w-full flex items-center gap-3 p-3 rounded-[14px] bg-muted/50 hover:bg-muted transition-all duration-300 text-left hover:scale-[1.01] active:scale-[0.99]"
                     >
-                      <UserAvatar
-                        avatarUrl={manager.avatar_url}
-                        name={manager.name}
-                        email={manager.email}
-                        size="md"
+                      <UserAvatar 
+                        avatarUrl={manager.avatar_url} 
+                        name={manager.name} 
+                        email={manager.email} 
+                        size="md" 
                       />
                       <div className="flex-1">
                         <span className="text-sm font-medium block">
@@ -365,20 +338,19 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
             </div>
           </>
         )}
-
         {step === 'calendar' && (
           <>
             <DialogHeader>
               <DialogTitle className="text-center">Выберите дату</DialogTitle>
-            {selectedManagerData && (
-              <p className="text-sm text-muted-foreground text-center mt-1">
-                Расписание: {selectedManagerData.name || selectedManagerData.email?.split('@')[0]}
-              </p>
+              {selectedManagerData && (
+                <p className="text-sm text-muted-foreground text-center mt-1">
+                  Расписание: {selectedManagerData.name || selectedManagerData.email?.split('@')[0]}
+                </p>
               )}
             </DialogHeader>
             <div className="py-4">
-              <OrdersCalendar
-                cleanerId={selectedManagerId || undefined} // Ensure it's string or undefined
+              <OrdersCalendar 
+                cleanerId={selectedManagerId || undefined}
                 onDateSelect={handleDateSelect}
                 selectedDate={selectedDate}
                 minDate={today}
@@ -398,11 +370,10 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
               }}
               className="rounded-[14px] transition-all duration-300"
             >
-                Назад
+              Назад
             </Button>
           </>
         )}
-
         {step === 'details' && (
           <>
             <DialogHeader className="text-center space-y-3">
@@ -417,7 +388,6 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                 </p>
               )}
             </DialogHeader>
-            
             <div className="py-4 space-y-4">
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
@@ -454,7 +424,6 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                   </div>
                 )}
               </div>
-
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Building2 className="w-4 h-4" />
@@ -478,7 +447,6 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                   </SelectContent>
                 </Select>
               </div>
-
               {selectedObjectData && (
                 <div className="space-y-3 pt-2">
                   <div className="p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40">
@@ -504,18 +472,17 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                   </div>
                 </div>
               )}
-
               {selectedManagerData && (
                 <div className="p-3 rounded-[14px] bg-[#f5f5f5] dark:bg-muted/40">
                   <Label className="flex items-center gap-2 text-muted-foreground mb-2">
                     Менеджер
                   </Label>
                   <div className="flex items-center gap-3">
-                    <UserAvatar
-                      avatarUrl={selectedManagerData.avatar_url}
-                      name={selectedManagerData.name}
-                      email={selectedManagerData.email}
-                      size="sm"
+                    <UserAvatar 
+                      avatarUrl={selectedManagerData.avatar_url} 
+                      name={selectedManagerData.name} 
+                      email={selectedManagerData.email} 
+                      size="sm" 
                     />
                     <div>
                       <p className="text-sm font-medium">
@@ -526,7 +493,6 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                   </div>
                 </div>
               )}
-
               {selectedPrice !== null && (
                 <div className="p-3 rounded-[14px] bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
                   <Label className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 mb-1">
@@ -539,17 +505,16 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                 </div>
               )}
             </div>
-
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
-                onClick={() => setStep('calendar')} 
+                onClick={() => setStep('calendar')}
                 className="flex-1 rounded-[14px] transition-all duration-300"
               >
                 Назад
               </Button>
               <Button 
-                onClick={handleSubmit} 
+                onClick={handleSubmit}
                 disabled={isLoading || !selectedTime || !selectedObject}
                 className="flex-1 bg-primary hover:bg-primary/90 rounded-[14px] transition-all duration-300"
               >

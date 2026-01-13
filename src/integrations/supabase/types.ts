@@ -542,7 +542,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      cleaner_stats_view: {
+        Row: {
+          cleaner_id: string
+          total_cleanings: number
+          avg_rating: number | null
+          clean_jobs: number
+          clean_rate: number
+        }
+        Insert: {
+          cleaner_id?: string
+          total_cleanings?: number
+          avg_rating?: number | null
+          clean_jobs?: number
+          clean_rate?: number
+        }
+        Update: {
+          cleaner_id?: string
+          total_cleanings?: number
+          avg_rating?: number | null
+          clean_jobs?: number
+          clean_rate?: number
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_user_role: {
