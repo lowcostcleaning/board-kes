@@ -29,7 +29,7 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
     if (open && profile) {
       const currentName = (profile as any).name || user?.user_metadata?.name || '';
       const currentPhone = (profile as any).phone || '';
-      const currentAvatar = (profile as any).avatar_url || null;
+      const currentAvatar = (profile as any).avatar_url || null; // Use profile.avatar_url
       setName(currentName);
       setPhone(currentPhone);
       setAvatarUrl(currentAvatar);
