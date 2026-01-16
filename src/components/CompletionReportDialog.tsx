@@ -129,25 +129,54 @@ export const CompletionReportDialog = ({
         throw new Error('Не авторизован');
       }
 
-      // Create completion report
-      const { data: report, error: reportError } = await supabase
+      let reportId: string;
+      let isExistingReport = false;
+
+      // 1. Try to create completion report
+      const { data: newReport, error: reportError } = await supabase
         .from('completion_reports')
         .insert({
           order_id: orderId,
           description: description.trim() || null,
         })
-        .select()
+        .select('id')
         .single();
 
       if (reportError) {
-        console.error('Report creation error:', reportError);
-        throw new Error('Ошибка создания отчёта: ' + reportError.message);
+        // Check for unique constraint violation (PostgreSQL error code 23505)
+        if (reportError.code === '23505') {
+          // Report already exists. Fetch the existing report ID.
+          isExistingReport = true;
+          const { data: existingReport, error: fetchError } = await supabase
+            .from('completion_reports')
+            .select('id')
+            .eq('order_id', orderId)
+            .single();
+          
+          if (fetchError || !existingReport) {
+            // If we can't fetch the existing report, throw the original error
+            console.error('[CompletionReportDialog] Failed to fetch existing report after 23505 error:', fetchError);
+            throw reportError;
+          }
+          reportId = existingReport.id;
+          
+          // Log warning and proceed
+          console.warn(`[CompletionReportDialog] Report already exists for order ${orderId}. Using existing report ID: ${reportId}`);
+
+        } else {
+          // Other database error
+          console.error('Report creation error:', reportError);
+          throw new Error('Ошибка создания отчёта: ' + reportError.message);
+        }
+      } else {
+        // Report created successfully
+        reportId = newReport.id;
       }
 
-      // Save uploaded file references
+      // 2. Save uploaded file references
       for (const file of uploadedFiles) {
         const { error: fileRefError } = await supabase.from('report_files').insert({
-          report_id: report.id,
+          report_id: reportId, // Use the obtained reportId
           file_path: file.path,
           file_type: file.type,
         });
@@ -158,7 +187,7 @@ export const CompletionReportDialog = ({
         }
       }
 
-      // Update order status
+      // 3. Update order status
       const { error: orderError } = await supabase.from('orders').update({ status: 'completed' }).eq('id', orderId);
 
       if (orderError) {
@@ -168,7 +197,7 @@ export const CompletionReportDialog = ({
 
       toast({
         title: 'Успешно',
-        description: 'Отчёт отправлен',
+        description: isExistingReport ? 'Отчёт уже существовал, статус заказа обновлён.' : 'Отчёт отправлен',
       });
 
       // Cleanup and close only on success
