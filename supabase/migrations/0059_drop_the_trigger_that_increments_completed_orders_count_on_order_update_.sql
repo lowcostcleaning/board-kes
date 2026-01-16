@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS increment_completed_orders_trigger ON orders;
