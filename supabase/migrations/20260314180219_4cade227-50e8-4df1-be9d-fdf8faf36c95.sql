@@ -1,0 +1,1 @@
+INSERT INTO residential_complexes (name, city) VALUES ('Alliance Privilege', 'Батуми');

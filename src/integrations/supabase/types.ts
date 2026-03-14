@@ -16,41 +16,33 @@ export type Database = {
     Tables: {
       admin_audit_log: {
         Row: {
-          admin_id: string | null
           action_type: string
-          entity_type: string
+          admin_id: string | null
+          created_at: string | null
           entity_id: string | null
-          metadata: Json | null
-          created_at: string
+          entity_type: string
           id: string
+          metadata: Json | null
         }
         Insert: {
-          admin_id?: string | null
           action_type: string
-          entity_type: string
+          admin_id?: string | null
+          created_at?: string | null
           entity_id?: string | null
-          metadata?: Json | null
-          created_at?: string
+          entity_type: string
           id?: string
+          metadata?: Json | null
         }
         Update: {
-          admin_id?: string | null
           action_type?: string
-          entity_type?: string
+          admin_id?: string | null
+          created_at?: string | null
           entity_id?: string | null
-          metadata?: Json | null
-          created_at?: string
+          entity_type?: string
           id?: string
+          metadata?: Json | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "admin_audit_log_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       admin_notifications: {
         Row: {
@@ -91,6 +83,54 @@ export type Database = {
         }
         Relationships: []
       }
+      cleaner_pricing: {
+        Row: {
+          complex_id: string
+          created_at: string | null
+          id: string
+          price_one_plus_one: number | null
+          price_studio: number | null
+          price_two_plus_one: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          complex_id: string
+          created_at?: string | null
+          id?: string
+          price_one_plus_one?: number | null
+          price_studio?: number | null
+          price_two_plus_one?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          complex_id?: string
+          created_at?: string | null
+          id?: string
+          price_one_plus_one?: number | null
+          price_studio?: number | null
+          price_two_plus_one?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaner_pricing_complex_id_fkey"
+            columns: ["complex_id"]
+            isOneToOne: false
+            referencedRelation: "residential_complexes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cleaner_pricing_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cleaner_unavailability: {
         Row: {
           cleaner_id: string
@@ -114,47 +154,6 @@ export type Database = {
           reason?: string | null
         }
         Relationships: []
-      }
-      cleaner_pricing: {
-        Row: {
-          user_id: string
-          created_at: string | null
-          id: string
-          price_one_plus_one: number | null
-          price_studio: number | null
-          price_two_plus_one: number | null
-          complex_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          user_id: string
-          created_at?: string | null
-          id?: string
-          price_one_plus_one?: number | null
-          price_studio?: number | null
-          price_two_plus_one?: number | null
-          complex_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          user_id?: string
-          created_at?: string | null
-          id?: string
-          price_one_plus_one?: number | null
-          price_studio?: number | null
-          price_two_plus_one?: number | null
-          complex_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cleaner_pricing_residential_complex_id_fkey"
-            columns: ["complex_id"]
-            isOneToOne: false
-            referencedRelation: "residential_complexes"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       completion_reports: {
         Row: {
@@ -209,6 +208,42 @@ export type Database = {
           id?: string
           manager_id?: string
           manager_last_read_at?: string | null
+        }
+        Relationships: []
+      }
+      inventory_items: {
+        Row: {
+          code: string
+          title: string
+        }
+        Insert: {
+          code: string
+          title: string
+        }
+        Update: {
+          code?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      levels: {
+        Row: {
+          level: number
+          min_cleanings: number
+          min_rating: number
+          title: string
+        }
+        Insert: {
+          level: number
+          min_cleanings: number
+          min_rating: number
+          title: string
+        }
+        Update: {
+          level?: number
+          min_cleanings?: number
+          min_rating?: number
+          title?: string
         }
         Relationships: []
       }
@@ -283,6 +318,7 @@ export type Database = {
         Row: {
           apartment_number: string
           apartment_type: string | null
+          complex_id: string | null
           complex_name: string
           created_at: string
           id: string
@@ -294,6 +330,7 @@ export type Database = {
         Insert: {
           apartment_number: string
           apartment_type?: string | null
+          complex_id?: string | null
           complex_name: string
           created_at?: string
           id?: string
@@ -305,6 +342,7 @@ export type Database = {
         Update: {
           apartment_number?: string
           apartment_type?: string | null
+          complex_id?: string | null
           complex_name?: string
           created_at?: string
           id?: string
@@ -314,6 +352,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "objects_complex_id_fkey"
+            columns: ["complex_id"]
+            isOneToOne: false
+            referencedRelation: "residential_complexes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "objects_residential_complex_id_fkey"
             columns: ["residential_complex_id"]
@@ -372,11 +417,14 @@ export type Database = {
       }
       profiles: {
         Row: {
+          airbnb_profile_link: string | null
           avatar_url: string | null
+          company_name: string | null
           created_at: string | null
           email: string | null
           id: string
           is_active: boolean
+          manual_orders_adjustment: number | null
           name: string | null
           phone: string | null
           price_one_plus_one: number | null
@@ -387,16 +435,16 @@ export type Database = {
           status: string
           telegram_chat_id: string | null
           telegram_enabled: boolean
-          airbnb_profile_link: string | null // Added missing column
-          company_name: string | null // Added missing column
-          manual_orders_adjustment: number // Added new column
         }
         Insert: {
+          airbnb_profile_link?: string | null
           avatar_url?: string | null
+          company_name?: string | null
           created_at?: string | null
           email?: string | null
           id: string
           is_active?: boolean
+          manual_orders_adjustment?: number | null
           name?: string | null
           phone?: string | null
           price_one_plus_one?: number | null
@@ -407,16 +455,16 @@ export type Database = {
           status?: string
           telegram_chat_id?: string | null
           telegram_enabled?: boolean
-          airbnb_profile_link?: string | null // Added missing column
-          company_name?: string | null // Added missing column
-          manual_orders_adjustment?: number // Added new column
         }
         Update: {
+          airbnb_profile_link?: string | null
           avatar_url?: string | null
+          company_name?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
           is_active?: boolean
+          manual_orders_adjustment?: number | null
           name?: string | null
           phone?: string | null
           price_one_plus_one?: number | null
@@ -427,9 +475,6 @@ export type Database = {
           status?: string
           telegram_chat_id?: string | null
           telegram_enabled?: boolean
-          airbnb_profile_link?: string | null // Added missing column
-          company_name?: string | null // Added missing column
-          manual_orders_adjustment?: number // Added new column
         }
         Relationships: []
       }
@@ -489,45 +534,30 @@ export type Database = {
         }
         Relationships: []
       }
-      inventory_items: {
-        Row: {
-          code: string
-          title: string
-        }
-        Insert: {
-          code: string
-          title: string
-        }
-        Update: {
-          code?: string
-          title?: string
-        }
-        Relationships: []
-      }
       user_inventory: {
         Row: {
+          created_at: string | null
+          has_item: boolean | null
           id: string
-          user_id: string
-          item_code: string
-          has_item: boolean
-          verified: boolean
-          created_at: string
+          item_code: string | null
+          user_id: string | null
+          verified: boolean | null
         }
         Insert: {
+          created_at?: string | null
+          has_item?: boolean | null
           id?: string
-          user_id: string
-          item_code: string
-          has_item?: boolean
-          verified?: boolean
-          created_at?: string
+          item_code?: string | null
+          user_id?: string | null
+          verified?: boolean | null
         }
         Update: {
+          created_at?: string | null
+          has_item?: boolean | null
           id?: string
-          user_id?: string
-          item_code?: string
-          has_item?: boolean
-          verified?: boolean
-          created_at?: string
+          item_code?: string | null
+          user_id?: string | null
+          verified?: boolean | null
         }
         Relationships: [
           {
@@ -543,73 +573,47 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
-      levels: { // Manually added levels table definition
-        Row: {
-          level: number;
-          title: string;
-          min_cleanings: number;
-          min_rating: number;
-        };
-        Insert: {
-          level: number;
-          title: string;
-          min_cleanings?: number;
-          min_rating?: number;
-        };
-        Update: {
-          level?: number;
-          title?: string;
-          min_cleanings?: number;
-          min_rating?: number;
-        };
-        Relationships: [];
-      };
     }
     Views: {
       cleaner_stats_view: {
         Row: {
-          cleaner_id: string
-          total_cleanings: number
           avg_rating: number | null
-          clean_jobs: number
-          clean_rate: number
-          final_cleanings: number // Added final_cleanings
-        }
-        Insert: {
-          cleaner_id?: string
-          total_cleanings?: number
-          avg_rating?: number | null
-          clean_jobs?: number
-          clean_rate?: number
-          final_cleanings?: number // Added final_cleanings
-        }
-        Update: {
-          cleaner_id?: string
-          total_cleanings?: number
-          avg_rating?: number | null
-          clean_jobs?: number
-          clean_rate?: number
-          final_cleanings?: number // Added final_cleanings
+          clean_jobs: number | null
+          clean_rate: number | null
+          cleaner_id: string | null
+          final_cleanings: number | null
+          total_cleanings: number | null
         }
         Relationships: []
       }
     }
     Functions: {
-      get_user_role: {
-        Args: {
-          _user_id: string
+      get_cleaner_level: {
+        Args: { p_cleaner_id: string }
+        Returns: {
+          level: number
+          min_cleanings: number
+          min_rating: number
+          title: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "levels"
+          isOneToOne: false
+          isSetofReturn: true
         }
-        Returns: string
       }
-      get_cleaner_level: { // Manually added get_cleaner_level function definition
-        Args: {
-          p_cleaner_id: string;
-        };
-        Returns: Tables<'levels'>[]; // Returns a set of levels rows
-      };
+      get_user_role: { Args: { _user_id: string }; Returns: string }
+      is_admin: { Args: never; Returns: boolean }
+      is_cleaner: { Args: never; Returns: boolean }
+      is_demo_cleaner: { Args: never; Returns: boolean }
+      is_demo_manager: { Args: { _manager_id: string }; Returns: boolean }
+      is_manager: { Args: never; Returns: boolean }
+      is_real_cleaner: { Args: never; Returns: boolean }
+      is_real_manager: { Args: { _manager_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
@@ -621,25 +625,32 @@ export type Database = {
 }
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -650,10 +661,14 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
@@ -671,10 +686,14 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
@@ -692,10 +711,14 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
@@ -705,10 +728,14 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
