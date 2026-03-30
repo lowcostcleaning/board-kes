@@ -322,7 +322,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
 
   const selectedObjectData = objects.find(o => o.id === selectedObject);
   const selectedManagerData = managers.find(c => c.id === selectedManagerId);
-  const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time));
+  const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time) && !disabledTimeSlots.includes(time));
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
