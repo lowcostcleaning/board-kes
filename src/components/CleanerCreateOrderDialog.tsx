@@ -78,6 +78,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   const [cleanerOrders, setCleanerOrders] = useState<CleanerOrder[]>([]);
   const [cleanerUnavailableDates, setCleanerUnavailableDates] = useState<UnavailableDate[]>([]);
   const [busyTimeSlots, setBusyTimeSlots] = useState<string[]>([]);
+  const [disabledTimeSlots, setDisabledTimeSlots] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>('name');
   const selectedPrice = null;
 
