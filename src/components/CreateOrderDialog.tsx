@@ -106,6 +106,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   const [cleanerOrders, setCleanerOrders] = useState<CleanerOrder[]>([]);
   const [cleanerUnavailableDates, setCleanerUnavailableDates] = useState<UnavailableDate[]>([]);
   const [busyTimeSlots, setBusyTimeSlots] = useState<string[]>([]);
+  const [disabledTimeSlots, setDisabledTimeSlots] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>('name');
   const [cleanerComplexPricing, setCleanerComplexPricing] = useState<PriceSource | null>(null);
 
@@ -120,6 +121,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     if (selectedCleaner) {
       fetchCleanerOrders();
       fetchCleanerUnavailability();
+      fetchCleanerDisabledTimes();
     }
   }, [selectedCleaner]);
 
@@ -250,6 +252,19 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     }
   };
 
+  const fetchCleanerDisabledTimes = async () => {
+    const { data, error } = await supabase
+      .from('cleaner_disabled_times')
+      .select('time_slot')
+      .eq('cleaner_id', selectedCleaner);
+
+    if (!error && data) {
+      setDisabledTimeSlots(data.map(d => d.time_slot));
+    } else {
+      setDisabledTimeSlots([]);
+    }
+  };
+
   const fetchCleanerComplexPricing = async (cleanerId: string, objectId: string) => {
     const objectData = objects.find(o => o.id === objectId);
     const residentialComplexId = objectData?.residential_complex_id;
@@ -312,6 +327,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     setCleanerOrders([]);
     setCleanerUnavailableDates([]);
     setBusyTimeSlots([]);
+    setDisabledTimeSlots([]);
     setSortBy('name');
     setCleanerComplexPricing(null);
   };
@@ -403,7 +419,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     ? getCleanerPrice(selectedCleanerData, selectedObjectData.apartment_type, cleanerComplexPricing) 
     : null;
 
-  const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time));
+  const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time) && !disabledTimeSlots.includes(time));
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -538,17 +554,19 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
                   <div className="grid grid-cols-3 gap-2">
                     {TIME_SLOTS.map((time) => {
                       const isBusy = busyTimeSlots.includes(time);
+                      const isGloballyDisabled = disabledTimeSlots.includes(time);
+                      const isUnavailable = isBusy || isGloballyDisabled;
                       const isSelected = selectedTime === time;
                       return (
                         <button
                           key={time}
-                          onClick={() => !isBusy && setSelectedTime(time)}
-                          disabled={isBusy}
+                          onClick={() => !isUnavailable && setSelectedTime(time)}
+                          disabled={isUnavailable}
                           className={cn(
                             "p-2 rounded-lg text-sm font-medium transition-all",
                             isSelected 
                               ? "bg-primary text-primary-foreground" 
-                              : isBusy 
+                              : isUnavailable 
                                 ? "bg-muted/30 text-muted-foreground line-through cursor-not-allowed" 
                                 : "bg-muted/50 hover:bg-muted"
                           )}

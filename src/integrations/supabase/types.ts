@@ -83,6 +83,27 @@ export type Database = {
         }
         Relationships: []
       }
+      cleaner_disabled_times: {
+        Row: {
+          cleaner_id: string
+          created_at: string
+          id: string
+          time_slot: string
+        }
+        Insert: {
+          cleaner_id: string
+          created_at?: string
+          id?: string
+          time_slot: string
+        }
+        Update: {
+          cleaner_id?: string
+          created_at?: string
+          id?: string
+          time_slot?: string
+        }
+        Relationships: []
+      }
       cleaner_pricing: {
         Row: {
           complex_id: string
