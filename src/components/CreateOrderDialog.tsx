@@ -419,7 +419,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     ? getCleanerPrice(selectedCleanerData, selectedObjectData.apartment_type, cleanerComplexPricing) 
     : null;
 
-  const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time));
+  const availableTimeSlots = TIME_SLOTS.filter(time => !busyTimeSlots.includes(time) && !disabledTimeSlots.includes(time));
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
