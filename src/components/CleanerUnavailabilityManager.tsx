@@ -26,6 +26,7 @@ interface CleanerUnavailabilityManagerProps {
 
 export const CleanerUnavailabilityManager = ({ onUnavailabilityChange }: CleanerUnavailabilityManagerProps) => {
   const [unavailableDates, setUnavailableDates] = useState<UnavailabilityDate[]>([]);
+  const [disabledTimes, setDisabledTimes] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [rangeEnd, setRangeEnd] = useState<Date | undefined>();
@@ -33,20 +34,28 @@ export const CleanerUnavailabilityManager = ({ onUnavailabilityChange }: Cleaner
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [isRangeMode, setIsRangeMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isTogglingTime, setIsTogglingTime] = useState(false);
 
   const fetchUnavailability = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
-        .from('cleaner_unavailability')
-        .select('id, date, reason')
-        .eq('cleaner_id', user.id)
-        .order('date');
+      const [datesRes, timesRes] = await Promise.all([
+        supabase
+          .from('cleaner_unavailability')
+          .select('id, date, reason')
+          .eq('cleaner_id', user.id)
+          .order('date'),
+        supabase
+          .from('cleaner_disabled_times')
+          .select('time_slot')
+          .eq('cleaner_id', user.id),
+      ]);
 
-      if (error) throw error;
-      setUnavailableDates(data || []);
+      if (datesRes.error) throw datesRes.error;
+      setUnavailableDates(datesRes.data || []);
+      setDisabledTimes((timesRes.data || []).map(t => t.time_slot));
     } catch (error) {
       console.error('Error fetching unavailability:', error);
     } finally {
@@ -57,6 +66,42 @@ export const CleanerUnavailabilityManager = ({ onUnavailabilityChange }: Cleaner
   useEffect(() => {
     fetchUnavailability();
   }, []);
+
+  const handleToggleTime = async (timeSlot: string) => {
+    setIsTogglingTime(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const isDisabled = disabledTimes.includes(timeSlot);
+
+      if (isDisabled) {
+        // Enable: delete the record
+        const { error } = await supabase
+          .from('cleaner_disabled_times')
+          .delete()
+          .eq('cleaner_id', user.id)
+          .eq('time_slot', timeSlot);
+        if (error) throw error;
+        setDisabledTimes(prev => prev.filter(t => t !== timeSlot));
+        toast.success(`Время ${timeSlot} включено`);
+      } else {
+        // Disable: insert the record
+        const { error } = await supabase
+          .from('cleaner_disabled_times')
+          .insert({ cleaner_id: user.id, time_slot: timeSlot });
+        if (error) throw error;
+        setDisabledTimes(prev => [...prev, timeSlot]);
+        toast.success(`Время ${timeSlot} отключено`);
+      }
+      onUnavailabilityChange?.();
+    } catch (error) {
+      console.error('Error toggling time:', error);
+      toast.error('Ошибка при изменении времени');
+    } finally {
+      setIsTogglingTime(false);
+    }
+  };
 
   const handleAddUnavailability = async () => {
     if (!selectedDate) {
