@@ -327,6 +327,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     setCleanerOrders([]);
     setCleanerUnavailableDates([]);
     setBusyTimeSlots([]);
+    setDisabledTimeSlots([]);
     setSortBy('name');
     setCleanerComplexPricing(null);
   };
