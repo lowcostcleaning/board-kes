@@ -443,17 +443,19 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
                   <div className="grid grid-cols-3 gap-2">
                     {TIME_SLOTS.map((time) => {
                       const isBusy = busyTimeSlots.includes(time);
+                      const isGloballyDisabled = disabledTimeSlots.includes(time);
+                      const isUnavailable = isBusy || isGloballyDisabled;
                       const isSelected = selectedTime === time;
                       return (
                         <button
                           key={time}
-                          onClick={() => !isBusy && setSelectedTime(time)}
-                          disabled={isBusy}
+                          onClick={() => !isUnavailable && setSelectedTime(time)}
+                          disabled={isUnavailable}
                           className={cn(
                             "p-2 rounded-lg text-sm font-medium transition-all",
                             isSelected 
                               ? "bg-primary text-primary-foreground" 
-                              : isBusy 
+                              : isUnavailable 
                                 ? "bg-muted/30 text-muted-foreground line-through cursor-not-allowed" 
                                 : "bg-muted/50 hover:bg-muted"
                           )}
