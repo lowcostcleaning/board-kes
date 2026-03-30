@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { CalendarX2, Plus, X, CalendarRange } from 'lucide-react';
+import { CalendarX2, Plus, X, CalendarRange, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +17,8 @@ interface UnavailabilityDate {
   date: string;
   reason: string | null;
 }
+
+const ALL_TIME_SLOTS = ['10:00', '12:00', '14:00', '16:00', '18:00'];
 
 interface CleanerUnavailabilityManagerProps {
   onUnavailabilityChange?: () => void;
