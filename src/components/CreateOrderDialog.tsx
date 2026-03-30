@@ -121,6 +121,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     if (selectedCleaner) {
       fetchCleanerOrders();
       fetchCleanerUnavailability();
+      fetchCleanerDisabledTimes();
     }
   }, [selectedCleaner]);
 

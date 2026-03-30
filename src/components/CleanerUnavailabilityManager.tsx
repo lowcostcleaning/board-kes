@@ -219,6 +219,38 @@ export const CleanerUnavailabilityManager = ({ onUnavailabilityChange }: Cleaner
 
   return (
     <div className="space-y-4">
+      {/* Time slots section */}
+      <div className="space-y-2">
+        <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
+          <Clock className="w-4 h-4 text-muted-foreground" />
+          Мои рабочие часы
+        </h4>
+        <p className="text-xs text-muted-foreground">
+          Отключите время, в которое вы не принимаете заказы
+        </p>
+        <div className="grid grid-cols-5 gap-1.5">
+          {ALL_TIME_SLOTS.map((time) => {
+            const isDisabled = disabledTimes.includes(time);
+            return (
+              <button
+                key={time}
+                onClick={() => handleToggleTime(time)}
+                disabled={isTogglingTime}
+                className={cn(
+                  "p-2 rounded-lg text-sm font-medium transition-all duration-200",
+                  isDisabled
+                    ? "bg-destructive/10 text-destructive line-through dark:bg-destructive/20"
+                    : "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400"
+                )}
+              >
+                {time}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Dates section */}
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
           <CalendarX2 className="w-4 h-4 text-muted-foreground" />
