@@ -252,6 +252,19 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
     }
   };
 
+  const fetchCleanerDisabledTimes = async () => {
+    const { data, error } = await supabase
+      .from('cleaner_disabled_times')
+      .select('time_slot')
+      .eq('cleaner_id', selectedCleaner);
+
+    if (!error && data) {
+      setDisabledTimeSlots(data.map(d => d.time_slot));
+    } else {
+      setDisabledTimeSlots([]);
+    }
+  };
+
   const fetchCleanerComplexPricing = async (cleanerId: string, objectId: string) => {
     const objectData = objects.find(o => o.id === objectId);
     const residentialComplexId = objectData?.residential_complex_id;
