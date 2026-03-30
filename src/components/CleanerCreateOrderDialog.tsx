@@ -195,6 +195,22 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     }
   };
 
+  const fetchCleanerDisabledTimes = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('cleaner_disabled_times')
+      .select('time_slot')
+      .eq('cleaner_id', user.id);
+
+    if (!error && data) {
+      setDisabledTimeSlots(data.map(d => d.time_slot));
+    } else {
+      setDisabledTimeSlots([]);
+    }
+  };
+
   const sortedCleaners = useMemo(() => {
     const sorted = [...managers];
     switch (sortBy) {
