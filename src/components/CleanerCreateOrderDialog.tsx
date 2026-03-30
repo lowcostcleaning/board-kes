@@ -235,6 +235,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
     setCleanerOrders([]);
     setCleanerUnavailableDates([]);
     setBusyTimeSlots([]);
+    setDisabledTimeSlots([]);
     setSortBy('name');
   };
 
