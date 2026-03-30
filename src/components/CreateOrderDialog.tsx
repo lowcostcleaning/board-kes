@@ -106,6 +106,7 @@ export const CreateOrderDialog = ({ onOrderCreated, disabled }: CreateOrderDialo
   const [cleanerOrders, setCleanerOrders] = useState<CleanerOrder[]>([]);
   const [cleanerUnavailableDates, setCleanerUnavailableDates] = useState<UnavailableDate[]>([]);
   const [busyTimeSlots, setBusyTimeSlots] = useState<string[]>([]);
+  const [disabledTimeSlots, setDisabledTimeSlots] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>('name');
   const [cleanerComplexPricing, setCleanerComplexPricing] = useState<PriceSource | null>(null);
 
