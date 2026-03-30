@@ -86,6 +86,7 @@ export const CleanerCreateOrderDialog = ({ onOrderCreated, disabled }: CleanerCr
   useEffect(() => {
     if (open) {
       fetchCleaners();
+      fetchCleanerDisabledTimes();
     }
   }, [open, isDemoCleaner]);
 
