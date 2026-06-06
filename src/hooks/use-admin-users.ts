@@ -22,6 +22,7 @@ export interface UserProfile {
   phone: string | null;
   telegram_chat_id: string | null;
   is_active: boolean;
+  visible_to_managers: boolean;
 }
 
 export interface UserFilters {
