@@ -369,6 +369,34 @@ export const useAdminUsers = () => {
     return true;
   }, [user?.id, users, toast]);
 
+  // Toggle visible_to_managers for a cleaner
+  const updateVisibleToManagers = useCallback(async (userId: string, visible: boolean): Promise<boolean> => {
+    if (!user?.id) return false;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ visible_to_managers: visible } as any)
+      .eq('id', userId);
+
+    if (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось обновить видимость клинера',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    await logAdminAction(user.id, 'update_visible_to_managers', 'user', userId, {
+      new_visible: visible,
+    });
+
+    setUsers(prev => prev.map(u =>
+      u.id === userId ? { ...u, visible_to_managers: visible } : u
+    ));
+    return true;
+  }, [user?.id, toast]);
+
   return {
     users: filteredUsers,
     allUsers: users,
@@ -382,5 +410,6 @@ export const useAdminUsers = () => {
     updateRole,
     updateStatus,
     updateManualOrdersAdjustment, // Expose new function
+    updateVisibleToManagers,
   };
 };
