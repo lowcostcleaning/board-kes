@@ -279,6 +279,26 @@ export const AdminUserList = ({
                 )
               )}
 
+              {/* Visible to managers toggle (cleaners only) */}
+              {u.is_active && (u.role === 'cleaner' || u.role === 'demo_cleaner') && (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50">
+                  {u.visible_to_managers ? (
+                    <Eye className="w-3.5 h-3.5 text-status-active" />
+                  ) : (
+                    <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />
+                  )}
+                  <Label htmlFor={`vis-${u.id}`} className="text-xs cursor-pointer whitespace-nowrap">
+                    Видимый
+                  </Label>
+                  <Switch
+                    id={`vis-${u.id}`}
+                    checked={!!u.visible_to_managers}
+                    onCheckedChange={(v) => updateVisibleToManagers(u.id, v)}
+                    disabled={isReadOnlyMode}
+                  />
+                </div>
+              )}
+
               {/* Role Selector */}
               {u.is_active && (
                 <Select
