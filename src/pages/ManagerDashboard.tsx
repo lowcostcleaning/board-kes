@@ -106,6 +106,20 @@ const ManagerDashboard = () => {
           </div>
 
           <div style={{ animationDelay: '0.35s' }} className="lg:col-span-2">
+            <DashboardCard title="Клинеры" icon={Users} {...cardProps}>
+              <div className="space-y-3">
+                {isApproved ? (
+                  <ManagerCleanersCard />
+                ) : (
+                  <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
+                    Список клинеров будет доступен после одобрения аккаунта.
+                  </p>
+                )}
+              </div>
+            </DashboardCard>
+          </div>
+
+          <div style={{ animationDelay: '0.4s' }} className="lg:col-span-2">
             <DashboardCard title="Сообщения" icon={MessageCircle} {...cardProps}>
               <div className="space-y-3">
                 {isApproved ? (
