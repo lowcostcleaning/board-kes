@@ -43,7 +43,7 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, email, role, status, name, phone, avatar_url, company_name, airbnb_profile_link, manual_orders_adjustment')
+          .select('id, email, role, status, name, phone, avatar_url, company_name, airbnb_profile_link, manual_orders_adjustment, telegram_username')
           .eq('id', user.id)
           .single();
 
@@ -52,6 +52,7 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
         setLocalProfile(data as LocalUserProfile);
         setName(data.name || '');
         setPhone(data.phone || '');
+        setTelegramUsername((data as any).telegram_username || '');
         setAvatarUrl(data.avatar_url || null);
       } catch (error: any) {
         console.error('Error fetching full profile:', error);
