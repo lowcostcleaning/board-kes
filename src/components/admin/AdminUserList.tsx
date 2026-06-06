@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Edit2, Check, X, Eye, FlaskConical, Clock, CheckCircle2, Star, Trash2, RotateCcw, Brush, Briefcase, Shield, UserCheck, Users } from 'lucide-react';
+import { Edit2, Check, X, Eye, FlaskConical, Clock, CheckCircle2, Star, Trash2, RotateCcw, Brush, Briefcase, Shield, UserCheck, Users, EyeOff } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { DashboardCard } from '@/components/DashboardCard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState } from 'react'; // Import useState
