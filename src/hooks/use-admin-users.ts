@@ -95,6 +95,7 @@ export const useAdminUsers = () => {
       return {
         ...profile,
         is_active: profile.is_active ?? true,
+        visible_to_managers: (profile as any).visible_to_managers ?? true,
         total_cleanings: totalCleaningsFromStats, // Real orders only
         manual_orders_adjustment: manualAdjustment,
         final_total_cleanings: finalCleaningsFromStats, // Final total including adjustment
