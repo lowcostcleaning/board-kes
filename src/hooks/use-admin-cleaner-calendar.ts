@@ -118,7 +118,7 @@ export const useAdminCleanerCalendar = () => {
     // Fetch profiles for cleaners and managers
     const { data: profilesData } = await supabase
       .from('profiles')
-      .select('id, name, email, role');
+      .select('id, name, email, role, visible_to_managers');
 
     // Fetch objects
     const { data: objectsData } = await supabase
@@ -154,7 +154,7 @@ export const useAdminCleanerCalendar = () => {
 
     // Set cleaners (only cleaners and demo_cleaners)
     const cleanersList = (profilesData || [])
-      .filter(p => p.role === 'cleaner' || p.role === 'demo_cleaner');
+      .filter(p => (p.role === 'cleaner' || p.role === 'demo_cleaner') && p.visible_to_managers);
     setCleaners(cleanersList);
 
     // Set objects list

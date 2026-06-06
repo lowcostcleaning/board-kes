@@ -84,7 +84,7 @@ export const useAdminDashboard = () => {
         .from('orders')
         .select('cleaner_id')
         .eq('scheduled_date', today)
-        .in('status', ['pending', 'confirmed', 'in_progress']);
+        .in('status', ['pending', 'pending_confirmation', 'confirmed']);
       
       const activeCleanersToday = new Set(todayOrders?.map(o => o.cleaner_id) || []).size;
 
@@ -93,7 +93,7 @@ export const useAdminDashboard = () => {
       const { count: overdueCount } = await supabase
         .from('admin_notifications')
         .select('id', { count: 'exact', head: true })
-        .eq('status', 'pending')
+        .in('status', ['pending', 'pending_confirmation'])
         .lt('created_at', twentyFourHoursAgo);
 
       setCounters({

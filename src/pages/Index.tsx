@@ -19,16 +19,11 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex justify-center">
             <Button asChild size="lg" className="gap-2 px-8 h-12 text-base font-medium rounded-full">
               <Link to="/login">
                 Войти
                 <ArrowRight className="w-4 h-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="lg" className="px-8 h-12 text-base font-medium rounded-full">
-              <Link to="/register">
-                Регистрация
               </Link>
             </Button>
           </div>

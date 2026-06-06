@@ -261,7 +261,7 @@ export const useAdminObjects = () => {
         .from('orders')
         .select('id', { count: 'exact', head: true })
         .eq('object_id', objectId)
-        .in('status', ['pending', 'confirmed'])
+        .in('status', ['pending', 'pending_confirmation', 'confirmed'])
         .gte('scheduled_date', format(new Date(), 'yyyy-MM-dd'));
 
       if (ordersError) {

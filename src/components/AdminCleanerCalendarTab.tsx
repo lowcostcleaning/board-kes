@@ -10,17 +10,17 @@ import { cn } from '@/lib/utils';
 
 const statusColors: Record<string, string> = {
   pending: 'bg-status-pending/20 text-status-pending border-status-pending/30',
+  pending_confirmation: 'bg-status-pending/20 text-status-pending border-status-pending/30',
   confirmed: 'bg-blue-500/20 text-blue-500 border-blue-500/30',
-  in_progress: 'bg-amber-500/20 text-amber-500 border-amber-500/30',
-  completed: 'bg-status-active/20 text-status-active border-status-active/30',
+  rejected: 'bg-destructive/20 text-destructive border-destructive/30',
   cancelled: 'bg-destructive/20 text-destructive border-destructive/30',
 };
 
 const statusLabels: Record<string, string> = {
-  pending: 'Ожидает',
+  pending: 'Ожидает подтверждения',
+  pending_confirmation: 'Ожидает подтверждения',
   confirmed: 'Подтверждён',
-  in_progress: 'В работе',
-  completed: 'Завершён',
+  rejected: 'Отклонён',
   cancelled: 'Отменён',
 };
 

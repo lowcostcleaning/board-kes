@@ -112,10 +112,10 @@ export const OrdersCalendar = ({
     if (isUnavailable) return 'bg-destructive/10 dark:bg-destructive/20'; // Red background
     if (dayOrders.length === 0) return 'bg-[#f5f5f5] dark:bg-muted/40';
     
-    const hasConfirmedOrCompleted = dayOrders.some(o => o.status === 'confirmed' || o.status === 'completed');
-    const hasPending = dayOrders.some(o => o.status === 'pending');
+    const hasConfirmed = dayOrders.some(o => o.status === 'confirmed');
+    const hasPending = dayOrders.some(o => o.status === 'pending' || o.status === 'pending_confirmation');
     
-    if (hasConfirmedOrCompleted && !hasPending) {
+    if (hasConfirmed && !hasPending) {
       return 'bg-emerald-50 dark:bg-emerald-900/20';
     }
     return 'bg-[#f5f5f5] dark:bg-muted/40';
@@ -124,10 +124,12 @@ export const OrdersCalendar = ({
   const getDotColor = (status: string) => {
     switch (status) {
       case 'pending':
+      case 'pending_confirmation':
         return 'bg-amber-400';
       case 'confirmed':
-      case 'completed':
         return 'bg-emerald-500';
+      case 'rejected':
+        return 'bg-destructive';
       default:
         return 'bg-muted-foreground';
     }

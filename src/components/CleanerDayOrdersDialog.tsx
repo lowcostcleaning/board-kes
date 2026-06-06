@@ -32,11 +32,12 @@ interface CleanerDayOrdersDialogProps {
 const getStatusBadge = (status: string) => {
   switch (status) {
     case 'pending':
-      return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Ожидает</Badge>;
+    case 'pending_confirmation':
+      return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Ожидает подтверждения</Badge>;
     case 'confirmed':
       return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Подтверждён</Badge>;
-    case 'completed':
-      return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Выполнен</Badge>;
+    case 'rejected':
+      return <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200">Отклонён</Badge>;
     case 'cancelled':
       return <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200">Отменён</Badge>;
     default:

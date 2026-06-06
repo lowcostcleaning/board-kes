@@ -5,12 +5,9 @@ import { DashboardCard } from '@/components/DashboardCard';
 import { ModerationBanner } from '@/components/ModerationBanner';
 import { CleanerOrdersList } from '@/components/CleanerOrdersList';
 import { OrdersCalendar } from '@/components/OrdersCalendar';
-import { CleanerChat } from '@/components/CleanerChat';
-import CleanerPricingForm from '@/components/CleanerPricingForm';
 import { CleanerDayOrdersDialog } from '@/components/CleanerDayOrdersDialog';
 import { CleanerUnavailabilityManager } from '@/components/CleanerUnavailabilityManager';
-import { CleanerCreateOrderDialog } from '@/components/CleanerCreateOrderDialog';
-import { Brush, Calendar, MessageCircle, Banknote, CalendarX2 } from 'lucide-react';
+import { Brush, Calendar, CalendarX2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const CleanerDashboard = () => {
@@ -54,18 +51,15 @@ const CleanerDashboard = () => {
         </div>
 
         {/* Dashboard Cards */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <div style={{ animationDelay: '0.2s' }}>
             <DashboardCard title="Мои заказы" icon={Brush} {...cardProps}>
               <div className="space-y-3">
                 {isApproved ? (
-                  <>
-                    <CleanerCreateOrderDialog onOrderCreated={handleOrdersRefresh} />
-                    <CleanerOrdersList
-                      refreshTrigger={ordersRefresh}
-                      onRefresh={handleOrdersRefresh}
-                    />
-                  </>
+                  <CleanerOrdersList
+                    refreshTrigger={ordersRefresh}
+                    onRefresh={handleOrdersRefresh}
+                  />
                 ) : (
                   <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
                     Заказы будут доступны после одобрения аккаунта.
@@ -107,33 +101,6 @@ const CleanerDashboard = () => {
             </DashboardCard>
           </div>
 
-          <div style={{ animationDelay: '0.4s' }}>
-            <DashboardCard title="Мои цены" icon={Banknote} {...cardProps}>
-              <div className="space-y-3">
-                {isApproved ? (
-                  <CleanerPricingForm cleanerId={user?.id || ''} />
-                ) : (
-                  <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
-                    Цены будут доступны после одобрения аккаунта.
-                  </p>
-                )}
-              </div>
-            </DashboardCard>
-          </div>
-
-          <div style={{ animationDelay: '0.45s' }}>
-            <DashboardCard title="Сообщения" icon={MessageCircle} {...cardProps}>
-              <div className="space-y-3">
-                {isApproved ? (
-                  <CleanerChat />
-                ) : (
-                  <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
-                    Сообщения будут доступны после одобрения аккаунта.
-                  </p>
-                )}
-              </div>
-            </DashboardCard>
-          </div>
         </div>
 
         {/* Day Orders Dialog */}

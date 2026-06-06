@@ -1,16 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format, isToday, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Calendar, Clock, Building2, Home, Check, X, FileText, Pencil } from 'lucide-react';
+import { Calendar, Clock, Building2, Home, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { CompletionReportDialog } from './CompletionReportDialog';
-import { ViewReportDialog } from './ViewReportDialog';
 import { OrdersFilter } from './OrdersFilter';
 import { UserAvatar } from './UserAvatar';
-import { EditOrderDialog } from './EditOrderDialog';
 import { DateRange } from 'react-day-picker';
 
 interface CleanerOrder {
@@ -49,16 +46,18 @@ interface CleanerOrdersListProps {
 }
 
 const statusLabels: Record<string, string> = {
+  pending_confirmation: 'Ожидает подтверждения',
   pending: 'Ожидает подтверждения',
   confirmed: 'Подтверждён',
-  completed: 'Завершён',
+  rejected: 'Отклонён',
   cancelled: 'Отменён',
 };
 
 const statusVariants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  pending_confirmation: 'secondary',
   pending: 'secondary',
   confirmed: 'default',
-  completed: 'outline',
+  rejected: 'destructive',
   cancelled: 'destructive',
 };
 
@@ -66,10 +65,6 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
   const [orders, setOrders] = useState<CleanerOrder[]>([]);
   const [objects, setObjects] = useState<ObjectOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
-  const [viewingReportOrderId, setViewingReportOrderId] = useState<string | null>(null);
-  const [editingOrder, setEditingOrder] = useState<CleanerOrder | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedObjectId, setSelectedObjectId] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [showTodayOnly, setShowTodayOnly] = useState(true);
@@ -78,7 +73,6 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      setCurrentUserId(user.id);
 
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
@@ -183,12 +177,12 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
     // Filter by date - always show pending orders regardless of date filter
     if (showTodayOnly) {
       filtered = filtered.filter(order => 
-        order.status === 'pending' || isToday(new Date(order.scheduled_date))
+        order.status === 'pending' || order.status === 'pending_confirmation' || isToday(new Date(order.scheduled_date))
       );
     } else if (dateRange?.from) {
       filtered = filtered.filter(order => {
         // Always show pending orders
-        if (order.status === 'pending') return true;
+        if (order.status === 'pending' || order.status === 'pending_confirmation') return true;
         
         const orderDate = new Date(order.scheduled_date);
         if (dateRange.to) {
@@ -231,7 +225,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ status: 'cancelled' })
+        .update({ status: 'rejected' })
         .eq('id', id);
 
       if (error) throw error;
@@ -248,19 +242,6 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
         variant: 'destructive',
       });
     }
-  };
-
-  const handleComplete = (id: string) => {
-    setCompletingOrderId(id);
-  };
-
-  const handleCompleteSuccess = () => {
-    setCompletingOrderId(null);
-    onRefresh();
-  };
-
-  const handleViewReport = (id: string) => {
-    setViewingReportOrderId(id);
   };
 
   if (isLoading) {
@@ -308,29 +289,8 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
                 <span>{order.scheduled_time}</span>
               </div>
               <div className="flex items-center gap-1">
-                {/* Edit button - only for orders created by cleaner (manager_id === cleaner_id) */}
-                {order.manager_id === order.cleaner_id && order.status !== 'completed' && order.status !== 'cancelled' && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2"
-                    onClick={() => setEditingOrder(order)}
-                  >
-                    <Pencil className="w-4 h-4 text-muted-foreground" />
-                  </Button>
-                )}
-                {order.status === 'completed' && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2"
-                    onClick={() => handleViewReport(order.id)}
-                  >
-                    <FileText className="w-4 h-4 text-primary" />
-                  </Button>
-                )}
-                <Badge variant={statusVariants[order.status]}>
-                  {statusLabels[order.status]}
+                <Badge variant={statusVariants[order.status] || 'secondary'}>
+                  {statusLabels[order.status] || order.status}
                 </Badge>
               </div>
             </div>
@@ -357,7 +317,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
               <span>Менеджер: {order.manager.name || order.manager.email?.split('@')[0]}</span>
             </div>
 
-            {order.status === 'pending' && (
+            {(order.status === 'pending' || order.status === 'pending_confirmation') && (
               <div className="flex gap-2 pt-2 border-t border-border/50">
                 <Button
                   size="sm"
@@ -380,60 +340,15 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
             )}
 
             {order.status === 'confirmed' && (
-              <div className="flex gap-2 pt-2 border-t border-border/50">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => handleComplete(order.id)}
-                >
-                  <Check className="w-4 h-4 mr-1" />
-                  Выполнено
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => handleDecline(order.id)}
-                >
-                  <X className="w-4 h-4 mr-1" />
-                  Отменить
-                </Button>
+              <div className="pt-2 border-t border-border/50">
+                <p className="text-xs text-muted-foreground">
+                  Заказ подтверждён. По вопросам деталей управляющий напишет вам напрямую.
+                </p>
               </div>
             )}
           </div>
         ))
       )}
-
-      <CompletionReportDialog
-        isOpen={!!completingOrderId}
-        onClose={() => setCompletingOrderId(null)}
-        orderId={completingOrderId || ''}
-        onComplete={handleCompleteSuccess}
-      />
-
-      <ViewReportDialog
-        isOpen={!!viewingReportOrderId}
-        onClose={() => setViewingReportOrderId(null)}
-        orderId={viewingReportOrderId || ''}
-      />
-
-      <EditOrderDialog
-        open={!!editingOrder}
-        onOpenChange={(open) => !open && setEditingOrder(null)}
-        order={editingOrder ? {
-          id: editingOrder.id,
-          scheduled_date: editingOrder.scheduled_date,
-          scheduled_time: editingOrder.scheduled_time,
-          cleaner_id: editingOrder.cleaner_id,
-          user_id: editingOrder.manager_id, // Pass manager_id as user_id
-          object_id: editingOrder.object_id, // Pass object_id
-          residential_complex_id: editingOrder.object.residential_complex_id, // Pass residential_complex_id from object
-        } : null}
-        onSuccess={onRefresh}
-        canDelete={editingOrder?.manager_id === editingOrder?.cleaner_id}
-        canEditComplex={false} // Cleaners cannot edit complex
-      />
     </div>
   );
 };

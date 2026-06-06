@@ -7,11 +7,10 @@ import { AddObjectDialog } from '@/components/AddObjectDialog';
 import { ObjectsList } from '@/components/ObjectsList';
 import { CreateOrderDialog } from '@/components/CreateOrderDialog';
 import { OrdersList } from '@/components/OrdersList';
-import { ManagerChatList } from '@/components/ManagerChatList';
 import { ManagerCleanersCard } from '@/components/ManagerCleanersCard';
 import { OrdersCalendar } from '@/components/OrdersCalendar';
 import { ManagerDayOrdersDialog } from '@/components/ManagerDayOrdersDialog';
-import { Building2, ShoppingCart, MessageCircle, Calendar, Users } from 'lucide-react';
+import { Building2, ShoppingCart, Calendar, Users } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const ManagerDashboard = () => {
@@ -61,7 +60,7 @@ const ManagerDashboard = () => {
 
         {/* Dashboard Cards */}
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-12">
-          <div style={{ animationDelay: '0.2s' }} className="lg:col-span-2">
+          <div style={{ animationDelay: '0.2s' }} className="lg:col-span-3">
             <DashboardCard 
               title="Объекты" 
               icon={Building2}
@@ -88,7 +87,7 @@ const ManagerDashboard = () => {
             </DashboardCard>
           </div>
 
-          <div style={{ animationDelay: '0.3s' }} className="lg:col-span-4">
+          <div style={{ animationDelay: '0.3s' }} className="lg:col-span-3">
             <DashboardCard 
               title="Заказы" 
               icon={ShoppingCart}
@@ -113,20 +112,6 @@ const ManagerDashboard = () => {
                 ) : (
                   <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
                     Список клинеров будет доступен после одобрения аккаунта.
-                  </p>
-                )}
-              </div>
-            </DashboardCard>
-          </div>
-
-          <div style={{ animationDelay: '0.4s' }} className="lg:col-span-2">
-            <DashboardCard title="Сообщения" icon={MessageCircle} {...cardProps}>
-              <div className="space-y-3">
-                {isApproved ? (
-                  <ManagerChatList />
-                ) : (
-                  <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
-                    Сообщения будут доступны после одобрения аккаунта.
                   </p>
                 )}
               </div>

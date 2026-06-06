@@ -170,10 +170,7 @@ const Login = () => {
                 Забыли пароль?
               </Link>
               <p className="text-sm text-muted-foreground text-center">
-                Нет аккаунта?{' '}
-                <Link to="/register" className="text-primary hover:underline font-medium">
-                  Регистрация
-                </Link>
+                Доступ выдаёт администратор.
               </p>
               <Link
                 to="/"

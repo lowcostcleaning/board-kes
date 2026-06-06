@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format, isToday, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Calendar, Clock, Building2, User, Trash2, FileText } from 'lucide-react';
+import { Calendar, Clock, Building2, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { ViewReportDialog } from '@/components/ViewReportDialog';
 import { OrdersFilter } from '@/components/OrdersFilter';
 import { UserAvatar } from '@/components/UserAvatar';
+import { EditOrderDialog } from '@/components/EditOrderDialog';
 import { DateRange } from 'react-day-picker';
 
 interface ObjectOption {
@@ -23,9 +23,12 @@ interface Order {
   scheduled_time: string;
   status: string;
   object_id: string;
+  cleaner_id: string;
+  manager_id: string;
   object: {
     complex_name: string;
     apartment_number: string;
+    residential_complex_id: string | null;
   };
   cleaner: {
     email: string;
@@ -41,23 +44,25 @@ interface OrdersListProps {
 }
 
 const statusLabels: Record<string, string> = {
-  pending: 'Ожидает',
+  pending: 'Ожидает подтверждения',
+  pending_confirmation: 'Ожидает подтверждения',
   confirmed: 'Подтверждён',
-  completed: 'Завершён',
+  rejected: 'Отклонён',
   cancelled: 'Отменён',
 };
 
 const statusVariants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   pending: 'secondary',
+  pending_confirmation: 'secondary',
   confirmed: 'default',
-  completed: 'outline',
+  rejected: 'destructive',
   cancelled: 'destructive',
 };
 
 export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListProps) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [objects, setObjects] = useState<ObjectOption[]>([]);
   const [selectedObjectId, setSelectedObjectId] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
@@ -84,8 +89,9 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
           scheduled_time,
           status,
           cleaner_id,
+          manager_id,
           object_id,
-          object:objects(complex_name, apartment_number)
+          object:objects(complex_name, apartment_number, residential_complex_id)
         `)
         .order('scheduled_date', { ascending: true });
       if (ordersError) throw ordersError;
@@ -111,7 +117,9 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
         scheduled_time: order.scheduled_time,
         status: order.status,
         object_id: order.object_id,
-        object: order.object || { complex_name: 'Неизвестно', apartment_number: '' },
+        cleaner_id: order.cleaner_id,
+        manager_id: order.manager_id,
+        object: order.object || { complex_name: 'Неизвестно', apartment_number: '', residential_complex_id: null },
         cleaner: cleanerMap.get(order.cleaner_id) || { email: 'Неизвестно', name: null, avatar_url: null },
       }));
 
@@ -154,12 +162,6 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
         description: 'Не удалось отменить заказ',
         variant: 'destructive',
       });
-    }
-  };
-
-  const handleOrderClick = (order: Order) => {
-    if (order.status === 'completed') {
-      setSelectedOrderId(order.id);
     }
   };
 
@@ -225,10 +227,7 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
           {filteredOrders.map((order) => (
             <div
               key={order.id}
-              className={`p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors space-y-2 ${
-                order.status === 'completed' ? 'cursor-pointer' : ''
-              }`}
-              onClick={() => handleOrderClick(order)}
+              className="p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors space-y-2"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex flex-col gap-1 min-w-0">
@@ -244,11 +243,8 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  {order.status === 'completed' && (
-                    <FileText className="w-3 h-3 text-muted-foreground" />
-                  )}
-                  <Badge variant={statusVariants[order.status]} className="text-xs whitespace-nowrap">
-                    {statusLabels[order.status]}
+                  <Badge variant={statusVariants[order.status] || 'secondary'} className="text-xs whitespace-nowrap">
+                    {statusLabels[order.status] || order.status}
                   </Badge>
                 </div>
               </div>
@@ -271,8 +267,16 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
                 </div>
               </div>
 
-              {!disabled && (order.status === 'pending' || order.status === 'confirmed') && (
-                <div className="pt-2 border-t border-border/50">
+              {!disabled && !['cancelled', 'rejected'].includes(order.status) && (
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingOrder(order)}
+                  >
+                    <Pencil className="w-4 h-4 mr-1" />
+                    Перенести
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -292,10 +296,24 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
         </div>
       )}
 
-      <ViewReportDialog
-        isOpen={!!selectedOrderId}
-        onClose={() => setSelectedOrderId(null)}
-        orderId={selectedOrderId || ''}
+      <EditOrderDialog
+        open={!!editingOrder}
+        onOpenChange={(open) => !open && setEditingOrder(null)}
+        order={editingOrder ? {
+          id: editingOrder.id,
+          scheduled_date: editingOrder.scheduled_date,
+          scheduled_time: editingOrder.scheduled_time,
+          cleaner_id: editingOrder.cleaner_id,
+          user_id: editingOrder.manager_id,
+          object_id: editingOrder.object_id,
+          residential_complex_id: editingOrder.object.residential_complex_id,
+        } : null}
+        onSuccess={() => {
+          setEditingOrder(null);
+          onRefresh();
+        }}
+        canDelete={false}
+        canEditComplex={false}
       />
     </>
   );
