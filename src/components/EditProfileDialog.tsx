@@ -30,6 +30,7 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
   const [localProfile, setLocalProfile] = useState<LocalUserProfile | null>(null); // Local state for full profile
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [telegramUsername, setTelegramUsername] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingProfile, setIsFetchingProfile] = useState(false);
@@ -42,7 +43,7 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, email, role, status, name, phone, avatar_url, company_name, airbnb_profile_link, manual_orders_adjustment')
+          .select('id, email, role, status, name, phone, avatar_url, company_name, airbnb_profile_link, manual_orders_adjustment, telegram_username')
           .eq('id', user.id)
           .single();
 
@@ -51,6 +52,7 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
         setLocalProfile(data as LocalUserProfile);
         setName(data.name || '');
         setPhone(data.phone || '');
+        setTelegramUsername((data as any).telegram_username || '');
         setAvatarUrl(data.avatar_url || null);
       } catch (error: any) {
         console.error('Error fetching full profile:', error);
@@ -79,13 +81,15 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
     }
     setIsLoading(true);
     try {
+      const cleanedTg = telegramUsername.trim().replace(/^@/, '') || null;
       // Update profile in database
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           name: trimmedName,
           phone: phone.trim() || null,
-        })
+          telegram_username: cleanedTg,
+        } as any)
         .eq('id', user.id);
       if (profileError) throw profileError;
 
@@ -180,6 +184,19 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
                 placeholder="+7 999 123 45 67" 
                 maxLength={20} 
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tg">Telegram username</Label>
+              <Input
+                id="tg"
+                value={telegramUsername}
+                onChange={(e) => setTelegramUsername(e.target.value)}
+                placeholder="@username"
+                maxLength={64}
+              />
+              <p className="text-xs text-muted-foreground">
+                Управляющие смогут написать вам напрямую по ссылке t.me/username.
+              </p>
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>

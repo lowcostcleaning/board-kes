@@ -77,6 +77,7 @@ const AdminDashboard = () => {
     updateRole,
     updateStatus,
     updateManualOrdersAdjustment,
+    updateVisibleToManagers,
   } = useAdminUsers();
 
   const {
@@ -288,6 +289,7 @@ const AdminDashboard = () => {
               setUserToDelete={setUserToDelete as (user: UserProfile | null) => void} // Corrected type here
               handleRestoreUser={handleRestoreUser}
               updateManualOrdersAdjustment={updateManualOrdersAdjustment}
+              updateVisibleToManagers={updateVisibleToManagers}
             />
 
             {/* Roles Management */}

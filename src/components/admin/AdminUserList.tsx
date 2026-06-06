@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Edit2, Check, X, Eye, FlaskConical, Clock, CheckCircle2, Star, Trash2, RotateCcw, Brush, Briefcase, Shield, UserCheck, Users } from 'lucide-react';
+import { Edit2, Check, X, Eye, FlaskConical, Clock, CheckCircle2, Star, Trash2, RotateCcw, Brush, Briefcase, Shield, UserCheck, Users, EyeOff } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { DashboardCard } from '@/components/DashboardCard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState } from 'react'; // Import useState
@@ -20,6 +22,7 @@ interface UserProfile {
   final_total_cleanings: number; // Calculated field
   avatar_url?: string | null;
   is_active?: boolean;
+  visible_to_managers?: boolean;
 }
 
 interface AdminUserListProps {
@@ -32,6 +35,7 @@ interface AdminUserListProps {
   setUserToDelete: (user: UserProfile) => void;
   handleRestoreUser: (userId: string) => void;
   updateManualOrdersAdjustment: (userId: string, adjustment: number) => Promise<boolean>; // New prop
+  updateVisibleToManagers: (userId: string, visible: boolean) => Promise<boolean>;
 }
 
 export const AdminUserList = ({
@@ -44,6 +48,7 @@ export const AdminUserList = ({
   setUserToDelete,
   handleRestoreUser,
   updateManualOrdersAdjustment,
+  updateVisibleToManagers,
 }: AdminUserListProps) => {
   const isMobile = useIsMobile();
   const [editingAdjustmentId, setEditingAdjustmentId] = useState<string | null>(null);
@@ -272,6 +277,26 @@ export const AdminUserList = ({
                     На модерацию
                   </Button>
                 )
+              )}
+
+              {/* Visible to managers toggle (cleaners only) */}
+              {u.is_active && (u.role === 'cleaner' || u.role === 'demo_cleaner') && (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50">
+                  {u.visible_to_managers ? (
+                    <Eye className="w-3.5 h-3.5 text-status-active" />
+                  ) : (
+                    <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />
+                  )}
+                  <Label htmlFor={`vis-${u.id}`} className="text-xs cursor-pointer whitespace-nowrap">
+                    Видимый
+                  </Label>
+                  <Switch
+                    id={`vis-${u.id}`}
+                    checked={!!u.visible_to_managers}
+                    onCheckedChange={(v) => updateVisibleToManagers(u.id, v)}
+                    disabled={isReadOnlyMode}
+                  />
+                </div>
               )}
 
               {/* Role Selector */}

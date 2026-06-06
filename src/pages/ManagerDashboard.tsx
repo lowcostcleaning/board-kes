@@ -8,9 +8,10 @@ import { ObjectsList } from '@/components/ObjectsList';
 import { CreateOrderDialog } from '@/components/CreateOrderDialog';
 import { OrdersList } from '@/components/OrdersList';
 import { ManagerChatList } from '@/components/ManagerChatList';
+import { ManagerCleanersCard } from '@/components/ManagerCleanersCard';
 import { OrdersCalendar } from '@/components/OrdersCalendar';
 import { ManagerDayOrdersDialog } from '@/components/ManagerDayOrdersDialog';
-import { Building2, ShoppingCart, MessageCircle, Calendar } from 'lucide-react';
+import { Building2, ShoppingCart, MessageCircle, Calendar, Users } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const ManagerDashboard = () => {
@@ -105,6 +106,20 @@ const ManagerDashboard = () => {
           </div>
 
           <div style={{ animationDelay: '0.35s' }} className="lg:col-span-2">
+            <DashboardCard title="Клинеры" icon={Users} {...cardProps}>
+              <div className="space-y-3">
+                {isApproved ? (
+                  <ManagerCleanersCard />
+                ) : (
+                  <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/50">
+                    Список клинеров будет доступен после одобрения аккаунта.
+                  </p>
+                )}
+              </div>
+            </DashboardCard>
+          </div>
+
+          <div style={{ animationDelay: '0.4s' }} className="lg:col-span-2">
             <DashboardCard title="Сообщения" icon={MessageCircle} {...cardProps}>
               <div className="space-y-3">
                 {isApproved ? (
