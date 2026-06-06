@@ -8,9 +8,10 @@ import { ObjectsList } from '@/components/ObjectsList';
 import { CreateOrderDialog } from '@/components/CreateOrderDialog';
 import { OrdersList } from '@/components/OrdersList';
 import { ManagerChatList } from '@/components/ManagerChatList';
+import { ManagerCleanersCard } from '@/components/ManagerCleanersCard';
 import { OrdersCalendar } from '@/components/OrdersCalendar';
 import { ManagerDayOrdersDialog } from '@/components/ManagerDayOrdersDialog';
-import { Building2, ShoppingCart, MessageCircle, Calendar } from 'lucide-react';
+import { Building2, ShoppingCart, MessageCircle, Calendar, Users } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const ManagerDashboard = () => {
