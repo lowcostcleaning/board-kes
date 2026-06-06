@@ -3,12 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Edit2, Check, X, Eye, FlaskConical, Clock, CheckCircle2, Star, Trash2, RotateCcw, Brush, Briefcase, Shield, UserCheck, Users, EyeOff } from 'lucide-react';
+import { Edit2, Check, X, Eye, FlaskConical, Clock, CheckCircle2, Star, Trash2, RotateCcw, Brush, Briefcase, Shield, UserCheck, Users, EyeOff, KeyRound, Copy } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { DashboardCard } from '@/components/DashboardCard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState } from 'react'; // Import useState
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface UserProfile {
   id: string;
@@ -54,6 +56,9 @@ export const AdminUserList = ({
   const [editingAdjustmentId, setEditingAdjustmentId] = useState<string | null>(null);
   const [currentAdjustmentValue, setCurrentAdjustmentValue] = useState<number>(0);
   const [isSavingAdjustment, setIsSavingAdjustment] = useState(false);
+  const [generatingCodeId, setGeneratingCodeId] = useState<string | null>(null);
+  const [generatedCodes, setGeneratedCodes] = useState<Record<string, string>>({});
+  const { toast } = useToast();
 
   // On mobile, cards are collapsible and closed by default
   const cardProps = isMobile
@@ -112,6 +117,53 @@ export const AdminUserList = ({
 
   const handleCancelEditAdjustment = () => {
     setEditingAdjustmentId(null);
+  };
+
+  const handleGenerateCleanerCode = async (userId: string) => {
+    if (isReadOnlyMode) return;
+
+    setGeneratingCodeId(userId);
+    try {
+      const { data, error } = await supabase.functions.invoke('cleaner-code-auth', {
+        body: {
+          action: 'generate',
+          cleanerId: userId,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setGeneratedCodes((prev) => ({ ...prev, [userId]: data.code }));
+      toast({
+        title: 'Код создан',
+        description: 'Передайте этот код клинеру для входа.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Ошибка',
+        description: error.message || 'Не удалось создать код',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingCodeId(null);
+    }
+  };
+
+  const handleCopyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      toast({
+        title: 'Скопировано',
+        description: 'Код доступа скопирован.',
+      });
+    } catch {
+      toast({
+        title: 'Не удалось скопировать',
+        description: 'Скопируйте код вручную.',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (isLoading) {
@@ -296,6 +348,34 @@ export const AdminUserList = ({
                     onCheckedChange={(v) => updateVisibleToManagers(u.id, v)}
                     disabled={isReadOnlyMode}
                   />
+                </div>
+              )}
+
+              {u.is_active && (u.role === 'cleaner' || u.role === 'demo_cleaner') && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                    onClick={() => handleGenerateCleanerCode(u.id)}
+                    disabled={isReadOnlyMode || generatingCodeId === u.id}
+                  >
+                    <KeyRound className="w-4 h-4" />
+                    {generatingCodeId === u.id ? 'Создание…' : 'Код'}
+                  </Button>
+                  {generatedCodes[u.id] && (
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-primary">
+                      <span className="font-mono text-sm font-semibold tracking-wider">{generatedCodes[u.id]}</span>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 text-primary hover:text-primary"
+                        onClick={() => handleCopyCode(generatedCodes[u.id])}
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 

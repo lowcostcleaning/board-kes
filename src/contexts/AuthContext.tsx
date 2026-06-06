@@ -23,6 +23,7 @@ interface AuthContextType {
   isLoading: boolean;
   profileError: string | null;
   login: (email: string, password: string) => Promise<{ error: Error | null }>;
+  loginWithCleanerCode: (code: string) => Promise<{ error: Error | null }>;
   register: (
     name: string,
     email: string,
@@ -149,6 +150,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return { error: error ? new Error(error.message) : null };
   };
 
+  const loginWithCleanerCode = async (code: string) => {
+    setProfileError(null);
+
+    const { data, error } = await supabase.functions.invoke('cleaner-code-auth', {
+      body: {
+        action: 'login',
+        code: code.trim().toUpperCase(),
+      },
+    });
+
+    if (error) {
+      return { error: new Error(error.message) };
+    }
+
+    if (data?.error) {
+      return { error: new Error(data.error) };
+    }
+
+    if (!data?.session?.access_token || !data?.session?.refresh_token) {
+      return { error: new Error('Не удалось создать сессию клинера') };
+    }
+
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    });
+
+    return { error: sessionError ? new Error(sessionError.message) : null };
+  };
+
   const register = async (
     name: string,
     email: string,
@@ -214,6 +245,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isLoading,
         profileError,
         login,
+        loginWithCleanerCode,
         register,
         logout,
       }}

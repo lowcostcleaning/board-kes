@@ -5,15 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, KeyRound, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [cleanerCode, setCleanerCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, isAuthenticated, logout, profile, isLoading, profileError } = useAuth();
+  const { login, loginWithCleanerCode, isAuthenticated, logout, profile, isLoading, profileError } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -39,7 +41,7 @@ const Login = () => {
     }
   }, [isAuthenticated, profile, isLoading, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!email || !password) {
@@ -53,6 +55,38 @@ const Login = () => {
 
     setIsSubmitting(true);
     const { error } = await login(email, password);
+
+    if (error) {
+      toast({
+        title: 'Ошибка входа',
+        description: error.message,
+        variant: 'destructive',
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    toast({
+      title: 'Вход выполнен',
+      description: 'Загружаем профиль…',
+    });
+    setIsSubmitting(false);
+  };
+
+  const handleCodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!cleanerCode.trim()) {
+      toast({
+        title: 'Ошибка',
+        description: 'Введите код клинера',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    const { error } = await loginWithCleanerCode(cleanerCode);
 
     if (error) {
       toast({
@@ -135,40 +169,87 @@ const Login = () => {
         <Card className="w-full max-w-md shadow-soft border-border/50 animate-slide-up">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold">Добро пожаловать</CardTitle>
-            <CardDescription>Войдите в свой аккаунт</CardDescription>
+            <CardDescription>Выберите способ входа</CardDescription>
           </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Введите email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Пароль</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Введите пароль"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
+          <Tabs defaultValue="manager" className="w-full">
+            <CardContent>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="manager" className="gap-2">
+                  <Mail className="w-4 h-4" />
+                  Управляющий
+                </TabsTrigger>
+                <TabsTrigger value="cleaner" className="gap-2">
+                  <KeyRound className="w-4 h-4" />
+                  Клинер
+                </TabsTrigger>
+              </TabsList>
             </CardContent>
-            <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Вход…' : 'Войти'}
-              </Button>
-              <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-                Забыли пароль?
-              </Link>
+
+            <TabsContent value="manager" className="mt-0">
+              <form onSubmit={handleEmailSubmit}>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Введите email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Пароль</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Введите пароль"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-4">
+                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting ? 'Вход…' : 'Войти'}
+                  </Button>
+                  <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                    Забыли пароль?
+                  </Link>
+                </CardFooter>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="cleaner" className="mt-0">
+              <form onSubmit={handleCodeSubmit}>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cleaner-code">Код доступа</Label>
+                    <Input
+                      id="cleaner-code"
+                      value={cleanerCode}
+                      onChange={(e) => setCleanerCode(e.target.value.toUpperCase())}
+                      placeholder="Например: K7M4QZ"
+                      autoCapitalize="characters"
+                      autoComplete="one-time-code"
+                      required
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Код выдаёт администратор. Email и пароль клинеру вводить не нужно.
+                  </p>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-4">
+                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting ? 'Вход…' : 'Войти по коду'}
+                  </Button>
+                </CardFooter>
+              </form>
+            </TabsContent>
+
+            <CardFooter className="flex flex-col gap-4 pt-0">
               <p className="text-sm text-muted-foreground text-center">
                 Доступ выдаёт администратор.
               </p>
@@ -180,7 +261,7 @@ const Login = () => {
                 На главную
               </Link>
             </CardFooter>
-          </form>
+          </Tabs>
         </Card>
       </main>
     </div>

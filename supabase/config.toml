@@ -2,3 +2,6 @@ project_id = "hiulglwzolseqbsgvacq"
 
 [functions.send-telegram-notification]
 verify_jwt = true
+
+[functions.cleaner-code-auth]
+verify_jwt = false

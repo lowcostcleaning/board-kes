@@ -440,6 +440,7 @@ export type Database = {
         Row: {
           airbnb_profile_link: string | null
           avatar_url: string | null
+          cleaner_access_code: string | null
           company_name: string | null
           created_at: string | null
           email: string | null
@@ -462,6 +463,7 @@ export type Database = {
         Insert: {
           airbnb_profile_link?: string | null
           avatar_url?: string | null
+          cleaner_access_code?: string | null
           company_name?: string | null
           created_at?: string | null
           email?: string | null
@@ -484,6 +486,7 @@ export type Database = {
         Update: {
           airbnb_profile_link?: string | null
           avatar_url?: string | null
+          cleaner_access_code?: string | null
           company_name?: string | null
           created_at?: string | null
           email?: string | null
