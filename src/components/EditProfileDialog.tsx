@@ -30,6 +30,7 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
   const [localProfile, setLocalProfile] = useState<LocalUserProfile | null>(null); // Local state for full profile
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [telegramUsername, setTelegramUsername] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingProfile, setIsFetchingProfile] = useState(false);
