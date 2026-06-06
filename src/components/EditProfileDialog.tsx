@@ -185,6 +185,19 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
                 maxLength={20} 
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="tg">Telegram username</Label>
+              <Input
+                id="tg"
+                value={telegramUsername}
+                onChange={(e) => setTelegramUsername(e.target.value)}
+                placeholder="@username"
+                maxLength={64}
+              />
+              <p className="text-xs text-muted-foreground">
+                Управляющие смогут написать вам напрямую по ссылке t.me/username.
+              </p>
+            </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Отмена
