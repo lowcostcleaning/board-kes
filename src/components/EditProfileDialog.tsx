@@ -81,13 +81,15 @@ export const EditProfileDialog: React.FC<EditProfileDialogProps> = ({ onProfileU
     }
     setIsLoading(true);
     try {
+      const cleanedTg = telegramUsername.trim().replace(/^@/, '') || null;
       // Update profile in database
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           name: trimmedName,
           phone: phone.trim() || null,
-        })
+          telegram_username: cleanedTg,
+        } as any)
         .eq('id', user.id);
       if (profileError) throw profileError;
 
