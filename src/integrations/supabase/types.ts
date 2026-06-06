@@ -456,6 +456,8 @@ export type Database = {
           status: string
           telegram_chat_id: string | null
           telegram_enabled: boolean
+          telegram_username: string | null
+          visible_to_managers: boolean
         }
         Insert: {
           airbnb_profile_link?: string | null
@@ -476,6 +478,8 @@ export type Database = {
           status?: string
           telegram_chat_id?: string | null
           telegram_enabled?: boolean
+          telegram_username?: string | null
+          visible_to_managers?: boolean
         }
         Update: {
           airbnb_profile_link?: string | null
@@ -496,6 +500,8 @@ export type Database = {
           status?: string
           telegram_chat_id?: string | null
           telegram_enabled?: boolean
+          telegram_username?: string | null
+          visible_to_managers?: boolean
         }
         Relationships: []
       }
