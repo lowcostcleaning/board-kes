@@ -48,6 +48,7 @@ export const AdminUserList = ({
   setUserToDelete,
   handleRestoreUser,
   updateManualOrdersAdjustment,
+  updateVisibleToManagers,
 }: AdminUserListProps) => {
   const isMobile = useIsMobile();
   const [editingAdjustmentId, setEditingAdjustmentId] = useState<string | null>(null);
