@@ -77,6 +77,7 @@ const AdminDashboard = () => {
     updateRole,
     updateStatus,
     updateManualOrdersAdjustment,
+    updateVisibleToManagers,
   } = useAdminUsers();
 
   const {
