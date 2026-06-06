@@ -22,6 +22,7 @@ interface UserProfile {
   final_total_cleanings: number; // Calculated field
   avatar_url?: string | null;
   is_active?: boolean;
+  visible_to_managers?: boolean;
 }
 
 interface AdminUserListProps {
@@ -34,6 +35,7 @@ interface AdminUserListProps {
   setUserToDelete: (user: UserProfile) => void;
   handleRestoreUser: (userId: string) => void;
   updateManualOrdersAdjustment: (userId: string, adjustment: number) => Promise<boolean>; // New prop
+  updateVisibleToManagers: (userId: string, visible: boolean) => Promise<boolean>;
 }
 
 export const AdminUserList = ({
