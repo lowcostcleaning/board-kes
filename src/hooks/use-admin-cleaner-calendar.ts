@@ -8,6 +8,7 @@ export interface CleanerProfile {
   name: string | null;
   email: string | null;
   role: string;
+  is_active?: boolean;
   visible_to_managers?: boolean;
 }
 
@@ -65,10 +66,14 @@ export const useAdminCleanerCalendar = () => {
     // Fetch profiles first so hidden cleaners can be excluded from every calendar view.
     const { data: profilesData } = await supabase
       .from('profiles')
-      .select('id, name, email, role, visible_to_managers');
+      .select('id, name, email, role, is_active, visible_to_managers');
 
     const cleanersList = (profilesData || [])
-      .filter(p => (p.role === 'cleaner' || p.role === 'demo_cleaner') && p.visible_to_managers);
+      .filter(p =>
+        (p.role === 'cleaner' || p.role === 'demo_cleaner') &&
+        p.is_active !== false &&
+        p.visible_to_managers
+      );
     const visibleCleanerIds = cleanersList.map(cleaner => cleaner.id);
 
     // Fetch objects
@@ -166,7 +171,7 @@ export const useAdminCleanerCalendar = () => {
     setOrders(mappedOrders);
     setUnavailability(mappedUnavail);
 
-    // Set cleaners (only cleaners and demo_cleaners visible to managers/admins)
+    // Set cleaners (only active cleaners and demo_cleaners visible to managers/admins)
     setCleaners(cleanersList);
 
     // Set objects list
