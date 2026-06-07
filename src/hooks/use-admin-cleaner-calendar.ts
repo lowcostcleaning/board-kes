@@ -8,6 +8,7 @@ export interface CleanerProfile {
   name: string | null;
   email: string | null;
   role: string;
+  visible_to_managers?: boolean;
 }
 
 export interface CleanerOrder {
@@ -61,8 +62,26 @@ export const useAdminCleanerCalendar = () => {
     const startDate = format(startOfMonth(filters.month), 'yyyy-MM-dd');
     const endDate = format(endOfMonth(filters.month), 'yyyy-MM-dd');
 
-    // Fetch orders in date range
-    let ordersQuery = supabase
+    // Fetch profiles first so hidden cleaners can be excluded from every calendar view.
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, name, email, role, visible_to_managers');
+
+    const cleanersList = (profilesData || [])
+      .filter(p => (p.role === 'cleaner' || p.role === 'demo_cleaner') && p.visible_to_managers);
+    const visibleCleanerIds = cleanersList.map(cleaner => cleaner.id);
+
+    // Fetch objects
+    const { data: objectsData } = await supabase
+      .from('objects')
+      .select('id, complex_name, apartment_number');
+
+    let ordersData: any[] = [];
+    let unavailData: any[] = [];
+
+    if (visibleCleanerIds.length > 0) {
+      // Fetch orders in date range only for cleaners visible to managers/admins.
+      let ordersQuery = supabase
       .from('orders')
       .select(`
         *,
@@ -76,54 +95,49 @@ export const useAdminCleanerCalendar = () => {
       `)
       .gte('scheduled_date', startDate)
       .lte('scheduled_date', endDate)
+      .in('cleaner_id', visibleCleanerIds)
       .order('scheduled_date');
 
-    if (filters.cleanerId) {
-      ordersQuery = ordersQuery.eq('cleaner_id', filters.cleanerId);
+      if (filters.cleanerId) {
+        ordersQuery = ordersQuery.eq('cleaner_id', filters.cleanerId);
+      }
+
+      if (filters.objectId) {
+        ordersQuery = ordersQuery.eq('object_id', filters.objectId);
+      }
+
+      const { data: fetchedOrders, error: ordersError } = await ordersQuery;
+      ordersData = fetchedOrders || [];
+
+      if (ordersError) {
+        console.error('Error fetching orders:', ordersError);
+        toast({
+          title: 'Ошибка',
+          description: 'Не удалось загрузить заказы',
+          variant: 'destructive',
+        });
+      }
+
+      // Fetch unavailability in date range only for cleaners visible to managers/admins.
+      let unavailQuery = supabase
+        .from('cleaner_unavailability')
+        .select('*')
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .in('cleaner_id', visibleCleanerIds)
+        .order('date');
+
+      if (filters.cleanerId) {
+        unavailQuery = unavailQuery.eq('cleaner_id', filters.cleanerId);
+      }
+
+      const { data: fetchedUnavail, error: unavailError } = await unavailQuery;
+      unavailData = fetchedUnavail || [];
+
+      if (unavailError) {
+        console.error('Error fetching unavailability:', unavailError);
+      }
     }
-
-    if (filters.objectId) {
-      ordersQuery = ordersQuery.eq('object_id', filters.objectId);
-    }
-
-    const { data: ordersData, error: ordersError } = await ordersQuery;
-
-    if (ordersError) {
-      console.error('Error fetching orders:', ordersError);
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось загрузить заказы',
-        variant: 'destructive',
-      });
-    }
-
-    // Fetch unavailability in date range
-    let unavailQuery = supabase
-      .from('cleaner_unavailability')
-      .select('*')
-      .gte('date', startDate)
-      .lte('date', endDate)
-      .order('date');
-
-    if (filters.cleanerId) {
-      unavailQuery = unavailQuery.eq('cleaner_id', filters.cleanerId);
-    }
-
-    const { data: unavailData, error: unavailError } = await unavailQuery;
-
-    if (unavailError) {
-      console.error('Error fetching unavailability:', unavailError);
-    }
-
-    // Fetch profiles for cleaners and managers
-    const { data: profilesData } = await supabase
-      .from('profiles')
-      .select('id, name, email, role, visible_to_managers');
-
-    // Fetch objects
-    const { data: objectsData } = await supabase
-      .from('objects')
-      .select('id, complex_name, apartment_number');
 
     const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
     const objectsMap = new Map((objectsData || []).map(o => [o.id, o]));
@@ -152,9 +166,7 @@ export const useAdminCleanerCalendar = () => {
     setOrders(mappedOrders);
     setUnavailability(mappedUnavail);
 
-    // Set cleaners (only cleaners and demo_cleaners)
-    const cleanersList = (profilesData || [])
-      .filter(p => (p.role === 'cleaner' || p.role === 'demo_cleaner') && p.visible_to_managers);
+    // Set cleaners (only cleaners and demo_cleaners visible to managers/admins)
     setCleaners(cleanersList);
 
     // Set objects list
