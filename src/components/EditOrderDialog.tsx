@@ -214,7 +214,7 @@ export const EditOrderDialog = ({
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('orders')
         .update({
           cleaner_id: selectedCleaner,
@@ -222,9 +222,12 @@ export const EditOrderDialog = ({
           scheduled_time: selectedTime,
           status: 'pending_confirmation',
         })
-        .eq('id', order.id);
+        .eq('id', order.id)
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Заказ не был обновлён. Проверьте права доступа администратора.');
 
       toast({
         title: 'Заказ перенесён',

@@ -50,12 +50,15 @@ export const AdminCleanerCalendarTab = () => {
 
   const handleCancelOrder = async (orderId: string) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('orders')
         .update({ status: 'cancelled' })
-        .eq('id', orderId);
+        .eq('id', orderId)
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Заказ не был отменён. Проверьте права доступа администратора.');
 
       toast({
         title: 'Заказ отменён',
