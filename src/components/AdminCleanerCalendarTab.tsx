@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, getDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar, CalendarOff, MapPin, Clock, Pencil, Trash2, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, CalendarOff, MapPin, Clock, CheckCircle2, Pencil, Trash2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -69,6 +69,32 @@ export const AdminCleanerCalendarTab = () => {
       toast({
         title: 'Ошибка',
         description: error.message || 'Не удалось отменить заказ',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleConfirmOrder = async (orderId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .update({ status: 'confirmed' })
+        .eq('id', orderId)
+        .select('id')
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) throw new Error('Заказ не был подтверждён. Проверьте права доступа администратора.');
+
+      toast({
+        title: 'Заказ подтверждён',
+        description: 'Уборка закреплена в календаре клинера',
+      });
+      await fetchCalendarData();
+    } catch (error: any) {
+      toast({
+        title: 'Ошибка',
+        description: error.message || 'Не удалось подтвердить заказ',
         variant: 'destructive',
       });
     }
@@ -328,6 +354,16 @@ export const AdminCleanerCalendarTab = () => {
                     </div>
                     {!['cancelled', 'rejected'].includes(order.status) && (
                       <div className="flex flex-wrap gap-2">
+                        {(order.status === 'pending' || order.status === 'pending_confirmation') && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleConfirmOrder(order.id)}
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-1" />
+                            Подтвердить
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
