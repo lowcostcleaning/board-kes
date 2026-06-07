@@ -20,6 +20,7 @@ export interface CleanerOrder {
   scheduled_date: string;
   scheduled_time: string;
   status: string;
+  residential_complex_id: string | null;
   // Joined data
   cleaner_name: string | null;
   manager_name: string | null;
@@ -79,7 +80,7 @@ export const useAdminCleanerCalendar = () => {
     // Fetch objects
     const { data: objectsData } = await supabase
       .from('objects')
-      .select('id, complex_name, apartment_number');
+      .select('id, complex_name, apartment_number, residential_complex_id');
 
     let ordersData: any[] = [];
     let unavailData: any[] = [];
@@ -93,6 +94,7 @@ export const useAdminCleanerCalendar = () => {
         object:objects(
           complex_name,
           apartment_number,
+          residential_complex_id,
           residential_complex:residential_complexes!objects_residential_complex_id_fkey(
             name
           )
@@ -159,6 +161,7 @@ export const useAdminCleanerCalendar = () => {
         manager_name: manager?.name || null,
         object_name: object ? `${object.complex_name}, кв. ${object.apartment_number}` : 'Неизвестный объект',
         complex_name: object?.complex_name || '',
+        residential_complex_id: object?.residential_complex_id || null,
       };
     });
 

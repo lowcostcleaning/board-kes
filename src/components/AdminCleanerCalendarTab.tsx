@@ -1,13 +1,16 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, getDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar, CalendarOff, MapPin, Clock, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, CalendarOff, MapPin, Clock, Pencil, Trash2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAdminCleanerCalendar } from '@/hooks/use-admin-cleaner-calendar';
+import { useToast } from '@/hooks/use-toast';
+import { useAdminCleanerCalendar, type CleanerOrder } from '@/hooks/use-admin-cleaner-calendar';
 import { OrdersCalendar } from '@/components/OrdersCalendar';
+import { EditOrderDialog } from '@/components/EditOrderDialog';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 const statusColors: Record<string, string> = {
@@ -27,6 +30,8 @@ const statusLabels: Record<string, string> = {
 };
 
 export const AdminCleanerCalendarTab = () => {
+  const { toast } = useToast();
+  const [editingOrder, setEditingOrder] = useState<CleanerOrder | null>(null);
   const {
     orders,
     unavailability,
@@ -36,11 +41,35 @@ export const AdminCleanerCalendarTab = () => {
     filters,
     updateFilters,
     resetFilters,
+    fetchCalendarData,
     goToNextMonth,
     goToPrevMonth,
     goToToday,
     getEventsForDate,
   } = useAdminCleanerCalendar();
+
+  const handleCancelOrder = async (orderId: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'cancelled' })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Заказ отменён',
+        description: 'Уборка больше не занимает время клинера',
+      });
+      await fetchCalendarData();
+    } catch (error: any) {
+      toast({
+        title: 'Ошибка',
+        description: error.message || 'Не удалось отменить заказ',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const calendarDays = useMemo(() => {
     const start = startOfMonth(filters.month);
@@ -294,6 +323,27 @@ export const AdminCleanerCalendarTab = () => {
                         </span>
                       </div>
                     </div>
+                    {!['cancelled', 'rejected'].includes(order.status) && (
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingOrder(order)}
+                        >
+                          <Pencil className="w-4 h-4 mr-1" />
+                          Перенести
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleCancelOrder(order.id)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Отменить
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -301,6 +351,26 @@ export const AdminCleanerCalendarTab = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      <EditOrderDialog
+        open={!!editingOrder}
+        onOpenChange={(open) => !open && setEditingOrder(null)}
+        order={editingOrder ? {
+          id: editingOrder.id,
+          scheduled_date: editingOrder.scheduled_date,
+          scheduled_time: editingOrder.scheduled_time,
+          cleaner_id: editingOrder.cleaner_id,
+          user_id: editingOrder.manager_id,
+          object_id: editingOrder.object_id,
+          residential_complex_id: editingOrder.residential_complex_id,
+        } : null}
+        onSuccess={() => {
+          setEditingOrder(null);
+          fetchCalendarData();
+        }}
+        canDelete={false}
+        canEditComplex={false}
+      />
     </div>
   );
 };
