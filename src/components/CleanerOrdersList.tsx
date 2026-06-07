@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format, isToday, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Calendar, Clock, Building2, Home, Check, X } from 'lucide-react';
+import { Calendar, Clock, Building2, Home, Check, MessageCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +31,7 @@ interface CleanerOrder {
     email: string;
     name: string | null;
     avatar_url: string | null;
+    telegram_username: string | null;
   };
 }
 
@@ -121,7 +122,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
       const managerIds = [...new Set((ordersData as any[]).map(o => o.manager_id))];
       const { data: managerProfiles } = await supabase
         .from('profiles')
-        .select('id, email, name, avatar_url')
+        .select('id, email, name, avatar_url, telegram_username')
         .in('id', managerIds);
 
       const managerMap = new Map(managerProfiles?.map(p => [p.id, p]) || []);
@@ -140,7 +141,7 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
           residential_complex_id: order.object.residential_complex_id,
           complex: order.object.complex || null,
         },
-        manager: managerMap.get(order.manager_id) || { email: 'Неизвестно', name: null, avatar_url: null },
+        manager: managerMap.get(order.manager_id) || { email: 'Неизвестно', name: null, avatar_url: null, telegram_username: null },
       }));
 
       setOrders(transformedOrders);
@@ -244,6 +245,12 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
     }
   };
 
+  const openManagerTelegram = (username: string) => {
+    const clean = username.trim().replace(/^@/, '');
+    if (!clean) return;
+    window.open(`https://t.me/${clean}`, '_blank', 'noopener,noreferrer');
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -307,14 +314,28 @@ export const CleanerOrdersList = ({ refreshTrigger, onRefresh }: CleanerOrdersLi
             </div>
 
             {/* Manager info */}
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <UserAvatar
-                avatarUrl={order.manager.avatar_url}
-                name={order.manager.name}
-                email={order.manager.email}
-                size="sm"
-              />
-              <span>Менеджер: {order.manager.name || order.manager.email?.split('@')[0]}</span>
+            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground flex-wrap">
+              <div className="flex items-center gap-2 min-w-0">
+                <UserAvatar
+                  avatarUrl={order.manager.avatar_url}
+                  name={order.manager.name}
+                  email={order.manager.email}
+                  size="sm"
+                />
+                <span className="truncate">Менеджер: {order.manager.name || order.manager.email?.split('@')[0]}</span>
+              </div>
+              {order.manager.telegram_username && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => openManagerTelegram(order.manager.telegram_username!)}
+                  title={`Telegram: @${order.manager.telegram_username.replace(/^@/, '')}`}
+                >
+                  <MessageCircle className="w-3.5 h-3.5 mr-1" />
+                  Написать управляющему
+                </Button>
+              )}
             </div>
 
             {(order.status === 'pending' || order.status === 'pending_confirmation') && (
