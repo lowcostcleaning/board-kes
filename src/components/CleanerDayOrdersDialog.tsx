@@ -27,6 +27,8 @@ interface CleanerDayOrdersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedDate: Date | null;
+  cleanerId?: string;
+  titlePrefix?: string;
 }
 
 const getStatusBadge = (status: string) => {
@@ -62,6 +64,8 @@ export const CleanerDayOrdersDialog: React.FC<CleanerDayOrdersDialogProps> = ({
   open,
   onOpenChange,
   selectedDate,
+  cleanerId,
+  titlePrefix,
 }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -70,7 +74,7 @@ export const CleanerDayOrdersDialog: React.FC<CleanerDayOrdersDialogProps> = ({
     if (open && selectedDate) {
       fetchOrders();
     }
-  }, [open, selectedDate]);
+  }, [open, selectedDate, cleanerId]);
 
   const fetchOrders = async () => {
     if (!selectedDate) return;
@@ -78,7 +82,8 @@ export const CleanerDayOrdersDialog: React.FC<CleanerDayOrdersDialogProps> = ({
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const targetCleanerId = cleanerId || user?.id;
+      if (!targetCleanerId) return;
 
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       
@@ -94,7 +99,7 @@ export const CleanerDayOrdersDialog: React.FC<CleanerDayOrdersDialogProps> = ({
             apartment_type
           )
         `)
-        .eq('cleaner_id', user.id)
+        .eq('cleaner_id', targetCleanerId)
         .eq('scheduled_date', dateStr)
         .neq('status', 'cancelled')
         .order('scheduled_time');
@@ -112,8 +117,11 @@ export const CleanerDayOrdersDialog: React.FC<CleanerDayOrdersDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle className="text-center">
-            {selectedDate && format(selectedDate, 'd MMMM yyyy', { locale: ru })}
+          <DialogTitle className="text-center space-y-1">
+            {titlePrefix && <span className="block text-sm font-medium text-muted-foreground">{titlePrefix}</span>}
+            <span className="block">
+              {selectedDate && format(selectedDate, 'd MMMM yyyy', { locale: ru })}
+            </span>
           </DialogTitle>
         </DialogHeader>
         

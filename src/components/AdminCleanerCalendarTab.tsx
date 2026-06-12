@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminCleanerCalendar, type CleanerOrder } from '@/hooks/use-admin-cleaner-calendar';
 import { OrdersCalendar } from '@/components/OrdersCalendar';
 import { EditOrderDialog } from '@/components/EditOrderDialog';
+import { CleanerDayOrdersDialog } from '@/components/CleanerDayOrdersDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +34,12 @@ const statusLabels: Record<string, string> = {
 export const AdminCleanerCalendarTab = () => {
   const { toast } = useToast();
   const [editingOrder, setEditingOrder] = useState<CleanerOrder | null>(null);
+  const [selectedOverviewDate, setSelectedOverviewDate] = useState<Date | null>(null);
+  const [selectedCleanerDay, setSelectedCleanerDay] = useState<{
+    date: Date;
+    cleanerId: string;
+    cleanerName: string;
+  } | null>(null);
   const {
     orders,
     unavailability,
@@ -110,6 +118,10 @@ export const AdminCleanerCalendarTab = () => {
     return { days, paddingDays };
   }, [filters.month]);
 
+  const selectedOverviewEvents = selectedOverviewDate
+    ? getEventsForDate(selectedOverviewDate)
+    : { orders: [], unavailability: [] };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -180,7 +192,15 @@ export const AdminCleanerCalendarTab = () => {
                     </div>
                     <Badge variant="outline">Клинер</Badge>
                   </div>
-                  <OrdersCalendar userRole="cleaner" cleanerId={cleaner.id} />
+                  <OrdersCalendar
+                    userRole="cleaner"
+                    cleanerId={cleaner.id}
+                    onDateSelect={(date) => setSelectedCleanerDay({
+                      date,
+                      cleanerId: cleaner.id,
+                      cleanerName: cleaner.name || cleaner.email || 'Клинер',
+                    })}
+                  />
                 </div>
               ))}
             </div>
@@ -264,10 +284,12 @@ export const AdminCleanerCalendarTab = () => {
                 const dayNumber = format(day, 'd');
 
                 return (
-                  <div
+                  <button
                     key={day.toISOString()}
+                    type="button"
+                    onClick={() => setSelectedOverviewDate(day)}
                     className={cn(
-                      'min-h-[100px] p-2 border-t border-r border-border',
+                      'min-h-[100px] p-2 border-t border-r border-border text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset',
                       !isSameMonth(day, filters.month) && 'bg-muted/20',
                       isToday(day) && 'bg-primary/5'
                     )}
@@ -311,7 +333,7 @@ export const AdminCleanerCalendarTab = () => {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -409,6 +431,86 @@ export const AdminCleanerCalendarTab = () => {
         }}
         canDelete={false}
         canEditComplex={false}
+      />
+
+      <Dialog open={!!selectedOverviewDate} onOpenChange={(open) => !open && setSelectedOverviewDate(null)}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="text-center">
+              {selectedOverviewDate && format(selectedOverviewDate, 'd MMMM yyyy', { locale: ru })}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto">
+            {selectedOverviewEvents.orders.length === 0 && selectedOverviewEvents.unavailability.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                На эту дату нет уборок и отметок недоступности
+              </p>
+            ) : (
+              <>
+                {selectedOverviewEvents.orders.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold">Уборки</h4>
+                    {selectedOverviewEvents.orders.map(order => (
+                      <div
+                        key={order.id}
+                        className="p-3 rounded-lg bg-muted/40 border border-border space-y-2"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 font-medium">
+                            <Clock className="w-4 h-4 text-primary" />
+                            {order.scheduled_time}
+                          </div>
+                          <Badge variant="outline" className={statusColors[order.status]}>
+                            {statusLabels[order.status] || order.status}
+                          </Badge>
+                        </div>
+                        <div className="space-y-1 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <User className="w-3.5 h-3.5" />
+                            <span>{order.cleaner_name || 'Неизвестный клинер'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-3.5 h-3.5" />
+                            <span>{order.object_name}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {selectedOverviewEvents.unavailability.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold">Недоступность</h4>
+                    {selectedOverviewEvents.unavailability.map(item => (
+                      <div
+                        key={item.id}
+                        className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm"
+                      >
+                        <div className="flex items-center gap-2 font-medium text-destructive">
+                          <CalendarOff className="w-4 h-4" />
+                          {item.cleaner_name || 'Клинер'}
+                        </div>
+                        {item.reason && (
+                          <p className="mt-1 text-muted-foreground">{item.reason}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <CleanerDayOrdersDialog
+        open={!!selectedCleanerDay}
+        onOpenChange={(open) => !open && setSelectedCleanerDay(null)}
+        selectedDate={selectedCleanerDay?.date || null}
+        cleanerId={selectedCleanerDay?.cleanerId}
+        titlePrefix={selectedCleanerDay?.cleanerName}
       />
     </div>
   );
