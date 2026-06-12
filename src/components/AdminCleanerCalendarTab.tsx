@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, getDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar, CalendarOff, MapPin, Clock, CheckCircle2, Pencil, Trash2, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, CalendarOff, MapPin, Clock, CheckCircle2, Pencil, Trash2, User, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,6 +12,7 @@ import { useAdminCleanerCalendar, type CleanerOrder } from '@/hooks/use-admin-cl
 import { OrdersCalendar } from '@/components/OrdersCalendar';
 import { EditOrderDialog } from '@/components/EditOrderDialog';
 import { CleanerDayOrdersDialog } from '@/components/CleanerDayOrdersDialog';
+import { ReassignCleanerDialog } from '@/components/ReassignCleanerDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +35,7 @@ const statusLabels: Record<string, string> = {
 export const AdminCleanerCalendarTab = () => {
   const { toast } = useToast();
   const [editingOrder, setEditingOrder] = useState<CleanerOrder | null>(null);
+  const [reassigningOrder, setReassigningOrder] = useState<CleanerOrder | null>(null);
   const [selectedOverviewDate, setSelectedOverviewDate] = useState<Date | null>(null);
   const [selectedCleanerDay, setSelectedCleanerDay] = useState<{
     date: Date;
@@ -395,6 +397,14 @@ export const AdminCleanerCalendarTab = () => {
                           Перенести
                         </Button>
                         <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setReassigningOrder(order)}
+                        >
+                          <UserCheck className="w-4 h-4 mr-1" />
+                          Сменить клинера
+                        </Button>
+                        <Button
                           variant="ghost"
                           size="sm"
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -431,6 +441,21 @@ export const AdminCleanerCalendarTab = () => {
         }}
         canDelete={false}
         canEditComplex={false}
+      />
+
+      <ReassignCleanerDialog
+        open={!!reassigningOrder}
+        onOpenChange={(open) => !open && setReassigningOrder(null)}
+        order={reassigningOrder ? {
+          id: reassigningOrder.id,
+          scheduled_date: reassigningOrder.scheduled_date,
+          scheduled_time: reassigningOrder.scheduled_time,
+          cleaner_id: reassigningOrder.cleaner_id,
+        } : null}
+        onSuccess={() => {
+          setReassigningOrder(null);
+          fetchCalendarData();
+        }}
       />
 
       <Dialog open={!!selectedOverviewDate} onOpenChange={(open) => !open && setSelectedOverviewDate(null)}>
@@ -475,6 +500,20 @@ export const AdminCleanerCalendarTab = () => {
                             <span>{order.object_name}</span>
                           </div>
                         </div>
+                        {!['cancelled', 'rejected'].includes(order.status) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => {
+                              setSelectedOverviewDate(null);
+                              setReassigningOrder(order);
+                            }}
+                          >
+                            <UserCheck className="w-4 h-4 mr-1" />
+                            Сменить клинера
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>

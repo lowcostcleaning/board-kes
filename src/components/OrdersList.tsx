@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format, isToday, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Calendar, Clock, Building2, Pencil, Trash2 } from 'lucide-react';
+import { Calendar, Clock, Building2, Pencil, Trash2, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { OrdersFilter } from '@/components/OrdersFilter';
 import { UserAvatar } from '@/components/UserAvatar';
 import { EditOrderDialog } from '@/components/EditOrderDialog';
+import { ReassignCleanerDialog } from '@/components/ReassignCleanerDialog';
 import { DateRange } from 'react-day-picker';
 
 interface ObjectOption {
@@ -63,6 +64,7 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [reassigningOrder, setReassigningOrder] = useState<Order | null>(null);
   const [objects, setObjects] = useState<ObjectOption[]>([]);
   const [selectedObjectId, setSelectedObjectId] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
@@ -278,6 +280,14 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
                     Перенести
                   </Button>
                   <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setReassigningOrder(order)}
+                  >
+                    <UserCheck className="w-4 h-4 mr-1" />
+                    Сменить клинера
+                  </Button>
+                  <Button
                     variant="ghost"
                     size="sm"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -314,6 +324,21 @@ export const OrdersList = ({ refreshTrigger, onRefresh, disabled }: OrdersListPr
         }}
         canDelete={false}
         canEditComplex={false}
+      />
+
+      <ReassignCleanerDialog
+        open={!!reassigningOrder}
+        onOpenChange={(open) => !open && setReassigningOrder(null)}
+        order={reassigningOrder ? {
+          id: reassigningOrder.id,
+          scheduled_date: reassigningOrder.scheduled_date,
+          scheduled_time: reassigningOrder.scheduled_time,
+          cleaner_id: reassigningOrder.cleaner_id,
+        } : null}
+        onSuccess={() => {
+          setReassigningOrder(null);
+          onRefresh();
+        }}
       />
     </>
   );
