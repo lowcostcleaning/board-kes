@@ -32,8 +32,22 @@ const statusLabels: Record<string, string> = {
   cancelled: 'Отменён',
 };
 
+const ADMIN_CALENDAR_TAB_STORAGE_KEY = 'adminCleanerCalendar.activeTab';
+const ADMIN_CALENDAR_TABS = ['cleaner-calendars', 'overview'] as const;
+type AdminCalendarTab = typeof ADMIN_CALENDAR_TABS[number];
+
+const getStoredAdminCalendarTab = (): AdminCalendarTab => {
+  if (typeof window === 'undefined') return 'cleaner-calendars';
+
+  const storedTab = window.localStorage.getItem(ADMIN_CALENDAR_TAB_STORAGE_KEY);
+  return ADMIN_CALENDAR_TABS.includes(storedTab as AdminCalendarTab)
+    ? (storedTab as AdminCalendarTab)
+    : 'cleaner-calendars';
+};
+
 export const AdminCleanerCalendarTab = () => {
   const { toast } = useToast();
+  const [activeCalendarTab, setActiveCalendarTab] = useState<AdminCalendarTab>(getStoredAdminCalendarTab);
   const [editingOrder, setEditingOrder] = useState<CleanerOrder | null>(null);
   const [reassigningOrder, setReassigningOrder] = useState<CleanerOrder | null>(null);
   const [selectedOverviewDate, setSelectedOverviewDate] = useState<Date | null>(null);
@@ -124,6 +138,14 @@ export const AdminCleanerCalendarTab = () => {
     ? getEventsForDate(selectedOverviewDate)
     : { orders: [], unavailability: [] };
 
+  const handleCalendarTabChange = (tab: string) => {
+    if (!ADMIN_CALENDAR_TABS.includes(tab as AdminCalendarTab)) return;
+
+    const nextTab = tab as AdminCalendarTab;
+    setActiveCalendarTab(nextTab);
+    window.localStorage.setItem(ADMIN_CALENDAR_TAB_STORAGE_KEY, nextTab);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -165,7 +187,7 @@ export const AdminCleanerCalendarTab = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="cleaner-calendars" className="space-y-5">
+      <Tabs value={activeCalendarTab} onValueChange={handleCalendarTabChange} className="space-y-5">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="cleaner-calendars">Календари клинеров</TabsTrigger>
           <TabsTrigger value="overview">Общий календарь</TabsTrigger>

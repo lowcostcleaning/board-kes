@@ -60,6 +60,19 @@ import { format, subHours } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
+const ADMIN_DASHBOARD_TAB_STORAGE_KEY = 'adminDashboard.activeTab';
+const ADMIN_DASHBOARD_TABS = ['users', 'objects', 'calendar', 'notifications'] as const;
+type AdminDashboardTab = typeof ADMIN_DASHBOARD_TABS[number];
+
+const getStoredAdminDashboardTab = (): AdminDashboardTab => {
+  if (typeof window === 'undefined') return 'users';
+
+  const storedTab = window.localStorage.getItem(ADMIN_DASHBOARD_TAB_STORAGE_KEY);
+  return ADMIN_DASHBOARD_TABS.includes(storedTab as AdminDashboardTab)
+    ? (storedTab as AdminDashboardTab)
+    : 'users';
+};
+
 const AdminDashboard = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
@@ -90,7 +103,7 @@ const AdminDashboard = () => {
 
   const [viewingUser, setViewingUser] = useState<UserProfile | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState('users');
+  const [activeTab, setActiveTab] = useState<AdminDashboardTab>(getStoredAdminDashboardTab);
   const isMobile = useIsMobile();
 
   const displayName = user?.user_metadata?.name || profile?.email?.split('@')[0] || 'Админ';
@@ -190,6 +203,14 @@ const AdminDashboard = () => {
     setViewingUser(userProfile);
   };
 
+  const handleTabChange = (tab: string) => {
+    if (!ADMIN_DASHBOARD_TABS.includes(tab as AdminDashboardTab)) return;
+
+    const nextTab = tab as AdminDashboardTab;
+    setActiveTab(nextTab);
+    window.localStorage.setItem(ADMIN_DASHBOARD_TAB_STORAGE_KEY, nextTab);
+  };
+
   const handleResolveNotification = (notification: any, action: 'approved' | 'rejected') => {
     if (checkReadOnly()) return;
     if (user?.id) {
@@ -236,7 +257,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <TabsList className="grid w-full grid-cols-4 max-w-2xl">
             <TabsTrigger value="users" className="gap-1">
               <Users className="w-4 h-4" />
