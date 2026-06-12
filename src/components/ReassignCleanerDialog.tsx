@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { CalendarIcon, CheckCircle2, Clock, Save, UserX } from 'lucide-react';
+import { CalendarIcon, CheckCircle2, Clock, Repeat2, Save, UserX } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -36,6 +36,13 @@ interface CleanerOrder {
   scheduled_date: string;
   scheduled_time: string;
   status: string;
+}
+
+interface CleanerAvailability {
+  cleaner: Cleaner;
+  available: boolean;
+  reason: string;
+  swapOrderId?: string;
 }
 
 interface CleanerUnavailableDate {
@@ -146,7 +153,7 @@ export const ReassignCleanerDialog = ({
 
   const selectedDate = order ? new Date(order.scheduled_date) : null;
 
-  const cleanerAvailability = useMemo(() => {
+  const cleanerAvailability = useMemo<CleanerAvailability[]>(() => {
     return cleaners.map((cleaner) => {
       if (!order || !selectedDate) {
         return { cleaner, available: false, reason: 'Нет данных уборки' };
@@ -168,7 +175,7 @@ export const ReassignCleanerDialog = ({
         return { cleaner, available: false, reason: 'Не работает' };
       }
 
-      const hasOrder = orders.some(
+      const sameTimeOrder = orders.find(
         (existingOrder) =>
           existingOrder.id !== order.id &&
           existingOrder.cleaner_id === cleaner.id &&
@@ -176,8 +183,8 @@ export const ReassignCleanerDialog = ({
           existingOrder.scheduled_time === order.scheduled_time &&
           activeOrderStatuses.includes(existingOrder.status)
       );
-      if (hasOrder) {
-        return { cleaner, available: false, reason: 'Занят' };
+      if (sameTimeOrder) {
+        return { cleaner, available: true, reason: 'Обмен', swapOrderId: sameTimeOrder.id };
       }
 
       return { cleaner, available: true, reason: isCurrentCleaner ? 'Текущий' : 'Свободен' };
@@ -186,14 +193,16 @@ export const ReassignCleanerDialog = ({
 
   const hasChanges = Boolean(order && selectedCleaner && selectedCleaner !== order.cleaner_id);
 
+  const selectedAvailability = cleanerAvailability.find((entry) => entry.cleaner.id === selectedCleaner);
+  const isSwap = Boolean(selectedAvailability?.swapOrderId);
+
   const handleSave = async () => {
     if (!order || !selectedCleaner) return;
 
-    const availability = cleanerAvailability.find((entry) => entry.cleaner.id === selectedCleaner);
-    if (!availability?.available) {
+    if (!selectedAvailability?.available) {
       toast({
         title: 'Клинер недоступен',
-        description: availability?.reason || 'Выберите другого клинера',
+        description: selectedAvailability?.reason || 'Выберите другого клинера',
         variant: 'destructive',
       });
       return;
@@ -201,23 +210,37 @@ export const ReassignCleanerDialog = ({
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .update({
-          cleaner_id: selectedCleaner,
-          status: 'pending_confirmation',
-        })
-        .eq('id', order.id)
-        .select('id')
-        .maybeSingle();
+      if (selectedAvailability.swapOrderId) {
+        const { error } = await supabase.rpc('swap_order_cleaners', {
+          p_source_order_id: order.id,
+          p_target_order_id: selectedAvailability.swapOrderId,
+        });
 
-      if (error) throw error;
-      if (!data) throw new Error('Уборка не была обновлена. Проверьте права доступа.');
+        if (error) throw error;
 
-      toast({
-        title: 'Клинер изменён',
-        description: 'Дата, время и объект уборки остались без изменений',
-      });
+        toast({
+          title: 'Уборки поменяны местами',
+          description: 'Клинеры получили новые уборки на то же время',
+        });
+      } else {
+        const { data, error } = await supabase
+          .from('orders')
+          .update({
+            cleaner_id: selectedCleaner,
+            status: 'pending_confirmation',
+          })
+          .eq('id', order.id)
+          .select('id')
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!data) throw new Error('Уборка не была обновлена. Проверьте права доступа.');
+
+        toast({
+          title: 'Клинер изменён',
+          description: 'Дата, время и объект уборки остались без изменений',
+        });
+      }
 
       onOpenChange(false);
       onSuccess();
@@ -258,7 +281,7 @@ export const ReassignCleanerDialog = ({
             <div>
               <Label>Клинер</Label>
               <p className="text-xs text-muted-foreground">
-                Меняется только исполнитель. Дата, время и объект не изменяются.
+                Свободного клинера можно назначить напрямую. Занятого в это же время можно выбрать для обмена уборками.
               </p>
             </div>
 
@@ -288,8 +311,17 @@ export const ReassignCleanerDialog = ({
                           <p className="text-xs text-muted-foreground truncate">{cleaner.email}</p>
                         </div>
                       </div>
-                      <Badge variant={available ? 'default' : 'secondary'} className="shrink-0 gap-1">
-                        {available ? <CheckCircle2 className="w-3 h-3" /> : <UserX className="w-3 h-3" />}
+                      <Badge
+                        variant={available ? 'default' : 'secondary'}
+                        className="shrink-0 gap-1"
+                      >
+                        {reason === 'Обмен' ? (
+                          <Repeat2 className="w-3 h-3" />
+                        ) : available ? (
+                          <CheckCircle2 className="w-3 h-3" />
+                        ) : (
+                          <UserX className="w-3 h-3" />
+                        )}
                         {reason}
                       </Badge>
                     </div>
@@ -303,8 +335,8 @@ export const ReassignCleanerDialog = ({
               disabled={isLoading || !hasChanges || !selectedCleaner}
               className="w-full"
             >
-              <Save className="w-4 h-4 mr-2" />
-              {isLoading ? 'Сохранение...' : 'Сохранить клинера'}
+              {isSwap ? <Repeat2 className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+              {isLoading ? 'Сохранение...' : isSwap ? 'Поменять местами' : 'Сохранить клинера'}
             </Button>
           </div>
         </div>

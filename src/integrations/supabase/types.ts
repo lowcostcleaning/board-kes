@@ -644,6 +644,10 @@ export type Database = {
       is_manager: { Args: never; Returns: boolean }
       is_real_cleaner: { Args: never; Returns: boolean }
       is_real_manager: { Args: { _manager_id: string }; Returns: boolean }
+      swap_order_cleaners: {
+        Args: { p_source_order_id: string; p_target_order_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
